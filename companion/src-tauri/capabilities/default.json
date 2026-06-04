@@ -1,0 +1,21 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/schema/acl/capability.schema.json",
+  "identifier": "default",
+  "description": "Default companion app permissions",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "core:tray:default",
+    "store:default",
+    "dialog:default",
+    "dialog:allow-open",
+    "fs:default",
+    "fs:allow-read-file",
+    "notification:default",
+    "notification:allow-send-notification",
+    "notification:allow-request-permission",
+    "shell:default",
+    "shell:allow-open"
+  ]
+}

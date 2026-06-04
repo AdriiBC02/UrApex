@@ -1,0 +1,244 @@
+import { useEffect, useState } from "react"
+import { invoke } from "@tauri-apps/api/core"
+import { open } from "@tauri-apps/plugin-dialog"
+import { load, Store } from "@tauri-apps/plugin-store"
+import { SyncLog, SyncStatus } from "./components/SyncLog"
+import { StatusDot } from "./components/StatusDot"
+
+interface Settings {
+  watchFolder: string
+  apiUrl: string
+  apiKey: string
+}
+
+interface LogEntry {
+  id: number
+  file: string
+  status: "uploading" | "success" | "duplicate" | "error"
+  message?: string
+  timestamp: Date
+}
+
+let store: Store | null = null
+let logId = 0
+
+export default function App() {
+  const [settings, setSettings] = useState<Settings>({
+    watchFolder: "",
+    apiUrl: "http://localhost:3000",
+    apiKey: "",
+  })
+  const [watching, setWatching] = useState(false)
+  const [logs, setLogs] = useState<LogEntry[]>([])
+  const [tab, setTab] = useState<"sync" | "settings">("sync")
+
+  useEffect(() => {
+    load("companion-settings.json", { autoSave: true }).then((s) => {
+      store = s
+      s.get<Settings>("settings").then((saved) => {
+        if (saved) setSettings(saved)
+      })
+    })
+
+    // Listen for file-detected events from the Rust backend
+    const unlisten = (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__
+      ? import("@tauri-apps/api/event").then(({ listen }) =>
+          listen<{ file: string }>("file-detected", async (event) => {
+            const file = event.payload.file
+            addLog(file, "uploading")
+            try {
+              const result = await invoke<{ status: string; sessionId?: string; error?: string }>(
+                "upload_file",
+                { filePath: file }
+              )
+              if (result.status === "DUPLICATE") {
+                updateLog(file, "duplicate", "Already imported")
+              } else if (result.status === "IMPORTED") {
+                updateLog(file, "success", `Session created`)
+              } else {
+                updateLog(file, "error", result.error ?? "Import failed")
+              }
+            } catch (err) {
+              updateLog(file, "error", String(err))
+            }
+          })
+        )
+      : Promise.resolve(() => {})
+
+    return () => { unlisten.then((fn) => typeof fn === "function" && fn()) }
+  }, [])
+
+  function addLog(file: string, status: LogEntry["status"]) {
+    const entry: LogEntry = { id: logId++, file: file.split(/[\\/]/).pop() ?? file, status, timestamp: new Date() }
+    setLogs((prev) => [entry, ...prev].slice(0, 50))
+  }
+
+  function updateLog(file: string, status: LogEntry["status"], message?: string) {
+    const name = file.split(/[\\/]/).pop() ?? file
+    setLogs((prev) =>
+      prev.map((l) => (l.file === name && l.status === "uploading" ? { ...l, status, message } : l))
+    )
+  }
+
+  async function saveSettings() {
+    await store?.set("settings", settings)
+    await store?.save()
+  }
+
+  async function browseFolder() {
+    const selected = await open({ directory: true, title: "Select LMU Results folder" })
+    if (selected && typeof selected === "string") {
+      setSettings((s) => ({ ...s, watchFolder: selected }))
+    }
+  }
+
+  async function toggleWatch() {
+    if (watching) {
+      await invoke("stop_watching")
+      setWatching(false)
+    } else {
+      await saveSettings()
+      try {
+        await invoke("start_watching", {
+          folder: settings.watchFolder,
+          apiUrl: settings.apiUrl,
+          apiKey: settings.apiKey,
+        })
+        setWatching(true)
+      } catch (err) {
+        addLog("", "error")
+        console.error(err)
+      }
+    }
+  }
+
+  const canWatch = settings.watchFolder && settings.apiUrl && settings.apiKey
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+      {/* Title bar */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+        borderBottom: "1px solid var(--border)", background: "var(--surface)",
+      }} data-tauri-drag-region>
+        <span style={{ fontSize: 16 }}>⚡</span>
+        <span style={{ fontWeight: 700, fontSize: 13 }}>UrApex Companion</span>
+        <StatusDot watching={watching} />
+        <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
+          {(["sync", "settings"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              style={{
+                padding: "3px 10px", borderRadius: 5, fontSize: 12, fontWeight: 600,
+                background: tab === t ? "var(--border-light)" : "transparent",
+                color: tab === t ? "var(--text)" : "var(--text-muted)",
+              }}
+            >
+              {t === "sync" ? "Sync" : "Settings"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
+        {tab === "sync" ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, height: "100%" }}>
+            {/* Watch button */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <button
+                onClick={toggleWatch}
+                disabled={!canWatch}
+                style={{
+                  padding: "8px 20px", borderRadius: 8, fontWeight: 700, fontSize: 13,
+                  background: watching ? "var(--red)" : canWatch ? "var(--cyan)" : "var(--border)",
+                  color: watching || canWatch ? "#09090b" : "var(--text-dim)",
+                  opacity: !canWatch ? 0.5 : 1,
+                }}
+              >
+                {watching ? "Stop watching" : "Start watching"}
+              </button>
+              {!canWatch && (
+                <span style={{ color: "var(--text-dim)", fontSize: 12 }}>
+                  Configure settings first
+                </span>
+              )}
+              {watching && settings.watchFolder && (
+                <span style={{ color: "var(--text-muted)", fontSize: 11, fontFamily: "monospace" }}>
+                  {settings.watchFolder}
+                </span>
+              )}
+            </div>
+
+            {/* Log */}
+            <SyncLog logs={logs} />
+          </div>
+        ) : (
+          <form
+            onSubmit={(e) => { e.preventDefault(); saveSettings() }}
+            style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 420 }}
+          >
+            <Field label="LMU Results folder" hint="e.g. C:\Users\You\Documents\Le Mans Ultimate\UserData\player\Results">
+              <div style={{ display: "flex", gap: 6 }}>
+                <input
+                  value={settings.watchFolder}
+                  onChange={(e) => setSettings((s) => ({ ...s, watchFolder: e.target.value }))}
+                  placeholder="Click Browse or paste path"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={browseFolder}
+                  style={{
+                    padding: "6px 12px", borderRadius: 6, background: "var(--border-light)",
+                    color: "var(--text)", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap",
+                  }}
+                >
+                  Browse
+                </button>
+              </div>
+            </Field>
+
+            <Field label="UrApex URL" hint="Your UrApex instance (default: localhost:3000)">
+              <input
+                value={settings.apiUrl}
+                onChange={(e) => setSettings((s) => ({ ...s, apiUrl: e.target.value }))}
+                placeholder="https://your-urapex.com"
+              />
+            </Field>
+
+            <Field label="API key" hint="Generate this in UrApex → Settings → Companion app">
+              <input
+                type="password"
+                value={settings.apiKey}
+                onChange={(e) => setSettings((s) => ({ ...s, apiKey: e.target.value }))}
+                placeholder="uapx_..."
+              />
+            </Field>
+
+            <button
+              type="submit"
+              style={{
+                padding: "8px 20px", borderRadius: 8, background: "var(--cyan)", color: "#09090b",
+                fontWeight: 700, fontSize: 13, alignSelf: "flex-start",
+              }}
+            >
+              Save settings
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <label style={{ fontWeight: 600, fontSize: 12, color: "var(--text)" }}>{label}</label>
+      {children}
+      {hint && <p style={{ fontSize: 11, color: "var(--text-dim)", lineHeight: 1.4 }}>{hint}</p>}
+    </div>
+  )
+}
