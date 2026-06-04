@@ -8,7 +8,26 @@
 
 ## [Unreleased]
 
-> Next up: AN-015 BullMQ, compile companion app on Windows.
+> Next up: AN-016 metric recalculation job, PO-004 privacy controls, PO-007 responsive audit.
+
+---
+
+## [0.19.0] — 2026-06-05
+
+> AN-015: async import pipeline with BullMQ + Redis.
+
+### Added
+- **BullMQ queue** (`src/server/queue/import.queue.ts`) — `IMPORT_QUEUE` with `attempts:1`, auto-cleanup of completed/failed jobs
+- **Import worker** (`src/server/workers/import.worker.ts`) — concurrency 2, calls existing `processImport()`, logs failures
+- **Redis connection** (`src/lib/redis.ts`) — `ioredis` `ConnectionOptions` parsed from `REDIS_URL`
+- **`src/instrumentation.ts`** — registers worker on Next.js startup (Node.js runtime only)
+- **UploadZone polling** — new `processing` status; polls `GET /api/import/:id` every 1.5 s (120 s timeout) until `IMPORTED` or `FAILED`
+
+### Changed
+- `POST /api/upload` — enqueues job + returns `PENDING` immediately (no longer blocks on parse/save)
+- `POST /api/import/process` — same; driver-selection flow now async
+- `POST /api/import/[id]` (retry) — enqueues job instead of re-running sync
+- Redis installed via Homebrew (`brew services start redis`)
 
 ---
 

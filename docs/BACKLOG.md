@@ -124,7 +124,7 @@
 | AN-012 | Session notes | P1 | ✅ | Notes + tags + video URL; GET/POST/DELETE API; SessionNotes client component |
 | AN-013 | Auto insight generation (rule-based) | P1 | ✅ | 8 rule types; insights.service.ts + session detail section |
 | AN-014 | Weekly evolution charts | P1 | ✅ | ActivityChart (12-week bar) + consistency TrendChart on dashboard |
-| AN-015 | BullMQ + Redis for async jobs | P1 | 🔲 | Replace sync processing |
+| AN-015 | BullMQ + Redis for async jobs | P1 | ✅ | Queue + worker via instrumentation.ts; UploadZone polls status |
 | AN-016 | Metric recalculation job | P1 | 🔲 | For parser updates |
 
 ---
