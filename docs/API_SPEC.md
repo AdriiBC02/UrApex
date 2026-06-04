@@ -8,12 +8,19 @@
 
 ## Authentication
 
-All protected routes require a valid session cookie set by Auth.js.
-The session is validated in middleware for page routes and at the top of each API handler.
+Two authentication methods are supported:
+
+**1. Session cookie (browser)**
+Set automatically by Auth.js on login. Used by all browser-facing pages and the upload UI.
+
+**2. API key (companion app)**
+Generated in Settings → Companion app. Sent as a `Bearer` token:
 
 ```
-Authorization: (cookie-based, set by Auth.js)
+Authorization: Bearer uapx_<64hex>
 ```
+
+The `/api/upload` endpoint accepts both. All other API routes currently require session cookie auth.
 
 Unauthenticated requests return:
 ```json
@@ -74,16 +81,47 @@ Create a new user account.
 ---
 
 ### POST /api/auth/[...nextauth]
-Auth.js handler. Handles login, logout, session, CSRF.
+Auth.js handler. Handles login, logout, session, CSRF. Handled automatically — do not write custom logic here.
 
-Handled automatically by Auth.js — do not write custom logic here.
+---
+
+### GET /api/auth/api-key
+Returns current API key status (key is never returned in full after creation).
+
+**Response 200:**
+```json
+{
+  "hasKey": true,
+  "preview": "...a1b2c3d4"
+}
+```
+
+---
+
+### POST /api/auth/api-key
+Generate (or regenerate) an API key. Returns the full key **once only** — user must copy it.
+
+**Response 200:**
+```json
+{ "apiKey": "uapx_abc123...64hexchars" }
+```
+
+---
+
+### DELETE /api/auth/api-key
+Revoke the current API key.
+
+**Response 200:**
+```json
+{ "revoked": true }
+```
 
 ---
 
 ## Upload & Import Endpoints
 
 ### POST /api/upload
-Upload one or more XML files for import.
+Upload one or more XML files for import. Accepts both session cookie and Bearer token auth.
 
 **Content-Type:** `multipart/form-data`
 
@@ -91,17 +129,17 @@ Upload one or more XML files for import.
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | files | File[] | Yes | XML files, max 50MB each |
-| simulatorSlug | string | No | If known. Auto-detected if omitted |
 
-**Response 200:**
+**Response 200 — normal (simDriverName set):**
 ```json
 {
   "imports": [
     {
       "importFileId": "clxxx",
-      "originalName": "spa_race.xml",
-      "status": "PENDING",
-      "isDuplicate": false
+      "originalName": "race.xml",
+      "status": "IMPORTED",
+      "isDuplicate": false,
+      "sessionId": "clyyy"
     },
     {
       "importFileId": null,
@@ -114,22 +152,68 @@ Upload one or more XML files for import.
 }
 ```
 
+**Response 200 — driver selection needed (simDriverName not set):**
+```json
+{
+  "needsDriverSelection": true,
+  "driverNames": ["Adrian Doom", "sehven doroha", "Alexandre Benoit"],
+  "imports": [
+    {
+      "importFileId": "clxxx",
+      "originalName": "race.xml",
+      "status": "PENDING",
+      "isDuplicate": false,
+      "deferred": true
+    }
+  ]
+}
+```
+
+Client must call `POST /api/import/process` after the user selects their driver name.
+
 **Errors:** `VALIDATION_ERROR` (wrong file type), `413` (file too large)
 
 ---
 
-### GET /api/import/[id]/status
-Poll the status of an import job.
+### POST /api/import/process
+Complete deferred imports after driver selection. Stores `simDriverName` in profile and processes all pending files.
+
+**Request:**
+```json
+{
+  "importFileIds": ["clxxx", "clyyy"],
+  "driverName": "Adrian Doom"
+}
+```
 
 **Response 200:**
 ```json
 {
-  "importFileId": "clxxx",
+  "imports": [
+    {
+      "importFileId": "clxxx",
+      "originalName": "race.xml",
+      "status": "IMPORTED",
+      "sessionId": "clzzz"
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/import/[id]
+Poll the status of a specific import.
+
+**Response 200:**
+```json
+{
+  "id": "clxxx",
   "status": "IMPORTED",
   "sessionId": "clyyy",
-  "parserVersion": "lmu-v1.0.0",
+  "parserVersion": "lmu-v0.2.0",
   "errorMessage": null,
-  "importedAt": "2025-06-04T10:30:00Z"
+  "importedAt": "2026-06-04T10:30:00Z"
 }
 ```
 
@@ -137,58 +221,28 @@ Poll the status of an import job.
 
 ---
 
-### GET /api/import
-List all import files for the current user.
-
-**Query params:**
-| Param | Type | Default | Notes |
-|---|---|---|---|
-| status | string | all | Filter by status |
-| page | number | 1 | |
-| limit | number | 20 | Max 100 |
+### POST /api/import/[id]
+Retry a failed import using the stored raw file. Automatically uses current `simDriverName`.
 
 **Response 200:**
 ```json
 {
-  "imports": [
-    {
-      "id": "clxxx",
-      "originalName": "spa_race.xml",
-      "status": "IMPORTED",
-      "sessionId": "clyyy",
-      "createdAt": "2025-06-04T10:00:00Z"
-    }
-  ],
-  "total": 47,
-  "page": 1,
-  "limit": 20
+  "status": "IMPORTED",
+  "sessionId": "clyyy"
 }
 ```
 
 ---
 
 ### DELETE /api/import/[id]
-Delete an import and its associated session.
+Delete an import record. Soft-deletes the associated session (if any). The raw file in storage is retained.
 
 **Response 200:**
 ```json
 { "deleted": true }
 ```
 
-**Errors:** `NOT_FOUND`, `FORBIDDEN` (not the owner)
-
----
-
-### POST /api/import/[id]/retry
-Retry a failed import using the stored raw file.
-
-**Response 200:**
-```json
-{
-  "importFileId": "clxxx",
-  "status": "PENDING"
-}
-```
+**Errors:** `NOT_FOUND`, `FORBIDDEN`
 
 ---
 
@@ -420,7 +474,19 @@ Returns all achievements with user progress.
 Returns the current user's driver profile with cached stats.
 
 ### PATCH /api/profile
-Update profile fields (displayName, country, bio, simulatorSlugs, isPublic).
+Update profile fields.
+
+**Request (all fields optional):**
+```json
+{
+  "displayName": "Adrian",
+  "country": "ES",
+  "bio": "GT3 driver",
+  "simDriverName": "Adrian Doom"
+}
+```
+
+Setting `simDriverName` to `null` or `""` clears the stored driver name. Only affects future imports.
 
 ---
 

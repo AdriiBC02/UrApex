@@ -166,18 +166,27 @@ Parsers are sim-specific. They receive raw file content and return a normalized 
 
 ```typescript
 // server/parsers/types.ts
+interface ParseContext {
+  driverName?: string  // User's in-game name — used to identify their laps in multiplayer files
+}
+
 interface IParser {
-  simulatorSlug: string   // "lmu" | "acc" | "iracing"
-  version: string         // "lmu-v1.0.0"
+  simulatorSlug: string
+  version: string
   canParse(content: string): boolean
-  parse(content: string): Promise<NormalizedSession>
+  extractDriverNames(content: string): string[]  // Lightweight — no full parse, returns unique driver names
+  parse(content: string, context?: ParseContext): Promise<NormalizedSession>
 }
 
 // server/parsers/registry.ts
 const PARSERS: IParser[] = [new LMUParser()]
 export function detectParser(content: string): IParser | null
 export function getParser(slug: string): IParser | null
+export function extractDriverNames(content: string, simulatorSlug?: string): string[]
+export async function parseFile(content: string, slug?: string, context?: ParseContext): Promise<ParseResult>
 ```
+
+**Driver identification:** LMU multiplayer files set `isPlayer=1` on all drivers. The parser's `findPlayer()` uses `context.driverName` for exact → case-insensitive matching, falling back to the first driver with a valid best lap time when no name is provided.
 
 ### Normalizer Layer
 
@@ -283,10 +292,11 @@ Raw files are **never deleted** unless the user explicitly deletes a session.
 
 - Auth.js v5 with Credentials provider
 - Passwords hashed with bcrypt (cost 12)
-- Session stored in database (not JWT) for easier invalidation
-- Middleware checks session on all `/app/*` routes
-- API routes check `auth()` from Auth.js at the top of every handler
-- User ID from session is the source of truth — never trust user-supplied IDs
+- Sessions use **JWT** (not database sessions) — stored in signed HTTP-only cookie
+- `proxy.ts` (Next.js 16 pattern) protects all `/app/*` routes — replaces `middleware.ts`
+- API routes call `auth()` from Auth.js at the top of every handler
+- **API key auth (companion app):** `POST /api/upload` also accepts `Authorization: Bearer uapx_<key>`. The `resolveUserId()` helper checks for a Bearer token first, then falls back to session cookie. Keys are stored hashed in `User.apiKey` as a random 64-byte hex string prefixed with `uapx_`.
+- User ID is always the source of truth — never trust user-supplied IDs
 
 ---
 
@@ -320,6 +330,36 @@ ANTHROPIC_API_KEY=""
 # App
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```
+
+---
+
+## Companion App Architecture
+
+The `/companion/` directory contains a separate Tauri v2 project — a Windows desktop app that watches the LMU results folder and auto-uploads new session files.
+
+```
+companion/
+├── src/              React + TypeScript UI (Vite)
+│   ├── App.tsx       Settings tab + Sync log tab
+│   └── components/   StatusDot, SyncLog
+└── src-tauri/
+    └── src/
+        ├── lib.rs    Tauri commands + setup (tray, window events)
+        ├── watcher.rs  notify crate — file watcher in its own thread
+        └── uploader.rs reqwest — multipart HTTP upload
+```
+
+**Flow:**
+1. User configures folder path + API URL + API key in Settings tab
+2. Rust thread watches folder for new `.xml` files (using `notify` crate)
+3. On new file: emits `file-detected` event to frontend + spawns async upload task
+4. Upload sends `POST /api/upload` with `Authorization: Bearer <apiKey>`
+5. Windows notification shown with result (imported / duplicate / failed)
+6. Sync log updated in UI
+
+**Build:** requires Rust (`rustup`). `npm run tauri:build` → `.msi`/`.exe` installer in `src-tauri/target/release/bundle/`.
+
+**Future overlays:** Tauri supports transparent always-on-top windows on Windows. A second window can display real-time sector times via LMU's UDP telemetry (port 4444) without modifying the game.
 
 ---
 

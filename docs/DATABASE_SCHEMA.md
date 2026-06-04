@@ -44,9 +44,13 @@ Central auth entity. One User = one account.
 | emailVerified | DateTime? | Set when email is confirmed |
 | name | String? | Display name fallback |
 | image | String? | OAuth avatar |
+| password | String? | bcrypt hash (cost 12) |
+| apiKey | String? unique | `uapx_<64hex>` — companion app bearer token |
 | deletedAt | DateTime? | Soft delete (GDPR) |
 
-**Relations:** one DriverProfile, many ImportFiles, many Sessions, many Goals, many Setups, many UserAchievements, many CoachConversations.
+**Relations:** one DriverProfile, many ImportFiles, many Sessions, many Goals, many Setups, many UserAchievements.
+
+**Why `apiKey`?** The companion app (Tauri) uploads files from the user's PC without a browser session. An API key stored locally by the companion app authenticates these requests via `Authorization: Bearer <key>`. The key is generated on demand in Settings, shown once, and revocable.
 
 ---
 
@@ -61,16 +65,20 @@ Extended user profile with cached performance stats.
 | bio | String? | Short text |
 | isPublic | Boolean | false by default |
 | simulatorSlugs | String[] | e.g., ["lmu", "acc"] |
+| simDriverName | String? | Exact in-game name used to identify the player's laps in multiplayer XML files |
 | totalSessions | Int | Cached — incremented on import |
 | totalLaps | Int | Cached |
 | totalDriveTimeSec | Int | Cached |
 | uniqueTracks | Int | Cached |
 | uniqueCars | Int | Cached |
-| paceScore | Float? | Global score, recalculated periodically |
-| consistencyScore | Float? | Global score |
-| safetyScore | Float? | Global score |
+| paceScore | Float? | Rolling avg of last 20 sessions |
+| consistencyScore | Float? | Rolling avg of last 20 sessions |
+| safetyScore | Float? | Rolling avg of last 20 sessions |
+| improvementScore | Float? | Per-combo improvement %, scaled 0–100 (20% avg → 100) |
 
-**Why cached stats?** Avoid expensive COUNT queries on every dashboard load. Updated atomically after each import.
+**Why `simDriverName`?** LMU multiplayer result files set `isPlayer=1` on every driver in the grid, making it impossible to auto-detect the user's laps. The user sets their exact in-game name once; the parser uses it for exact → case-insensitive matching. Only future imports are affected — changing the name never retroactively alters stored sessions.
+
+**Why cached stats?** Avoid expensive COUNT/aggregate queries on every dashboard load. Updated atomically after each import by `updateProfileStats()`.
 
 ---
 

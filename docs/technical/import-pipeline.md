@@ -171,28 +171,33 @@ export function detectParser(content: string): IParser | null {
 export function getParser(slug: string): IParser | null {
   return parsers.find(p => p.simulatorSlug === slug) ?? null
 }
+
+export function extractDriverNames(content: string, slug?: string): string[] {
+  const parser = slug ? getParser(slug) : detectParser(content)
+  return parser?.extractDriverNames(content) ?? []
+}
 ```
 
 ```typescript
-// In processImport job
+// In runImport (import.service.ts)
 const rawBuffer = await storageService.read(importFile.storagePath)
 const rawContent = rawBuffer.toString('utf-8')
 
-const parser = importFile.simulatorId
-  ? getParser(simulatorSlugFromId(importFile.simulatorId))
-  : detectParser(rawContent)
+// Resolve driver name from user profile (identifies player in multiplayer files)
+const driverName = importFile.user.profile?.simDriverName ?? undefined
 
-if (!parser) {
-  throw new ParseError('No parser found for this file. Is it a supported simulator result file?')
-}
-
-let normalizedSession: NormalizedSession
-try {
-  normalizedSession = await parser.parse(rawContent)
-} catch (err) {
-  throw new ParseError(`Parser failed: ${err instanceof Error ? err.message : 'unknown error'}`)
-}
+// Parse with optional driver context
+const result = await parseFile(rawContent, importFile.simulator?.slug, { driverName })
+if (!result.success) throw new Error(result.error)
+const normalizedSession = result.session
 ```
+
+**Driver identification note:** LMU multiplayer files set `isPlayer=1` on every driver. `findPlayer()` in `LMUParser` resolves identity in this order:
+1. Exact name match with `driverName` from `ParseContext`
+2. Case-insensitive name match
+3. First driver with `BestLapTime > 0` (fallback — may not be the user)
+
+The upload API (`POST /api/upload`) handles the case when `simDriverName` is not configured: it returns `needsDriverSelection: true` with a list of driver names for the user to pick from. Once selected, the name is stored in `DriverProfile.simDriverName` and used for all future imports automatically.
 
 ---
 

@@ -20,135 +20,87 @@
 
 ## Phase 0 — Research & Validation
 
-**Status:** 🔲 Not started
-**Estimated duration:** 1 week
+**Status:** ✅ Complete
 **Goal:** Validate that LMU XML files contain the expected data before writing production code.
 
-### Objectives
-- Understand the real structure of LMU result XML files
-- Define the normalized data model based on what actually exists
-- Determine which metrics are calculable from XML alone (vs requiring telemetry)
-- Create parser fixtures for testing
-
-### Deliverables
-- [ ] Collect 5+ real LMU XML files (practice, qualifying, race)
-- [ ] Document every XML field found across all files
-- [ ] Create `fixtures/lmu/` with anonymized test files
-- [ ] Define `NormalizedSession` TypeScript type based on real data
-- [ ] List metrics calculable from XML
-- [ ] List metrics that require telemetry
-- [ ] Write first parser skeleton with tests
-- [ ] Document any unexpected XML variations or quirks
-
-### Risks
-- XML may contain fewer fields than expected → reduce metric scope
-- XML structure may vary between session types → add variant handling
-- Track/car names may be inconsistent → design mapping layer early
-- Some fields may only exist in certain LMU versions
-
-### Completion Criterion
-> I can parse 5 different LMU XMLs and produce a coherent, type-safe JSON output for each.
+### Completed
+- [x] Collected 8 real LMU XML files (practice, qualifying, race — Fuji + Sebring)
+- [x] Documented XML structure: `<rFactorXML><RaceResults>` root, session type from child element name, lap times as float seconds in `#text`, sectors as attributes
+- [x] Created `fixtures/lmu/race_minimal.xml` test fixture
+- [x] Defined `NormalizedSession` TypeScript type
+- [x] Parser tests: 15 unit tests passing
+- [x] **Key finding:** all drivers have `isPlayer=1` in multiplayer → requires `simDriverName` for player identification
 
 ---
 
 ## Phase 1 — MVP: Core Import & Dashboard
 
-**Status:** 🔲 Not started
-**Estimated duration:** 4–6 weeks
+**Status:** ✅ Complete
 **Goal:** A working app where a user registers, uploads XML files, and sees their session data.
 
-### Objectives
-- Functional auth (register, login, session)
-- File upload with deduplication
-- LMU XML parser
-- Session storage in PostgreSQL
-- Basic dashboard and session views
+### Completed
+- [x] Next.js 16 + Prisma 7 + Auth.js v5 + Tailwind v4 + shadcn/ui
+- [x] Auth: register, login, session (JWT)
+- [x] Upload Center: drag & drop, multi-file, status feedback, import history
+- [x] SHA-256 deduplication
+- [x] Local file storage
+- [x] LMU XML parser (v0.2.0) with driver name identification
+- [x] Import job (sync), retry, delete
+- [x] Session, Lap, Participant, Incident, Penalty, PitStop storage
+- [x] Track/Car normalization with alias tables
+- [x] All metrics: best, avg, median, ideal, std dev, consistency, safety, pace, improvement
+- [x] Dashboard: 5 stats + 4-score rings + recent sessions + activity chart + goals widget
+- [x] Session history with type filters
+- [x] Session detail: laps, sectors, participants, incidents, insights
+- [x] Track + Car detail pages with analytics
+- [x] Empty states + loading skeletons throughout
 
-### Deliverables
-- [ ] Next.js project with full stack configured
-- [ ] Docker Compose for local dev
-- [ ] Prisma schema with MVP entities
-- [ ] Auth (email + password)
-- [ ] Upload Center: drag & drop, multiple files
-- [ ] SHA-256 deduplication before processing
-- [ ] Raw file storage (local dev → S3-compatible prod)
-- [ ] LMU parser with error handling
-- [ ] Import job (sync in MVP, async in Phase 2)
-- [ ] Session, Lap, Participant storage
-- [ ] Track/Car normalization layer
-- [ ] Metrics calculation: best, avg, median, ideal, std dev, consistency, safety
-- [ ] Dashboard: 5 stat cards + recent sessions + weekly chart
-- [ ] Session history: table with basic filters
-- [ ] Session detail: lap table, sector breakdown, charts
-- [ ] Track detail page (basic)
-- [ ] Car detail page (basic)
-- [ ] Import status polling (pending → parsing → imported/failed)
-- [ ] Empty states for all pages
-- [ ] Loading skeletons
-
-### Out of scope for Phase 1
-- BullMQ / Redis queues (use sync processing)
-- Achievements
-- Goals
-- Notes
-- Setup manager
-- Comparison views
-- Community features
-- Telemetry
-
-### Risks
-- Parser brittle if XML structure varies → make it defensive by design
-- Track/car name normalization is more complex than expected → do minimal MVP version
-- File storage setup takes too long → start with local filesystem, migrate later
-
-### Completion Criterion
-> A user can register, upload an LMU XML, and see their sessions, lap times, and basic metrics on the dashboard.
+### Completion Criterion met
+> ✅ A user can register, upload LMU XMLs, and see sessions with correct track/car/laps on the dashboard.
 
 ---
 
 ## Phase 2 — Analytics & Progression
 
-**Status:** 🔲 Not started
-**Estimated duration:** 3–4 weeks
+**Status:** ✅ Complete (BullMQ pending)
 **Goal:** Turn raw data into useful, actionable analytics.
 
-### Deliverables
-- [ ] Full driver scores: Pace, Consistency, Safety (Racecraft, Qualifying in Phase 3)
-- [ ] Session comparison view
-- [ ] Lap comparison view
-- [ ] Track analytics: full breakdown, PB history, car breakdown
-- [ ] Car analytics: circuit matrix, consistency trends
-- [ ] Goals system: CRUD + auto-progress tracking
-- [ ] Achievements system: 10+ achievements + unlock logic
-- [ ] Session notes (diary)
-- [ ] Auto-generated session insight (rule-based, no AI)
-- [ ] PB detection and notifications
-- [ ] Weekly/monthly evolution charts
-- [ ] BullMQ + Redis for async import jobs
+### Completed
+- [x] All 4 driver scores: Pace, Consistency, Safety, Improvement
+- [x] Session comparison view (metrics diff, lap overlay, sector delta)
+- [x] Track analytics: PB evolution, improvement badge, session types, consistency trend
+- [x] Car analytics: same structure + best-by-circuit
+- [x] Goals: CRUD + 8 auto-trackable goal types + track/car scoping + deadline + history
+- [x] Achievements: 10 achievements + unlock logic + rarity cards + progress bars
+- [x] Session notes: diary with tags, video URL
+- [x] Auto-generated insights (8 rule-based types per session)
+- [x] Weekly activity + consistency trend charts
 
-### Completion Criterion
-> A user can answer "am I improving?", "which track am I best at?", and "what is my weakest area?" using data from the app.
+### Pending
+- [ ] BullMQ + Redis for async jobs (AN-015)
+
+### Completion Criterion met
+> ✅ A user can answer "am I improving?", "which track am I best at?", and "what is my weakest area?"
 
 ---
 
 ## Phase 3 — Product Polish
 
-**Status:** 🔲 Not started
+**Status:** 🔄 In progress
 **Estimated duration:** 2–3 weeks
 **Goal:** The app feels like a real product, not a prototype.
 
 ### Deliverables
 - [ ] Guided onboarding flow (3 steps)
-- [ ] Setup manager (CRUD, versions, session linking)
+- [x] Setup manager (CRUD: create, edit, delete, favorite, archive)
+- [ ] Setup versioning + session linking
 - [ ] Driver profile page (public/private)
 - [ ] Privacy controls (session visibility, profile visibility)
-- [ ] Training planner (basic: weekly practice plan)
 - [ ] Advanced session filters (date range, PB-only, clean-only)
 - [ ] Data export (CSV of sessions and laps)
 - [ ] Responsive design across all pages
 - [ ] Keyboard shortcuts (Cmd+K command palette)
 - [ ] Email notifications for achievements and PBs
-- [ ] Improved error messages with recovery actions
 - [ ] Racecraft Score and Qualifying Score added
 - [ ] Post-session ritual modal
 
@@ -187,22 +139,29 @@
 
 ## Phase 5 — Desktop Sync Agent
 
-**Status:** 🔲 Not started
+**Status:** 🔄 In progress (scaffold complete, needs build + test on Windows)
 **Estimated duration:** 3–4 weeks
 **Goal:** Eliminate manual uploads by auto-detecting and syncing sessions.
 
 ### Deliverables
-- [ ] Tauri desktop app (Windows first)
-- [ ] Simulator folder selection
-- [ ] File watcher for new XML files
-- [ ] Automatic upload on new file detected
-- [ ] Duplicate prevention (local hash check before upload)
+- [x] Tauri v2 project scaffold (`/companion/`)
+- [x] API key auth on `/api/upload` (Bearer token)
+- [x] API key generation in Settings
+- [x] Settings UI (folder, URL, API key)
+- [x] File watcher for new XML files (Rust `notify` crate)
+- [x] Automatic upload on new file detected (`reqwest` multipart)
+- [x] System tray icon with show/hide
+- [x] Minimize to tray on close
+- [x] Windows notifications on upload result
+- [x] Sync log in UI (uploading / success / duplicate / error per file)
+- [ ] Compile and test on Windows (requires `rustup` install)
+- [ ] Duplicate prevention via local hash check (avoid redundant upload)
 - [ ] Upload queue with retry logic
-- [ ] System tray icon with status
-- [ ] Local encrypted token storage
-- [ ] Sync history / logs
+- [ ] Persistent sync history across restarts
 - [ ] "Sync historical files" option
 - [ ] Windows startup on boot option
+- [ ] In-game overlay window (transparent always-on-top)
+- [ ] UDP telemetry listener (LMU port 4444) for overlay data
 
 ### Completion Criterion
 > A user finishes a session, and within 10 seconds it appears in their UrApex dashboard — without any manual action.

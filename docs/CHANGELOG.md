@@ -8,7 +8,56 @@
 
 ## [Unreleased]
 
-> Next up: verify real XML imports work, setups detail page, AN-015 BullMQ.
+> Next up: onboarding flow, advanced session filters, CSV export, AN-015 BullMQ, compile companion app on Windows.
+
+---
+
+## [0.16.0] — 2026-06-04
+
+> Phase 5 scaffold — companion app (Tauri) + API key auth.
+
+### Added
+- **Companion app** (`/companion/`) — complete Tauri v2 + React project scaffold:
+  - Rust backend: `watcher.rs` (file watcher via `notify` crate, detects new XMLs in LMU results folder) + `uploader.rs` (HTTP multipart upload via `reqwest`)
+  - React frontend: Settings tab (folder, URL, API key) + Sync tab (real-time log of uploads) + `StatusDot` (watching/idle indicator)
+  - System tray icon — app minimizes to tray on close, shows/hides on click
+  - Windows notifications via `tauri-plugin-notification` on each upload result
+  - Targets: NSIS + MSI installers for Windows
+  - Build: `npm run tauri:build` (requires Rust + `rustup`)
+- **`User.apiKey`** — unique token field on User model (migration `add_api_key`); index on `apiKey`
+- **`GET/POST/DELETE /api/auth/api-key`** — API key management: GET returns masked preview, POST generates `uapx_<64hex>` and returns full key once, DELETE revokes
+- **`ApiKeyForm`** client component — generate/regenerate/revoke with show/hide and copy-to-clipboard
+- Settings page "Companion app" section — shows active key status + `ApiKeyForm`
+- **Bearer token auth on `/api/upload`** — `resolveUserId()` helper checks `Authorization: Bearer <key>` header before falling back to session cookie; companion app uses this to upload without a browser session
+
+### Changed
+- `/api/upload` — `resolveUserId()` replaces direct `auth()` call; supports both cookie sessions and API key bearer tokens
+
+---
+
+## [0.15.0] — 2026-06-04
+
+> Driver name identification + import flow overhaul + AN-011 achievement page.
+
+### Added
+- **`DriverProfile.simDriverName`** — new optional field storing the user's exact in-game driver name (migration `add_sim_driver_name`)
+- **`ParseContext`** type in `types.ts` — `{ driverName?: string }` passed to parsers so they can match by name
+- **`IParser.extractDriverNames(content)`** — new method on the parser interface; lightweight name extraction without full parse
+- **`LMUParser.extractDriverNames()`** — reads all `<Name>` elements from the first session key, returns unique sorted names
+- **`LMUParser.findPlayer(drivers, driverName?)`** — updated: exact match → case-insensitive match → first driver with valid BestLapTime (LMU multiplayer files have `isPlayer=1` on all drivers, making name matching the only reliable identification method)
+- **`extractDriverNames()` exported from `registry.ts`** — delegates to the detected parser
+- **Driver selection modal in `UploadZone`** — appears after upload when no `simDriverName` is configured; shows all unique driver names found across uploaded files; on confirm: stores name + processes imports
+- **Two-phase upload flow** — `POST /api/upload` checks user's `simDriverName`; if unset, saves files and returns `{ needsDriverSelection, driverNames, imports }`; if set, processes immediately
+- **`POST /api/import/process`** — new endpoint: accepts `{ importFileIds, driverName }`, stores driver name in profile, processes all deferred imports
+- **`ImportHistory`** client component — replaces static import history on upload page; adds delete (trash) and retry (refresh) buttons per FAILED import; optimistic list update
+- Settings page "Simulator identity" section — `SimDriverForm` with current name, hint about exact match requirement
+- Upload page driver name banner — shows "Importing as <name>" or amber warning when not configured
+- **`runImport()`** — fetches `user.profile.simDriverName` from DB and passes to `parseFile()` as `ParseContext`; changing the name in settings automatically applies to all future imports without touching existing sessions
+
+### Changed
+- `parseFile(content, slug, context?)` — accepts optional `ParseContext` third argument
+- `processImport()` — no API change; driver name resolved internally from user profile
+- Upload page import history — replaced static server component with `ImportHistory` (client)
 
 ---
 

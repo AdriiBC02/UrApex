@@ -30,14 +30,15 @@
 
 | Feature | Priority | Phase | Status |
 |---|---|---|---|
-| Email + password registration | P0 | 1 | 🔲 |
-| Email + password login | P0 | 1 | 🔲 |
-| Session management | P0 | 1 | 🔲 |
+| Email + password registration | P0 | 1 | ✅ |
+| Email + password login | P0 | 1 | ✅ |
+| Session management | P0 | 1 | ✅ |
 | Password reset via email | P1 | 1 | 🔲 |
 | OAuth login (Google) | P2 | 3 | 🔲 |
 | Account deletion (GDPR) | P1 | 3 | 🔲 |
 | Data export (GDPR) | P1 | 3 | 🔲 |
 | Email verification | P1 | 1 | 🔲 |
+| API key generation for companion app | P1 | 5 | ✅ |
 
 ---
 
@@ -45,14 +46,15 @@
 
 | Feature | Priority | Phase | Status |
 |---|---|---|---|
-| Profile creation on register | P0 | 1 | 🔲 |
-| Display name | P1 | 1 | 🔲 |
-| Country (optional) | P2 | 2 | 🔲 |
-| Short bio | P2 | 3 | 🔲 |
+| Profile creation on register | P0 | 1 | ✅ |
+| Display name | P1 | 1 | ✅ |
+| Country (optional) | P2 | 2 | ✅ |
+| Short bio | P2 | 3 | ✅ |
 | Avatar upload | P2 | 3 | 🔲 |
 | Simulators used selection | P1 | 1 | 🔲 |
 | Public profile toggle | P1 | 3 | 🔲 |
-| Global stats summary (cached) | P1 | 2 | 🔲 |
+| Global stats summary (cached) | P1 | 2 | ✅ |
+| In-game driver name (simDriverName) | P1 | 1 | ✅ |
 | Driver DNA radar chart | P2 | 2 | 🔲 |
 | Streak tracking (sessions/week) | P2 | 2 | 🔲 |
 | Driver specialties inference | P3 | 4+ | 💡 |
@@ -63,21 +65,23 @@
 
 | Feature | Priority | Phase | Status |
 |---|---|---|---|
-| Drag & drop upload | P0 | 1 | 🔲 |
-| Multi-file upload | P0 | 1 | 🔲 |
-| File type validation | P0 | 1 | 🔲 |
-| File size limit (50MB) | P0 | 1 | 🔲 |
-| SHA-256 deduplication | P0 | 1 | 🔲 |
-| Raw file storage | P0 | 1 | 🔲 |
-| Import status tracking (pending/parsing/imported/failed) | P0 | 1 | 🔲 |
-| Error message on failed import | P0 | 1 | 🔲 |
-| Retry failed import | P1 | 1 | 🔲 |
-| Delete import + session | P1 | 2 | 🔲 |
+| Drag & drop upload | P0 | 1 | ✅ |
+| Multi-file upload | P0 | 1 | ✅ |
+| File type validation | P0 | 1 | ✅ |
+| File size limit (50MB) | P0 | 1 | ✅ |
+| SHA-256 deduplication | P0 | 1 | ✅ |
+| Raw file storage | P0 | 1 | ✅ |
+| Import status tracking (pending/parsing/imported/failed) | P0 | 1 | ✅ |
+| Error message on failed import | P0 | 1 | ✅ |
+| Retry failed import | P1 | 1 | ✅ |
+| Delete import + session | P1 | 2 | ✅ |
 | Re-parse with updated parser | P1 | 2 | 🔲 |
-| Import history list | P1 | 1 | 🔲 |
-| Parser version tracking | P1 | 1 | 🔲 |
-| Auto-detect simulator from file | P1 | 2 | 🔲 |
-| Upload progress indicator | P1 | 1 | 🔲 |
+| Import history list | P1 | 1 | ✅ |
+| Parser version tracking | P1 | 1 | ✅ |
+| Auto-detect simulator from file | P1 | 2 | ✅ |
+| Upload progress indicator | P1 | 1 | ✅ |
+| Driver selection on first import | P1 | 1 | ✅ |
+| Bearer token auth for companion app | P1 | 5 | ✅ |
 
 ---
 
@@ -85,15 +89,17 @@
 
 | Feature | Priority | Phase | Status |
 |---|---|---|---|
-| IParser interface | P0 | 0 | 🔲 |
-| NormalizedSession type | P0 | 0 | 🔲 |
-| LMU XML parser | P0 | 1 | 🔲 |
-| Parser registry (slug → parser) | P0 | 1 | 🔲 |
-| Parser auto-detection from content | P1 | 1 | 🔲 |
-| Parser versioning | P1 | 1 | 🔲 |
-| Parser warnings (non-fatal) | P1 | 1 | 🔲 |
-| Test fixtures for LMU | P0 | 0 | 🔲 |
-| Parser unit tests | P0 | 0 | 🔲 |
+| IParser interface | P0 | 0 | ✅ |
+| NormalizedSession type | P0 | 0 | ✅ |
+| ParseContext (driver name hint) | P0 | 1 | ✅ |
+| LMU XML parser | P0 | 1 | ✅ |
+| Parser registry (slug → parser) | P0 | 1 | ✅ |
+| Parser auto-detection from content | P1 | 1 | ✅ |
+| Parser versioning | P1 | 1 | ✅ |
+| Parser warnings (non-fatal) | P1 | 1 | ✅ |
+| Driver name extraction from XML | P1 | 1 | ✅ |
+| Test fixtures for LMU | P0 | 0 | ✅ |
+| Parser unit tests | P0 | 0 | ✅ |
 | ACC parser | P3 | 7+ | 🔲 |
 | iRacing parser | P3 | 7+ | 🔲 |
 | rFactor 2 parser | P3 | 7+ | 🔲 |
@@ -104,12 +110,12 @@
 
 | Feature | Priority | Phase | Status |
 |---|---|---|---|
-| Track normalization (rawName → slug) | P0 | 1 | 🔲 |
-| Track alias table (per sim) | P0 | 1 | 🔲 |
-| Car normalization (rawName → slug) | P0 | 1 | 🔲 |
-| Car alias table (per sim) | P0 | 1 | 🔲 |
-| Car class normalization | P1 | 1 | 🔲 |
-| Track layout variants | P1 | 1 | 🔲 |
+| Track normalization (rawName → slug) | P0 | 1 | ✅ |
+| Track alias table (per sim) | P0 | 1 | ✅ |
+| Car normalization (rawName → slug) | P0 | 1 | ✅ |
+| Car alias table (per sim) | P0 | 1 | ✅ |
+| Car class normalization | P1 | 1 | ✅ |
+| Track layout variants | P1 | 1 | ✅ |
 | Admin panel to manage mappings | P2 | 6+ | 🔲 |
 
 ---
@@ -118,21 +124,24 @@
 
 | Feature | Priority | Phase | Status |
 |---|---|---|---|
-| Session list (history) | P0 | 1 | 🔲 |
-| Session detail page | P0 | 1 | 🔲 |
-| Lap table per session | P0 | 1 | 🔲 |
-| Sector breakdown per session | P1 | 1 | 🔲 |
-| Participant list (other drivers) | P1 | 1 | 🔲 |
-| Incident list | P1 | 1 | 🔲 |
-| Penalty list | P1 | 1 | 🔲 |
-| Pit stop list | P1 | 1 | 🔲 |
-| Session soft delete | P1 | 2 | 🔲 |
+| Session list (history) | P0 | 1 | ✅ |
+| Session detail page | P0 | 1 | ✅ |
+| Lap table per session | P0 | 1 | ✅ |
+| Sector breakdown per session | P1 | 1 | ✅ |
+| Participant list (other drivers) | P1 | 1 | ✅ |
+| Incident list | P1 | 1 | ✅ |
+| Penalty list | P1 | 1 | ✅ |
+| Pit stop list | P1 | 1 | ✅ |
+| Session soft delete | P1 | 2 | ✅ |
 | Session privacy toggle | P1 | 3 | 🔲 |
-| Session filters (type, track, car, date) | P1 | 1 | 🔲 |
-| Session sorting | P1 | 1 | 🔲 |
+| Session filters (type) | P1 | 1 | ✅ |
+| Session sorting | P1 | 1 | ✅ |
+| Session filters (date, track, car, PB) | P1 | 3 | 🔲 |
 | Session search | P2 | 3 | 🔲 |
 | Session export (CSV) | P2 | 3 | 🔲 |
 | Share session (public link) | P2 | 7 | 🔲 |
+| Session insights (rule-based) | P1 | 2 | ✅ |
+| Session notes & debrief | P1 | 2 | ✅ |
 
 ---
 
@@ -140,24 +149,24 @@
 
 | Feature | Priority | Phase | Status |
 |---|---|---|---|
-| Best lap time | P0 | 1 | 🔲 |
-| Average lap time | P0 | 1 | 🔲 |
-| Median lap time | P1 | 1 | 🔲 |
-| Ideal lap (best sector sum) | P1 | 1 | 🔲 |
-| Standard deviation | P1 | 1 | 🔲 |
-| Clean lap ratio | P1 | 1 | 🔲 |
-| Drop-off (pace degradation) | P1 | 2 | 🔲 |
-| PB detection per track/car | P0 | 1 | 🔲 |
-| Consistency Score (0–100) | P0 | 1 | 🔲 |
-| Safety Score (0–100) | P0 | 1 | 🔲 |
-| Pace Score (0–100) | P1 | 2 | 🔲 |
+| Best lap time | P0 | 1 | ✅ |
+| Average lap time | P0 | 1 | ✅ |
+| Median lap time | P1 | 1 | ✅ |
+| Ideal lap (best sector sum) | P1 | 1 | ✅ |
+| Standard deviation | P1 | 1 | ✅ |
+| Clean lap ratio | P1 | 1 | ✅ |
+| Drop-off (pace degradation) | P1 | 2 | ✅ |
+| PB detection per track/car | P0 | 1 | ✅ |
+| Consistency Score (0–100) | P0 | 1 | ✅ |
+| Safety Score (0–100) | P0 | 1 | ✅ |
+| Pace Score (0–100) | P1 | 2 | ✅ |
+| Improvement Score | P2 | 2 | ✅ |
 | Racecraft Score | P2 | 3 | 🔲 |
 | Qualifying Score | P2 | 3 | 🔲 |
 | Endurance Score | P2 | 4 | 🔲 |
-| Improvement Score | P2 | 2 | 🔲 |
 | Focus Score | P2 | 4 | 🔲 |
 | Adaptability Score | P3 | 4+ | 🔲 |
-| Metrics caching in DB | P0 | 1 | 🔲 |
+| Metrics caching in DB | P0 | 1 | ✅ |
 | Metric recalculation job | P1 | 2 | 🔲 |
 
 ---
@@ -166,14 +175,14 @@
 
 | Feature | Priority | Phase | Status |
 |---|---|---|---|
-| Stats cards (sessions, laps, hours, tracks, cars) | P0 | 1 | 🔲 |
-| Recent sessions list | P0 | 1 | 🔲 |
-| Weekly activity chart | P1 | 1 | 🔲 |
-| Driver scores overview | P1 | 2 | 🔲 |
-| Active goals widget | P1 | 2 | 🔲 |
+| Stats cards (sessions, laps, hours, tracks, cars) | P0 | 1 | ✅ |
+| Recent sessions list | P0 | 1 | ✅ |
+| Weekly activity chart | P1 | 1 | ✅ |
+| Driver scores overview (4 rings) | P1 | 2 | ✅ |
+| Active goals widget | P1 | 2 | ✅ |
 | Recent achievements | P1 | 2 | 🔲 |
-| Quick insight (rule-based) | P1 | 2 | 🔲 |
-| PB highlights | P1 | 2 | 🔲 |
+| Quick insight (rule-based) | P1 | 2 | ✅ |
+| PB highlights | P1 | 2 | ✅ |
 | Streak widget | P2 | 2 | 🔲 |
 | Heatmap calendar | P2 | 3 | 💡 |
 
@@ -183,15 +192,17 @@
 
 | Feature | Priority | Phase | Status |
 |---|---|---|---|
-| Track detail page | P1 | 1 | 🔲 |
-| Sessions at track | P1 | 1 | 🔲 |
-| PB per car at track | P1 | 1 | 🔲 |
+| Track detail page | P1 | 1 | ✅ |
+| Sessions at track | P1 | 1 | ✅ |
+| PB per car at track | P1 | 1 | ✅ |
+| PB evolution chart | P1 | 2 | ✅ |
+| Improvement badge | P1 | 2 | ✅ |
+| Session type breakdown chart | P1 | 2 | ✅ |
+| Consistency trend chart | P2 | 2 | ✅ |
 | Best sectors at track | P1 | 2 | 🔲 |
 | Ideal lap at track | P1 | 2 | 🔲 |
-| PB evolution chart | P1 | 2 | 🔲 |
 | Lap time distribution chart | P2 | 2 | 🔲 |
-| Consistency over time at track | P2 | 2 | 🔲 |
-| Cars used at track | P1 | 1 | 🔲 |
+| Cars used at track | P1 | 1 | ✅ |
 
 ---
 
@@ -199,11 +210,13 @@
 
 | Feature | Priority | Phase | Status |
 |---|---|---|---|
-| Car detail page | P1 | 1 | 🔲 |
-| Sessions with car | P1 | 1 | 🔲 |
-| PB per track with car | P1 | 1 | 🔲 |
+| Car detail page | P1 | 1 | ✅ |
+| Sessions with car | P1 | 1 | ✅ |
+| PB per track with car | P1 | 1 | ✅ |
+| Improvement badge | P1 | 2 | ✅ |
+| Session type breakdown chart | P1 | 2 | ✅ |
+| Consistency trend chart | P2 | 2 | ✅ |
 | Best track / worst track | P2 | 2 | 🔲 |
-| Average consistency with car | P2 | 2 | 🔲 |
 | Pace evolution with car | P2 | 2 | 🔲 |
 | Car class comparison | P3 | 3+ | 🔲 |
 
@@ -213,10 +226,12 @@
 
 | Feature | Priority | Phase | Status |
 |---|---|---|---|
-| Compare two sessions | P1 | 2 | 🔲 |
-| Side-by-side metrics | P1 | 2 | 🔲 |
-| Lap time delta between sessions | P1 | 2 | 🔲 |
-| Compare two laps (sector delta) | P1 | 2 | 🔲 |
+| Compare two sessions | P1 | 2 | ✅ |
+| Side-by-side metrics | P1 | 2 | ✅ |
+| Lap time overlay chart | P1 | 2 | ✅ |
+| Lap-by-lap delta table | P1 | 2 | ✅ |
+| Sector delta (S1/S2/S3) | P1 | 2 | ✅ |
+| Ideal lap row in comparison | P1 | 2 | ✅ |
 | Telemetry overlay comparison | P2 | 4 | 🔲 |
 | Compare vs personal best | P1 | 2 | 🔲 |
 
@@ -226,13 +241,13 @@
 
 | Feature | Priority | Phase | Status |
 |---|---|---|---|
-| Create goal | P1 | 2 | 🔲 |
-| Goal types (PB, consistency, laps, hours, etc.) | P1 | 2 | 🔲 |
-| Goal progress tracking (auto-updated on import) | P1 | 2 | 🔲 |
-| Goal deadline | P2 | 2 | 🔲 |
-| Goal linked to track/car | P2 | 2 | 🔲 |
+| Create goal | P1 | 2 | ✅ |
+| Goal types (8 types) | P1 | 2 | ✅ |
+| Goal progress tracking (auto-updated on import) | P1 | 2 | ✅ |
+| Goal deadline | P2 | 2 | ✅ |
+| Goal linked to track/car | P2 | 2 | ✅ |
 | Goal completion notification | P2 | 2 | 🔲 |
-| Goal history (completed / abandoned) | P2 | 2 | 🔲 |
+| Goal history (completed / abandoned) | P2 | 2 | ✅ |
 | Suggested goals (based on data) | P3 | 6 | 💡 |
 
 ---
@@ -241,26 +256,26 @@
 
 | Feature | Priority | Phase | Status |
 |---|---|---|---|
-| Achievement definitions (config-driven) | P1 | 2 | 🔲 |
-| Achievement unlock logic (triggered on import) | P1 | 2 | 🔲 |
-| Achievement progress tracking | P1 | 2 | 🔲 |
-| Achievement rarity (common → legendary) | P2 | 2 | 🔲 |
+| Achievement definitions (config-driven) | P1 | 2 | ✅ |
+| Achievement unlock logic (triggered on import) | P1 | 2 | ✅ |
+| Achievement progress tracking | P1 | 2 | ✅ |
+| Achievement rarity (common → legendary) | P2 | 2 | ✅ |
 | Achievement notification | P2 | 2 | 🔲 |
-| Achievement grid page | P2 | 2 | 🔲 |
+| Achievement grid page | P2 | 2 | ✅ |
 | Achievement categories | P2 | 2 | 🔲 |
 | Achievement sharing | P3 | 7 | 💡 |
 
-**Initial achievements (Phase 2):**
-- First Import
-- First Clean Race (0 incidents)
-- 100 Laps Completed
-- 500 Laps Completed
-- 1000 Laps Completed
-- First Personal Best
-- 10 Sessions in a Month
-- Consistency King (score > 90 in a session)
-- Endurance Stint (20+ valid laps in one session)
-- Sector Hunter (beat all 3 sector PBs in one session)
+**Achievements implemented (10):**
+- First Import (COMMON)
+- Setting The Bar — first PB (UNCOMMON)
+- Glass Clean — clean race 0 incidents (UNCOMMON)
+- Century Driver — 100 laps (RARE)
+- Road Warrior — 500 laps (EPIC)
+- Elite Driver — 1000 laps (LEGENDARY)
+- Consistency King — score > 90 in a session (RARE)
+- Endurance Pilot — 20+ laps in one session (RARE)
+- Dedicated — 10 sessions in a month (UNCOMMON)
+- Sector Hunter — beat all sector PBs in one session (EPIC)
 
 ---
 
@@ -268,9 +283,9 @@
 
 | Feature | Priority | Phase | Status |
 |---|---|---|---|
-| Add note to session | P1 | 2 | 🔲 |
-| Tags on notes | P2 | 2 | 🔲 |
-| Video link attachment | P2 | 3 | 🔲 |
+| Add note to session | P1 | 2 | ✅ |
+| Tags on notes | P2 | 2 | ✅ |
+| Video link attachment | P2 | 3 | ✅ |
 | Note visibility (private/public) | P2 | 3 | 🔲 |
 | Weekly diary summary view | P3 | 3+ | 💡 |
 | Session mood / feeling rating | P3 | 3+ | 💡 |
@@ -281,13 +296,14 @@
 
 | Feature | Priority | Phase | Status |
 |---|---|---|---|
-| Create setup (name, sim, car, track, conditions) | P1 | 3 | 🔲 |
-| Edit setup | P1 | 3 | 🔲 |
+| Create setup (name, sim, car, track, conditions) | P1 | 3 | ✅ |
+| Edit setup | P1 | 3 | ✅ |
+| Delete setup | P1 | 3 | ✅ |
+| Mark setup as favorite | P2 | 3 | ✅ |
+| Mark setup as archived | P2 | 3 | ✅ |
 | Setup versioning | P2 | 3 | 🔲 |
 | Upload setup file (attachment) | P2 | 3 | 🔲 |
 | Link setup to session | P1 | 3 | 🔲 |
-| Mark setup as favorite | P2 | 3 | 🔲 |
-| Mark setup as obsolete | P2 | 3 | 🔲 |
 | Setup performance stats (sessions using it) | P2 | 3 | 🔲 |
 | Compare two setups | P3 | 3+ | 🔲 |
 | Share setup (public) | P3 | 7 | 🔲 |
@@ -352,16 +368,20 @@
 
 | Feature | Priority | Phase | Status |
 |---|---|---|---|
-| Tauri app (Windows) | P1 | 5 | 🔲 |
-| Login with UrApex account | P1 | 5 | 🔲 |
-| Simulator folder selection | P1 | 5 | 🔲 |
-| File watcher | P1 | 5 | 🔲 |
-| Auto upload on new file | P1 | 5 | 🔲 |
+| Tauri app scaffold (Windows) | P1 | 5 | ✅ |
+| API key login (no browser needed) | P1 | 5 | ✅ |
+| Simulator folder selection | P1 | 5 | ✅ |
+| File watcher (notify crate) | P1 | 5 | ✅ |
+| Auto upload on new XML detected | P1 | 5 | ✅ |
+| System tray icon | P1 | 5 | ✅ |
+| Windows notifications on upload | P1 | 5 | ✅ |
+| Minimize to tray on close | P1 | 5 | ✅ |
 | Upload queue with retry | P1 | 5 | 🔲 |
-| System tray icon | P1 | 5 | 🔲 |
-| Sync historical files | P2 | 5 | 🔲 |
-| Sync logs | P2 | 5 | 🔲 |
+| Sync historical files ("import all") | P2 | 5 | 🔲 |
+| Sync logs (persistent across restarts) | P2 | 5 | 🔲 |
 | Auto-start with Windows | P2 | 5 | 🔲 |
+| In-game overlay window | P2 | 5 | 🔲 |
+| UDP telemetry listener (LMU port 4444) | P2 | 5 | 🔲 |
 | macOS support | P3 | 6+ | 🔲 |
 
 ---

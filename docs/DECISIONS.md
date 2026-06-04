@@ -430,6 +430,100 @@ Next.js 16 deprecated `middleware.ts` in favor of `proxy.ts`. Additionally, Auth
 
 ---
 
+## ADR-014 — Driver Name Identification in Multiplayer XML
+
+**Date:** 2026-06-04
+**Status:** Accepted
+
+### Context
+LMU multiplayer result files set `isPlayer=1` on **every** driver in the results grid, not just the human player. This makes it impossible to auto-detect which driver's laps belong to the user of UrApex without additional context.
+
+### Options Considered
+1. **Store the user's in-game name (`simDriverName`) and match by name** — deterministic, user-controlled
+2. Use position in the file — the spec says the player's `<Driver>` appears first, but real files show this is unreliable in multiplayer
+3. Match by car name — the user's car is sometimes unique but not guaranteed
+4. Use `isPlayer` flag — unreliable in multiplayer (all=1)
+
+### Decision
+Add `DriverProfile.simDriverName` (user's exact in-game name). The parser's `findPlayer()` checks for exact name match → case-insensitive match → first driver with valid `BestLapTime` (fallback for single-player or when name isn't set).
+
+On first upload (when `simDriverName` is null), the API extracts all driver names from the uploaded files and returns them for the user to select from. The selection is stored and applied to the import immediately, and to all future imports automatically.
+
+### Reasoning
+- Reliable: name matching is deterministic regardless of file structure
+- One-time setup: user picks their name once, all future imports are automatic
+- Non-destructive: changing the name never re-processes existing sessions
+- Graceful fallback: without a name, the parser still works (picks first valid driver)
+
+### Consequences
+- User must know their exact in-game name (hint: look at the `<Name>` element in any XML)
+- Name changes only affect future imports — old sessions retain the data from the original import
+- `ParseContext` must be threaded through `parseFile()` → `IParser.parse()` for all parsers
+
+---
+
+## ADR-015 — API Key Auth for Companion App
+
+**Date:** 2026-06-04
+**Status:** Accepted
+
+### Context
+The companion app (Tauri) needs to upload files to the web app's API from the user's Windows PC. Browser session cookies are not viable for a native app — the app can't participate in the web session flow.
+
+### Options Considered
+1. **Static API key stored locally in the app** — simple, user copies key from Settings once
+2. OAuth device flow — secure but complex to implement; overkill for single-user companion app
+3. Embedded credentials (username + password) — insecure; exposing bcrypt hashes is wrong
+4. Short-lived tokens — requires a refresh flow; unnecessary complexity
+
+### Decision
+Add `User.apiKey` (unique `uapx_<64hex>` token). The user generates it in Settings and pastes it into the companion app. The `/api/upload` endpoint checks `Authorization: Bearer <key>` before falling back to session cookie.
+
+### Reasoning
+- No browser needed in the companion app flow
+- Key is revocable in one click
+- Scoped: only `/api/upload` currently accepts bearer tokens (not the full API surface)
+- Simple to implement and audit
+
+### Consequences
+- Key is shown once (at generation) — if lost, user must regenerate
+- Key has no expiry — acceptable for a personal companion app; add expiry in Phase 6+ if multi-user
+- If the web app adds more companion-facing endpoints, each must add bearer token support explicitly
+
+---
+
+## ADR-016 — Tauri for Companion App (vs. Electron)
+
+**Date:** 2026-06-04
+**Status:** Accepted
+
+### Context
+The companion app needs to run as a Windows desktop app with file system access, system tray, and HTTP upload. Two main choices: Tauri (Rust) or Electron (Node.js).
+
+### Options Considered
+1. **Tauri v2** — Rust backend + WebView2 frontend; ~5MB installer; native performance
+2. Electron — Node.js backend + bundled Chromium; ~150MB installer; familiar JS/TS stack
+3. Simple Node.js daemon — no UI, command-line only; least user-friendly
+4. C# WPF/WinForms — Windows-native but no shared code with the web app
+
+### Decision
+Tauri v2.
+
+### Reasoning
+- Binary size: Tauri ~5MB vs Electron ~150MB — much better UX for an install
+- Rust's `notify` crate is the de-facto standard for cross-platform file watching
+- `reqwest` (async HTTP) is a mature, production-grade Rust HTTP client
+- WebView2 (on Windows 11) means no bundled browser engine
+- Overlays: Tauri supports transparent always-on-top windows, which is the planned implementation for Phase 5 in-game overlays
+- The frontend is still React + TypeScript — same skills as the web app
+
+### Consequences
+- Build requires Rust toolchain (`rustup`) — developer needs to install this
+- Rust learning curve for any backend logic beyond the scaffold
+- macOS support requires `macos-kqueue` feature on `notify` — already included
+
+---
+
 ## Template — Future ADR
 
 Use this template for future decisions:

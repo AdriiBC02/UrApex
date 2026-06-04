@@ -120,7 +120,7 @@
 | AN-008 | Goal auto-progress on import | P1 | ✅ | goals.service.ts; all 8 types + auto-complete + track/car scoping |
 | AN-009 | Achievement definitions (config) | P1 | ✅ | 10 achievements in seed.ts |
 | AN-010 | Achievement unlock on import | P1 | ✅ | achievements.service.ts; 7/8 condition types; parallel with goal progress |
-| AN-011 | Achievement page | P1 | 🔲 | |
+| AN-011 | Achievement page | P1 | ✅ | Rarity cards, progress bars, unlocked/in-progress/locked sections |
 | AN-012 | Session notes | P1 | ✅ | Notes + tags + video URL; GET/POST/DELETE API; SessionNotes client component |
 | AN-013 | Auto insight generation (rule-based) | P1 | ✅ | 8 rule types; insights.service.ts + session detail section |
 | AN-014 | Weekly evolution charts | P1 | ✅ | ActivityChart (12-week bar) + consistency TrendChart on dashboard |
@@ -144,6 +144,28 @@
 | PO-009 | Post-session ritual modal | P2 | 🔲 | |
 | PO-010 | Racecraft Score | P2 | 🔲 | |
 | PO-011 | Qualifying Score | P2 | 🔲 | |
+
+---
+
+## Phase 5 — Desktop Sync Agent
+
+| ID | Task | Priority | Status | Notes |
+|---|---|---|---|---|
+| CA-001 | Tauri v2 project scaffold | P1 | ✅ | `/companion/` — Rust + React |
+| CA-002 | API key auth on `/api/upload` | P1 | ✅ | Bearer token; `resolveUserId()` helper |
+| CA-003 | API key generation in Settings UI | P1 | ✅ | `ApiKeyForm`, `GET/POST/DELETE /api/auth/api-key` |
+| CA-004 | File watcher (Rust notify crate) | P1 | ✅ | Watches folder for new `.xml`, 500ms debounce |
+| CA-005 | HTTP upload from companion | P1 | ✅ | `reqwest` multipart, bearer token |
+| CA-006 | System tray + minimize-to-tray | P1 | ✅ | Shows/hides on tray icon click |
+| CA-007 | Windows notifications | P1 | ✅ | `tauri-plugin-notification` on upload result |
+| CA-008 | Compile and test on Windows | P0 | 🔲 | Requires `rustup` install on Windows PC |
+| CA-009 | Local hash dedup before upload | P1 | 🔲 | Avoids uploading already-imported files |
+| CA-010 | Upload queue with retry | P1 | 🔲 | In-memory queue, retry on network error |
+| CA-011 | Persistent sync history | P2 | 🔲 | Log file across app restarts |
+| CA-012 | Sync historical files ("import all") | P2 | 🔲 | Button to queue all XMLs in folder |
+| CA-013 | Windows startup on boot | P2 | 🔲 | Registry autostart entry |
+| CA-014 | In-game overlay window | P2 | 🔲 | Transparent always-on-top Tauri window |
+| CA-015 | UDP telemetry listener (LMU port 4444) | P2 | 🔲 | Feed data to overlay in real time |
 
 ---
 
