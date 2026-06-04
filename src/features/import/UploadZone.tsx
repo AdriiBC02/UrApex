@@ -29,7 +29,11 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export function UploadZone() {
+interface UploadZoneProps {
+  onImported?: (sessionId: string) => void
+}
+
+export function UploadZone({ onImported }: UploadZoneProps = {}) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [entries, setEntries] = useState<FileEntry[]>([])
   const [dragging, setDragging] = useState(false)
@@ -151,12 +155,17 @@ export function UploadZone() {
         return { ...e, status: "failed" as const, error: r.error ?? r.errorMessage ?? "Import failed" }
       })
     )
-    const imported = imports.filter((r) => r.status === "IMPORTED").length
+    const imported = imports.filter((r) => r.status === "IMPORTED")
     const dupes    = imports.filter((r) => r.isDuplicate).length
     const failed   = imports.filter((r) => r.status === "FAILED").length
-    if (imported > 0) toast.success(`${imported} session${imported > 1 ? "s" : ""} imported`)
-    if (dupes > 0)    toast.info(`${dupes} duplicate${dupes > 1 ? "s" : ""} skipped`)
-    if (failed > 0)   toast.error(`${failed} import${failed > 1 ? "s" : ""} failed`)
+    if (imported.length > 0) toast.success(`${imported.length} session${imported.length > 1 ? "s" : ""} imported`)
+    if (dupes > 0)            toast.info(`${dupes} duplicate${dupes > 1 ? "s" : ""} skipped`)
+    if (failed > 0)           toast.error(`${failed} import${failed > 1 ? "s" : ""} failed`)
+    // Notify parent when at least one session was imported
+    if (imported.length > 0 && onImported) {
+      const firstSessionId = imported.find((r) => r.sessionId)?.sessionId
+      if (firstSessionId) onImported(firstSessionId)
+    }
   }
 
   const confirmDriver = async () => {

@@ -85,7 +85,8 @@ model DriverProfile {
   bio           String?  @db.Text
   avatarUrl     String?
   isPublic      Boolean  @default(false)
-  simDriverName String?  // The driver's in-game name used to identify their laps in result files
+  simDriverName   String?  // The driver's in-game name used to identify their laps in result files
+  onboardingDone  Boolean  @default(false)
 
   simulatorSlugs String[]
 

@@ -34,7 +34,8 @@ export const authConfig: NextAuthConfig = {
         pathname.startsWith("/goals") ||
         pathname.startsWith("/achievements") ||
         pathname.startsWith("/setups") ||
-        pathname.startsWith("/settings")
+        pathname.startsWith("/settings") ||
+        pathname.startsWith("/onboarding")
 
       if (isAppRoute) return isLoggedIn
       return true
