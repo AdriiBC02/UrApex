@@ -8,7 +8,19 @@
 
 ## [Unreleased]
 
-> Next up: AN-012 session notes, setups manager, track/car detail polish.
+> Next up: setups manager, track/car detail polish, AN-013 auto insights.
+
+---
+
+## [0.9.0] — 2026-06-05
+
+> AN-012 Session notes — debrief after every session with tags and video link.
+
+### Added
+- `GET /POST /api/sessions/[id]/notes` — list and create session notes (auth + ownership gated)
+- `DELETE /api/sessions/[id]/notes/[noteId]` — delete note (session ownership check)
+- `SessionNotes` client component — add form with textarea, tag pills (Enter/comma/Backspace), optional video URL, optimistic list; delete on hover with loader; empty hint copy
+- Session detail page — "Notes & Debrief" section using `Section` wrapper, fetches notes server-side via `include`
 
 ---
 

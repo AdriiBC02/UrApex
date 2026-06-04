@@ -121,7 +121,7 @@
 | AN-009 | Achievement definitions (config) | P1 | ✅ | 10 achievements in seed.ts |
 | AN-010 | Achievement unlock on import | P1 | ✅ | achievements.service.ts; 7/8 condition types; parallel with goal progress |
 | AN-011 | Achievement page | P1 | 🔲 | |
-| AN-012 | Session notes | P1 | 🔲 | |
+| AN-012 | Session notes | P1 | ✅ | Notes + tags + video URL; GET/POST/DELETE API; SessionNotes client component |
 | AN-013 | Auto insight generation (rule-based) | P1 | 🔲 | Post-import |
 | AN-014 | Weekly evolution charts | P1 | 🔲 | |
 | AN-015 | BullMQ + Redis for async jobs | P1 | 🔲 | Replace sync processing |

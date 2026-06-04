@@ -6,9 +6,10 @@ import { SESSION_TYPE_LABELS, SIMULATOR_LABELS } from "@/lib/constants"
 import { Badge } from "@/components/ui/badge"
 import { LapTimeChart } from "@/components/charts/LapTimeChart"
 import { ScoreBadge } from "@/components/shared/ScoreBadge"
+import { SessionNotes } from "@/features/sessions/SessionNotes"
 import {
   Flag, Clock, Map, Car, Trophy, AlertTriangle,
-  ArrowLeft, TrendingUp, Gauge, Timer, Activity,
+  ArrowLeft, TrendingUp, Gauge, Timer, Activity, StickyNote,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -32,6 +33,7 @@ export default async function SessionDetailPage({
       incidents: { orderBy: { lapNumber: "asc" } },
       penalties: { orderBy: { lapNumber: "asc" } },
       pitStops: { orderBy: { lapNumber: "asc" } },
+      notes: { orderBy: { createdAt: "desc" } },
     },
   })
 
@@ -365,6 +367,20 @@ export default async function SessionDetailPage({
           )}
         </div>
       )}
+
+      {/* Notes & Debrief */}
+      <Section title={`Notes${s.notes.length > 0 ? ` (${s.notes.length})` : ""}`} icon={StickyNote} iconColor="text-zinc-500">
+        <SessionNotes
+          sessionId={s.id}
+          initialNotes={s.notes.map((n) => ({
+            id: n.id,
+            content: n.content,
+            tags: n.tags,
+            videoUrl: n.videoUrl,
+            createdAt: n.createdAt,
+          }))}
+        />
+      </Section>
     </div>
   )
 }
