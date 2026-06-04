@@ -10,6 +10,7 @@ import {
 } from "./metrics.service"
 import { updateGoalProgress } from "./goals.service"
 import { evaluateAchievements } from "./achievements.service"
+import { generateInsights } from "./insights.service"
 import type { NormalizedSession } from "@/server/parsers/types"
 import type { ImportStatus } from "@prisma/client"
 
@@ -276,6 +277,11 @@ async function runImport(importFileId: string): Promise<void> {
   ])
 
   if (savedSession) {
+    const [track] = await Promise.all([
+      db.track.findUnique({ where: { id: savedSession.trackId }, select: { name: true } }),
+      db.car.findUnique({ where: { id: savedSession.carId }, select: { name: true } }),
+    ])
+
     await Promise.all([
       updateGoalProgress(userId, {
         trackId: savedSession.trackId,
@@ -297,6 +303,28 @@ async function runImport(importFileId: string): Promise<void> {
         safetyScore: savedSession.safetyScore,
         incidentCount: savedSession._count.incidents,
         sessionType: savedSession.sessionType,
+      }),
+      generateInsights({
+        sessionId:        savedSession.id,
+        userId,
+        trackId:          savedSession.trackId,
+        trackName:        track?.name ?? "Unknown track",
+        carName:          savedSession.carId,
+        bestLapMs:        savedSession.bestLapMs,
+        idealLapMs:       savedSession.idealLapMs,
+        consistencyScore: savedSession.consistencyScore,
+        safetyScore:      savedSession.safetyScore,
+        paceScore:        savedSession.paceScore,
+        totalLaps:        savedSession.totalLaps,
+        validLaps:        savedSession.validLaps,
+        isNewPB:          savedSession.isNewPB,
+        dnf:              savedSession.dnf,
+        dq:               savedSession.dq,
+        dropOffMs:        savedSession.dropOffMs,
+        incidentCount:    savedSession._count.incidents,
+        penaltyCount:     0,
+        sessionType:      savedSession.sessionType,
+        durationSec:      savedSession.durationSec,
       }),
     ])
   }

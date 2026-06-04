@@ -10,6 +10,7 @@ import { SessionNotes } from "@/features/sessions/SessionNotes"
 import {
   Flag, Clock, Map, Car, Trophy, AlertTriangle,
   ArrowLeft, TrendingUp, Gauge, Timer, Activity, StickyNote,
+  Lightbulb, CheckCircle2, AlertCircle, Info, GitCompare,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -33,7 +34,8 @@ export default async function SessionDetailPage({
       incidents: { orderBy: { lapNumber: "asc" } },
       penalties: { orderBy: { lapNumber: "asc" } },
       pitStops: { orderBy: { lapNumber: "asc" } },
-      notes: { orderBy: { createdAt: "desc" } },
+      notes:    { orderBy: { createdAt: "desc" } },
+      insights: { orderBy: { createdAt: "asc" } },
     },
   })
 
@@ -58,14 +60,23 @@ export default async function SessionDetailPage({
   return (
     <div className="space-y-6 max-w-5xl">
 
-      {/* Back nav */}
-      <Link
-        href="/sessions"
-        className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-      >
-        <ArrowLeft className="w-3.5 h-3.5" />
-        Sessions
-      </Link>
+      {/* Back nav + compare button */}
+      <div className="flex items-center justify-between">
+        <Link
+          href="/sessions"
+          className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Sessions
+        </Link>
+        <Link
+          href={`/sessions/compare?a=${s.id}`}
+          className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-cyan-400 transition-colors border border-zinc-800 hover:border-zinc-700 rounded-lg px-3 py-1.5"
+        >
+          <GitCompare className="w-3.5 h-3.5" />
+          Compare
+        </Link>
+      </div>
 
       {/* Hero header */}
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden">
@@ -366,6 +377,28 @@ export default async function SessionDetailPage({
             </Section>
           )}
         </div>
+      )}
+
+      {/* Insights */}
+      {s.insights.length > 0 && (
+        <Section title={`Insights (${s.insights.length})`} icon={Lightbulb} iconColor="text-yellow-400">
+          <div className="space-y-2">
+            {s.insights.map((ins) => {
+              const { icon: Icon, color, bg } =
+                ins.severity === "positive"
+                  ? { icon: CheckCircle2, color: "text-green-400", bg: "bg-green-500/8 border-green-800/40" }
+                  : ins.severity === "warning"
+                    ? { icon: AlertCircle,  color: "text-orange-400", bg: "bg-orange-500/8 border-orange-800/40" }
+                    : { icon: Info,         color: "text-zinc-400",   bg: "bg-zinc-800/40 border-zinc-700/40" }
+              return (
+                <div key={ins.id} className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${bg}`}>
+                  <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${color}`} />
+                  <p className="text-sm text-zinc-300 leading-relaxed">{ins.message}</p>
+                </div>
+              )
+            })}
+          </div>
+        </Section>
       )}
 
       {/* Notes & Debrief */}

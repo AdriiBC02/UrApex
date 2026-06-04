@@ -8,7 +8,25 @@
 
 ## [Unreleased]
 
-> Next up: AN-013 auto insights, AN-006 lap comparison (sector delta), setups manager.
+> Next up: AN-015 BullMQ async jobs, session comparison polish, setups detail page.
+
+---
+
+## [0.13.0] — 2026-06-05
+
+> AN-013 auto insights + AN-006 sector delta + PO-002 setups manager MVP.
+
+### Added
+- `SessionInsight` model + migration (`add_session_insights`); `Session.insights` relation
+- `insights.service.ts` — 8 rule-based insight types: new_pb, first_session_track, consistency_pb/high/low, clean_session, safety_warning, dnf/dq, dropoff_high/negative, near_ideal, long_stint
+- Session detail page: "Insights" section with severity-coloured cards (positive=green, warning=orange, info=zinc); "Compare" button in back-nav row
+- `GET/POST /api/setups`, `GET/PATCH/DELETE /api/setups/[id]` — full CRUD with ownership checks
+- Setups list page — cards with track/car/conditions, version pill, session count, favourite star, `SetupActions` dropdown (favourite, archive, delete)
+- `/setups/new` + `SetupForm` — simulator required, optional track/car/conditions/type/notes
+- Setup schema relations: `Setup → Simulator/Car/Track` + reverse (`Simulator/Car/Track.setups`); migration `add_setup_relations`
+
+### Changed
+- Session comparison page — sector delta table (S1/S2/S3 + ideal lap row, winner column); removed unused icon imports
 
 ---
 

@@ -115,14 +115,14 @@
 | AN-003 | Full track analytics page | P1 | ✅ | PB evolution, improvement badge, session types, consistency trend, glass cards |
 | AN-004 | Full car analytics page | P1 | ✅ | Same as AN-003 + best-by-circuit + circuits count stat |
 | AN-005 | Session comparison view | P1 | ✅ | /sessions/compare with slot UI, metrics diff, lap overlay chart, delta table |
-| AN-006 | Lap comparison (sector delta) | P1 | 🔲 | |
+| AN-006 | Lap comparison (sector delta) | P1 | ✅ | Sector delta table in compare page + ideal lap row |
 | AN-007 | Goals page (list + progress + actions) | P1 | ✅ | List, create form, PATCH/DELETE API, GoalActions dropdown |
 | AN-008 | Goal auto-progress on import | P1 | ✅ | goals.service.ts; all 8 types + auto-complete + track/car scoping |
 | AN-009 | Achievement definitions (config) | P1 | ✅ | 10 achievements in seed.ts |
 | AN-010 | Achievement unlock on import | P1 | ✅ | achievements.service.ts; 7/8 condition types; parallel with goal progress |
 | AN-011 | Achievement page | P1 | 🔲 | |
 | AN-012 | Session notes | P1 | ✅ | Notes + tags + video URL; GET/POST/DELETE API; SessionNotes client component |
-| AN-013 | Auto insight generation (rule-based) | P1 | 🔲 | Post-import |
+| AN-013 | Auto insight generation (rule-based) | P1 | ✅ | 8 rule types; insights.service.ts + session detail section |
 | AN-014 | Weekly evolution charts | P1 | ✅ | ActivityChart (12-week bar) + consistency TrendChart on dashboard |
 | AN-015 | BullMQ + Redis for async jobs | P1 | 🔲 | Replace sync processing |
 | AN-016 | Metric recalculation job | P1 | 🔲 | For parser updates |
@@ -134,7 +134,7 @@
 | ID | Task | Priority | Status | Notes |
 |---|---|---|---|---|
 | PO-001 | Onboarding flow (3 steps) | P1 | 🔲 | |
-| PO-002 | Setup manager | P1 | 🔲 | |
+| PO-002 | Setup manager | P1 | 🔄 | List + CRUD API + create form done; detail page + version history pending |
 | PO-003 | Driver profile page | P1 | 🔲 | |
 | PO-004 | Privacy controls | P1 | 🔲 | |
 | PO-005 | Advanced session filters | P2 | 🔲 | |

@@ -5,7 +5,7 @@ import { formatLapTime, formatDelta, formatDriveTime } from "@/lib/time"
 import { SESSION_TYPE_LABELS, SIMULATOR_LABELS } from "@/lib/constants"
 import { ScoreBadge } from "@/components/shared/ScoreBadge"
 import { LapComparisonChart } from "@/components/charts/LapComparisonChart"
-import { ArrowLeft, ArrowRight, GitCompare, Flag, Clock, TrendingUp, Zap, Gauge } from "lucide-react"
+import { ArrowLeft, ArrowRight, GitCompare, Flag, Clock, TrendingUp, Timer } from "lucide-react"
 import Link from "next/link"
 
 function Section({ title, children, icon: Icon }: {
@@ -71,6 +71,32 @@ export default async function SessionComparePage({
   })
 
   const bothSelected = sessionA && sessionB
+
+  // Best sectors for each session
+  const bestSectors = bothSelected
+    ? {
+        a: {
+          s1: sessionA.laps.filter(l => l.isValid && l.sector1Ms).length
+            ? Math.min(...sessionA.laps.filter(l => l.isValid && l.sector1Ms).map(l => l.sector1Ms!)) : null,
+          s2: sessionA.laps.filter(l => l.isValid && l.sector2Ms).length
+            ? Math.min(...sessionA.laps.filter(l => l.isValid && l.sector2Ms).map(l => l.sector2Ms!)) : null,
+          s3: sessionA.laps.filter(l => l.isValid && l.sector3Ms).length
+            ? Math.min(...sessionA.laps.filter(l => l.isValid && l.sector3Ms).map(l => l.sector3Ms!)) : null,
+        },
+        b: {
+          s1: sessionB.laps.filter(l => l.isValid && l.sector1Ms).length
+            ? Math.min(...sessionB.laps.filter(l => l.isValid && l.sector1Ms).map(l => l.sector1Ms!)) : null,
+          s2: sessionB.laps.filter(l => l.isValid && l.sector2Ms).length
+            ? Math.min(...sessionB.laps.filter(l => l.isValid && l.sector2Ms).map(l => l.sector2Ms!)) : null,
+          s3: sessionB.laps.filter(l => l.isValid && l.sector3Ms).length
+            ? Math.min(...sessionB.laps.filter(l => l.isValid && l.sector3Ms).map(l => l.sector3Ms!)) : null,
+        },
+      }
+    : null
+
+  const hasSectors = bestSectors &&
+    (bestSectors.a.s1 || bestSectors.a.s2 || bestSectors.a.s3 ||
+     bestSectors.b.s1 || bestSectors.b.s2 || bestSectors.b.s3)
 
   // Build lap comparison data (pad shorter session with nulls)
   const maxLap = bothSelected
@@ -275,6 +301,88 @@ export default async function SessionComparePage({
                 labelA={`A: ${sessionA.track.name}`}
                 labelB={`B: ${sessionB.track.name}`}
               />
+            </Section>
+          )}
+
+          {/* Sector delta */}
+          {hasSectors && bestSectors && (
+            <Section title="Best sector comparison" icon={Timer}>
+              <div className="overflow-x-auto -mx-5 px-5">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-zinc-800/60">
+                      <th className="text-left px-3 py-2 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Sector</th>
+                      <th className="text-right px-3 py-2 text-[11px] font-semibold text-cyan-400/80 uppercase tracking-wider">Session A</th>
+                      <th className="text-right px-3 py-2 text-[11px] font-semibold text-orange-400/80 uppercase tracking-wider">Session B</th>
+                      <th className="text-right px-3 py-2 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Delta (B−A)</th>
+                      <th className="text-right px-3 py-2 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Faster</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(["s1", "s2", "s3"] as const).map((sector, i) => {
+                      const a = bestSectors.a[sector]
+                      const b = bestSectors.b[sector]
+                      const delta = a !== null && b !== null ? b - a : null
+                      const aWins = delta !== null && delta > 0
+                      const bWins = delta !== null && delta < 0
+                      return (
+                        <tr key={sector} className={`${i < 2 ? "border-b border-zinc-800/30" : ""}`}>
+                          <td className="px-3 py-2.5 text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+                            Sector {i + 1}
+                          </td>
+                          <td className={`px-3 py-2.5 text-right font-mono text-sm tabular-nums ${aWins ? "text-cyan-400 font-bold" : "text-zinc-400"}`}>
+                            {formatLapTime(a)}
+                          </td>
+                          <td className={`px-3 py-2.5 text-right font-mono text-sm tabular-nums ${bWins ? "text-orange-400 font-bold" : "text-zinc-400"}`}>
+                            {formatLapTime(b)}
+                          </td>
+                          <td className={`px-3 py-2.5 text-right font-mono text-sm tabular-nums ${
+                            delta === null ? "text-zinc-700"
+                            : delta < 0 ? "text-orange-400"
+                            : delta > 0 ? "text-cyan-400"
+                            : "text-zinc-500"
+                          }`}>
+                            {delta === null ? "—" : `${delta > 0 ? "+" : ""}${formatDelta(delta)}`}
+                          </td>
+                          <td className="px-3 py-2.5 text-right text-xs">
+                            {aWins && <span className="text-cyan-400 font-semibold">A</span>}
+                            {bWins && <span className="text-orange-400 font-semibold">B</span>}
+                            {delta === 0 && <span className="text-zinc-600">Tie</span>}
+                            {delta === null && <span className="text-zinc-700">—</span>}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {/* Ideal lap row */}
+                    {(sessionA.idealLapMs || sessionB.idealLapMs) && (
+                      <tr className="border-t border-zinc-800/60">
+                        <td className="px-3 py-2.5 text-xs font-semibold text-zinc-400 uppercase tracking-wide">Ideal lap</td>
+                        <td className="px-3 py-2.5 text-right font-mono text-sm tabular-nums text-zinc-300">{formatLapTime(sessionA.idealLapMs)}</td>
+                        <td className="px-3 py-2.5 text-right font-mono text-sm tabular-nums text-zinc-300">{formatLapTime(sessionB.idealLapMs)}</td>
+                        <td className={`px-3 py-2.5 text-right font-mono text-sm tabular-nums ${
+                          !sessionA.idealLapMs || !sessionB.idealLapMs ? "text-zinc-700"
+                          : sessionB.idealLapMs - sessionA.idealLapMs < 0 ? "text-orange-400"
+                          : sessionB.idealLapMs - sessionA.idealLapMs > 0 ? "text-cyan-400"
+                          : "text-zinc-500"
+                        }`}>
+                          {sessionA.idealLapMs && sessionB.idealLapMs
+                            ? `${sessionB.idealLapMs - sessionA.idealLapMs > 0 ? "+" : ""}${formatDelta(sessionB.idealLapMs - sessionA.idealLapMs)}`
+                            : "—"}
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-xs">
+                          {sessionA.idealLapMs && sessionB.idealLapMs && (
+                            sessionB.idealLapMs > sessionA.idealLapMs
+                              ? <span className="text-cyan-400 font-semibold">A</span>
+                              : sessionB.idealLapMs < sessionA.idealLapMs
+                                ? <span className="text-orange-400 font-semibold">B</span>
+                                : <span className="text-zinc-600">Tie</span>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </Section>
           )}
 

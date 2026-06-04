@@ -113,6 +113,7 @@ model Simulator {
   cars     Car[]
   sessions Session[]
   imports  ImportFile[]
+  setups   Setup[]
 
   @@index([slug])
 }
@@ -220,6 +221,7 @@ model Session {
   penalties    Penalty[]
   pitStops     PitStop[]
   notes        SessionNote[]
+  insights     SessionInsight[]
   setups       SessionSetup[]
 
   @@index([userId])
@@ -280,6 +282,7 @@ model Track {
   aliases  TrackAlias[]
   layouts  TrackLayout[]
   sessions Session[]
+  setups   Setup[]
 
   @@index([slug])
 }
@@ -323,6 +326,7 @@ model Car {
   class     CarClass?  @relation(fields: [classId], references: [id])
   aliases   CarAlias[]
   sessions  Session[]
+  setups    Setup[]
 
   @@index([slug])
   @@index([classId])
@@ -426,6 +430,19 @@ model SessionNote {
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 }
 
+model SessionInsight {
+  id        String   @id @default(cuid())
+  sessionId String
+  type      String
+  message   String   @db.Text
+  severity  String   @default("info") // info | positive | warning
+  createdAt DateTime @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
 // ─── SETUPS ──────────────────────────────────────────────────────────────────
 
 model Setup {
@@ -446,9 +463,12 @@ model Setup {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user     User           @relation(fields: [userId], references: [id])
-  versions SetupVersion[]
-  sessions SessionSetup[]
+  user      User           @relation(fields: [userId], references: [id])
+  simulator Simulator      @relation(fields: [simulatorId], references: [id])
+  car       Car?           @relation(fields: [carId], references: [id])
+  track     Track?         @relation(fields: [trackId], references: [id])
+  versions  SetupVersion[]
+  sessions  SessionSetup[]
 
   @@index([userId])
 }
