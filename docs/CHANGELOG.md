@@ -8,7 +8,23 @@
 
 ## [Unreleased]
 
-> Next up: Session notes, setups manager, loading states per-page, AN-009 achievements config.
+> Next up: Session notes, setups manager, loading states per-page, track/car detail polish.
+
+---
+
+## [0.7.0] — 2026-06-05
+
+> AN-009/010 achievements engine + landing redesign + auth split-screen + UploadZone v2.
+
+### Added
+- `achievements.service.ts` — `evaluateAchievements()` called after every import; handles 7 of 8 condition types (all_sector_pbs deferred); upserts `UserAchievement` with progress + auto-unlocks
+- Both `updateGoalProgress` and `evaluateAchievements` now run in parallel after each import
+
+### Changed
+- **Landing page** — full redesign: sticky blur nav, gradient headline, dot-grid hero bg, stats strip, 6-feature grid with accent card, numbered "How it works", final CTA with glow, footer
+- **Auth layout** — split-screen: left branded panel with grid bg, feature bullets, tagline; right panel with form; mobile fallback shows centered logo
+- **Login / Register** — plain `<button>` replaces shadcn Button, `rounded-2xl` card with backdrop-blur, AlertCircle error state, removed all Card imports
+- **UploadZone** — larger 2xl drop zone, Loader2 spinner during upload, file size display, "Clear done" button, `StatusPill` + `FileStatusIcon` components, cleaner queue layout
 
 ---
 

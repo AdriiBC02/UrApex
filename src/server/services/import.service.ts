@@ -9,6 +9,7 @@ import {
   consistencyScore, safetyScore, cleanLapRatio, dropOff,
 } from "./metrics.service"
 import { updateGoalProgress } from "./goals.service"
+import { evaluateAchievements } from "./achievements.service"
 import type { NormalizedSession } from "@/server/parsers/types"
 import type { ImportStatus } from "@prisma/client"
 
@@ -275,16 +276,29 @@ async function runImport(importFileId: string): Promise<void> {
   ])
 
   if (savedSession) {
-    await updateGoalProgress(userId, {
-      trackId: savedSession.trackId,
-      carId: savedSession.carId,
-      bestLapMs: savedSession.bestLapMs,
-      validLaps: savedSession.validLaps,
-      consistencyScore: savedSession.consistencyScore,
-      safetyScore: savedSession.safetyScore,
-      durationSec: savedSession.durationSec,
-      incidentCount: savedSession._count.incidents,
-    })
+    await Promise.all([
+      updateGoalProgress(userId, {
+        trackId: savedSession.trackId,
+        carId: savedSession.carId,
+        bestLapMs: savedSession.bestLapMs,
+        validLaps: savedSession.validLaps,
+        consistencyScore: savedSession.consistencyScore,
+        safetyScore: savedSession.safetyScore,
+        durationSec: savedSession.durationSec,
+        incidentCount: savedSession._count.incidents,
+      }),
+      evaluateAchievements({
+        userId,
+        sessionId: savedSession.id,
+        validLaps: savedSession.validLaps,
+        totalLaps: savedSession.totalLaps,
+        isNewPB: savedSession.isNewPB,
+        consistencyScore: savedSession.consistencyScore,
+        safetyScore: savedSession.safetyScore,
+        incidentCount: savedSession._count.incidents,
+        sessionType: savedSession.sessionType,
+      }),
+    ])
   }
 }
 

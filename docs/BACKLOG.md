@@ -118,8 +118,8 @@
 | AN-006 | Lap comparison (sector delta) | P1 | 🔲 | |
 | AN-007 | Goals page (list + progress + actions) | P1 | ✅ | List, create form, PATCH/DELETE API, GoalActions dropdown |
 | AN-008 | Goal auto-progress on import | P1 | ✅ | goals.service.ts; all 8 types + auto-complete + track/car scoping |
-| AN-009 | Achievement definitions (config) | P1 | 🔲 | 10 initial achievements |
-| AN-010 | Achievement unlock on import | P1 | 🔲 | |
+| AN-009 | Achievement definitions (config) | P1 | ✅ | 10 achievements in seed.ts |
+| AN-010 | Achievement unlock on import | P1 | ✅ | achievements.service.ts; 7/8 condition types; parallel with goal progress |
 | AN-011 | Achievement page | P1 | 🔲 | |
 | AN-012 | Session notes | P1 | 🔲 | |
 | AN-013 | Auto insight generation (rule-based) | P1 | 🔲 | Post-import |
