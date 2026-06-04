@@ -112,8 +112,8 @@
 |---|---|---|---|---|
 | AN-001 | Pace Score calculation | P1 | 🔲 | Requires historical PBs |
 | AN-002 | Improvement Score calculation | P1 | 🔲 | |
-| AN-003 | Full track analytics page | P1 | 🔲 | Extend PG-006 |
-| AN-004 | Full car analytics page | P1 | 🔲 | Extend PG-007 |
+| AN-003 | Full track analytics page | P1 | ✅ | PB evolution, improvement badge, session types, consistency trend, glass cards |
+| AN-004 | Full car analytics page | P1 | ✅ | Same as AN-003 + best-by-circuit + circuits count stat |
 | AN-005 | Session comparison view | P1 | 🔲 | Pick 2 sessions, compare |
 | AN-006 | Lap comparison (sector delta) | P1 | 🔲 | |
 | AN-007 | Goals page (list + progress + actions) | P1 | ✅ | List, create form, PATCH/DELETE API, GoalActions dropdown |

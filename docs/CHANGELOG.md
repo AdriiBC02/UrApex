@@ -8,7 +8,20 @@
 
 ## [Unreleased]
 
-> Next up: setups manager, track/car detail polish, AN-013 auto insights.
+> Next up: AN-001/002 Pace+Improvement scores, AN-014 evolution charts, AN-013 auto insights.
+
+---
+
+## [0.10.0] — 2026-06-05
+
+> AN-003/004 full track & car analytics — improvement badge, PB evolution, consistency trend, session type breakdown.
+
+### Added
+- `TrendChart` — generic recharts line chart for score/metric trends over time (color, domain, formatter configurable)
+
+### Changed
+- **Track detail** — running PB evolution (only plots new PBs), improvement badge (+Xs / X%), session type breakdown with bar, consistency trend chart, best-by-car with trophy for leader, glass Section wrapper, 6-stat strip with drive time, breadcrumb with back arrow
+- **Car detail** — same structure: running PB chart, improvement badge, session type breakdown, best-by-circuit list with trophy, consistency trend, 6-stat strip with circuits count, glass cards throughout
 
 ---
 
