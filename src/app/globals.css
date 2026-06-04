@@ -148,3 +148,33 @@
     @apply font-sans;
   }
 }
+
+/* App-wide grid background — applied via .app-bg */
+.app-bg {
+  position: relative;
+}
+
+.app-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgb(6 182 212 / 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(6 182 212 / 0.045) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app-bg::after {
+  content: "";
+  position: fixed;
+  top: -20%;
+  right: -10%;
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgb(6 182 212 / 0.045) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+

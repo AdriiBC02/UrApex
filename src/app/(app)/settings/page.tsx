@@ -1,8 +1,6 @@
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { PageHeader } from "@/components/shared/PageHeader"
 import { Settings, User, Shield } from "lucide-react"
 import { ProfileForm } from "@/features/auth/ProfileForm"
 
@@ -10,31 +8,30 @@ export default async function SettingsPage() {
   const session = await auth()
   if (!session?.user?.id) redirect("/login")
 
-  const profile = await db.driverProfile.findUnique({
-    where: { userId: session.user.id },
-  })
-
-  const user = await db.user.findUnique({
-    where: { id: session.user.id },
-    select: { email: true, name: true },
-  })
+  const [profile, user] = await Promise.all([
+    db.driverProfile.findUnique({ where: { userId: session.user.id } }),
+    db.user.findUnique({
+      where: { id: session.user.id },
+      select: { email: true, name: true },
+    }),
+  ])
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <PageHeader title="Settings" icon={Settings} />
+    <div className="space-y-8 max-w-2xl">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">Settings</h1>
+        <p className="text-sm text-zinc-500 mt-0.5">Manage your profile and account preferences.</p>
+      </div>
 
       {/* Profile */}
-      <Card className="bg-zinc-900 border-zinc-800">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <User className="w-4 h-4 text-zinc-400" />
-            Profile
-          </CardTitle>
-          <CardDescription className="text-zinc-500">
-            Your public display information.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden">
+        <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-zinc-800/60">
+          <User className="w-3.5 h-3.5 text-zinc-500" />
+          <h2 className="text-sm font-semibold text-zinc-300">Profile</h2>
+          <span className="text-xs text-zinc-600 ml-auto">Public display information</span>
+        </div>
+        <div className="p-5">
           <ProfileForm
             initialData={{
               displayName: profile?.displayName ?? user?.name ?? "",
@@ -42,26 +39,27 @@ export default async function SettingsPage() {
               bio: profile?.bio ?? "",
             }}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Account info (read-only for now) */}
-      <Card className="bg-zinc-900 border-zinc-800">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Shield className="w-4 h-4 text-zinc-400" />
-            Account
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div>
-              <p className="text-xs text-zinc-500 mb-0.5">Email</p>
-              <p className="text-sm text-zinc-300">{user?.email}</p>
-            </div>
+      {/* Account */}
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden">
+        <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-zinc-800/60">
+          <Shield className="w-3.5 h-3.5 text-zinc-500" />
+          <h2 className="text-sm font-semibold text-zinc-300">Account</h2>
+        </div>
+        <div className="p-5 space-y-4">
+          <div>
+            <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-1.5">Email</p>
+            <p className="text-sm text-zinc-300 font-medium">{user?.email}</p>
           </div>
-        </CardContent>
-      </Card>
+          <div className="pt-3 border-t border-zinc-800/60">
+            <p className="text-xs text-zinc-600">
+              Password changes and account deletion coming soon.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

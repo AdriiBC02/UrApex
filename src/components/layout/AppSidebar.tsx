@@ -63,7 +63,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const displayName = user.name ?? user.email ?? "Driver"
 
   return (
-    <aside className="flex flex-col h-full w-58 bg-zinc-950 border-r border-zinc-800/60">
+    <aside className="relative flex flex-col h-full w-58 bg-zinc-950/90 backdrop-blur-md border-r border-zinc-800/50 z-10">
       {/* Logo */}
       <div className="px-4 py-4 border-b border-zinc-800/60">
         <Link href="/dashboard" className="flex items-center gap-2.5 group">

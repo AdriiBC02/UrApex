@@ -8,7 +8,22 @@
 
 ## [Unreleased]
 
-> Next up: Session notes, setups manager, loading states per-page, track/car detail polish.
+> Next up: AN-012 session notes, setups manager, track/car detail polish.
+
+---
+
+## [0.8.0] — 2026-06-05
+
+> Dashboard v3 + UI polish pass 3 — score rings, glass cards, UploadZone fix, GoalForm visual redesign.
+
+### Changed
+- **Dashboard** — Driver Rating banner (full-width, composite score + letter grade + 3 rings), SVG score rings with CSS drop-shadow glow (no box artifacts), glass cards (`bg-zinc-900/50 backdrop-blur-sm`), session rows with colored 3px left border + consistency mini-bar + position badge, week delta in stats, empty-state CTA aligned to sessions card height
+- **UploadZone** — `useRef` programmatic click replaces `absolute inset-0 opacity-0` input (fixes browser tooltip), horizontal layout with Browse button, file size display
+- **GoalForm** — 3×3 visual type-selector grid replacing dropdown, each type has icon + color, target value panel shows selected type's icon, plain `<button>` replaces shadcn deps
+- **Settings page** — replaces Card/CardHeader with `rounded-2xl border` sections, consistent with rest of app
+- **New Goal page** — `rounded-2xl` container, updated description mentioning auto-progress, `NonNullable` type guards on track/car queries
+- **Sidebar** — `bg-zinc-950/90 backdrop-blur-md` subtle glass effect
+- **globals.css** — grid opacity bumped to 4.5%, second blob as layout div, app-wide grid via `.app-bg::before/::after`
 
 ---
 
