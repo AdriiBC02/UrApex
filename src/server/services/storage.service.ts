@@ -1,5 +1,12 @@
 import fs from "fs/promises"
 import path from "path"
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+  HeadObjectCommand,
+} from "@aws-sdk/client-s3"
 
 export interface StorageService {
   save(buffer: Buffer, key: string): Promise<string>
@@ -8,7 +15,7 @@ export interface StorageService {
   exists(storagePath: string): Promise<boolean>
 }
 
-// ─── Local filesystem implementation (dev + single-instance prod) ─────────────
+// ─── Local filesystem (dev) ───────────────────────────────────────────────────
 
 class LocalStorageService implements StorageService {
   private basePath: string
@@ -18,7 +25,6 @@ class LocalStorageService implements StorageService {
   }
 
   private fullPath(key: string): string {
-    // Sanitize key to prevent path traversal
     const safe = key.replace(/\.\./g, "").replace(/^\/+/, "")
     return path.join(this.basePath, safe)
   }
@@ -35,14 +41,70 @@ class LocalStorageService implements StorageService {
   }
 
   async delete(storagePath: string): Promise<void> {
-    await fs.unlink(storagePath).catch(() => {
-      // Ignore if file already gone
-    })
+    await fs.unlink(storagePath).catch(() => {})
   }
 
   async exists(storagePath: string): Promise<boolean> {
-    return fs
-      .access(storagePath)
+    return fs.access(storagePath).then(() => true).catch(() => false)
+  }
+}
+
+// ─── S3-compatible (Cloudflare R2 / AWS S3) ──────────────────────────────────
+
+class S3StorageService implements StorageService {
+  private client: S3Client
+  private bucket: string
+
+  constructor() {
+    const bucket   = process.env.S3_BUCKET
+    const region   = process.env.S3_REGION   ?? "auto"
+    const endpoint = process.env.S3_ENDPOINT
+    const accessKeyId     = process.env.S3_ACCESS_KEY
+    const secretAccessKey = process.env.S3_SECRET_KEY
+
+    if (!bucket || !accessKeyId || !secretAccessKey) {
+      throw new Error("S3 storage requires S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY")
+    }
+
+    this.bucket = bucket
+    this.client = new S3Client({
+      region,
+      endpoint,
+      credentials: { accessKeyId, secretAccessKey },
+      // R2 requires path-style addressing
+      forcePathStyle: !!endpoint,
+    })
+  }
+
+  async save(buffer: Buffer, key: string): Promise<string> {
+    await this.client.send(new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      Body: buffer,
+      ContentType: "text/xml",
+    }))
+    return key
+  }
+
+  async read(storagePath: string): Promise<Buffer> {
+    const res = await this.client.send(new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: storagePath,
+    }))
+    const bytes = await res.Body!.transformToByteArray()
+    return Buffer.from(bytes)
+  }
+
+  async delete(storagePath: string): Promise<void> {
+    await this.client.send(new DeleteObjectCommand({
+      Bucket: this.bucket,
+      Key: storagePath,
+    }))
+  }
+
+  async exists(storagePath: string): Promise<boolean> {
+    return this.client
+      .send(new HeadObjectCommand({ Bucket: this.bucket, Key: storagePath }))
       .then(() => true)
       .catch(() => false)
   }
@@ -55,17 +117,15 @@ let instance: StorageService | null = null
 export function getStorageService(): StorageService {
   if (!instance) {
     const provider = process.env.STORAGE_PROVIDER ?? "local"
-    if (provider === "local") {
-      instance = new LocalStorageService()
+    if (provider === "s3") {
+      instance = new S3StorageService()
     } else {
-      // S3 implementation goes here in Phase 2
-      throw new Error(`Storage provider "${provider}" is not yet implemented`)
+      instance = new LocalStorageService()
     }
   }
   return instance
 }
 
-/** Generates the storage key for a raw import file. */
 export function rawFileKey(userId: string, fileHash: string): string {
   return `raw/${userId}/${fileHash}.xml`
 }
