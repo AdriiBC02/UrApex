@@ -97,12 +97,12 @@
 | PG-003 | Upload Center page | P0 | ✅ | Drag & drop + history |
 | PG-004 | Session history page | P0 | ✅ | Table + type filters + pagination |
 | PG-005 | Session detail page | P0 | ✅ | Metrics, laps, sectors, participants, chart |
-| PG-006 | Track detail page (basic) | P1 | 🔲 | Next up |
-| PG-007 | Car detail page (basic) | P1 | 🔲 | |
+| PG-006 | Track detail page (basic) | P1 | ✅ | PB evolution chart + best by car + sessions |
+| PG-007 | Car detail page (basic) | P1 | ✅ | Best by circuit + sessions |
 | PG-008 | Empty states for all pages | P1 | ✅ | `EmptyState` component done |
-| PG-009 | Loading skeletons | P1 | 🔲 | |
-| PG-010 | 404 page | P1 | 🔲 | |
-| PG-011 | Error boundaries | P1 | 🔲 | |
+| PG-009 | Loading skeletons | P1 | ✅ | StatCard, SessionRow, Dashboard, Table |
+| PG-010 | 404 page | P1 | ✅ | Branded not-found.tsx |
+| PG-011 | Error boundaries | P1 | ✅ | app/(app)/error.tsx |
 
 ---
 
@@ -116,7 +116,7 @@
 | AN-004 | Full car analytics page | P1 | 🔲 | Extend PG-007 |
 | AN-005 | Session comparison view | P1 | 🔲 | Pick 2 sessions, compare |
 | AN-006 | Lap comparison (sector delta) | P1 | 🔲 | |
-| AN-007 | Goals CRUD | P1 | 🔲 | |
+| AN-007 | Goals page (list + progress) | P1 | ✅ | Create form in next commit |
 | AN-008 | Goal auto-progress on import | P1 | 🔲 | |
 | AN-009 | Achievement definitions (config) | P1 | 🔲 | 10 initial achievements |
 | AN-010 | Achievement unlock on import | P1 | 🔲 | |

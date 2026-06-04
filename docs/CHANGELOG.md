@@ -8,7 +8,47 @@
 
 ## [Unreleased]
 
-> Next up: Track detail, Car detail, basic track/car pages, session notes, track/car analytics.
+> Next up: Session notes, goals create form, setups manager, loading states wired per-page.
+
+---
+
+## [0.3.0] — 2026-06-04
+
+> Phase 1 complete — all MVP pages, UI component system, error handling.
+
+### Added
+
+**UI Component System**
+- `StatCard` — reusable stat card with icon, optional delta and accent
+- `ScoreBadge` / `ScoreRow` — 0–100 score with color coding (green/lime/yellow/orange/red)
+- `PageHeader` — consistent page header with icon, description, action slot
+- `Skeletons` — `StatCardSkeleton`, `SessionRowSkeleton`, `DashboardSkeleton`, `TableSkeleton`
+- `PBEvolutionChart` — best lap evolution over time (Y-axis reversed, Recharts)
+
+**Pages**
+- `/tracks` — grid of circuits driven with best lap and session count
+- `/tracks/[slug]` — stat cards + PB evolution chart + best lap by car + session table
+- `/cars` — grid of cars used with best lap and session count
+- `/cars/[slug]` — stat cards + best lap by circuit + session table
+- `/goals` — active/completed goals with progress bars + rarity-colored cards
+- `/achievements` — full grid: unlocked/in-progress/locked with rarity styles and progress bars
+- `/setups` — placeholder (Phase 3)
+- `/settings` — profile edit (displayName, country) + account info
+- `/` (landing) + `/login` + `/register` — already done, mentioned for completeness
+
+**API**
+- `GET /api/profile` — return current user's driver profile
+- `PATCH /api/profile` — update displayName, country, bio
+
+**Error handling**
+- `src/app/not-found.tsx` — branded 404 with UrApex logo and back to dashboard button
+- `src/app/(app)/error.tsx` — error boundary with reset button
+
+**Dashboard improvements**
+- 2-column layout: sessions list + scores/PBs sidebar
+- `ScoreBadge` on Consistency, Safety, Pace scores
+- Recent PBs widget
+- Quick actions for new users (empty state)
 
 ---
 
