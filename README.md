@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# UrApex
 
-## Getting Started
+> **Your apex starts here.**
 
-First, run the development server:
+A driver development platform for sim racers. Import your sessions, track your progress, drive faster.
+
+## Stack
+
+- **Framework:** Next.js 16 (App Router, Turbopack)
+- **Language:** TypeScript (strict)
+- **Styling:** TailwindCSS v4 + shadcn/ui
+- **Database:** PostgreSQL + Prisma 7
+- **Auth:** Auth.js v5 (JWT, Credentials provider)
+- **Charts:** Recharts
+- **Validation:** Zod
+
+## Quick Start
 
 ```bash
+# 1. Install dependencies
+npm install
+
+# 2. Copy environment file
+cp .env.example .env.local
+# Fill in DATABASE_URL and AUTH_SECRET
+
+# 3. Start PostgreSQL (Docker, or Homebrew on macOS)
+docker compose up -d
+# or: brew services start postgresql@14
+
+# 4. Create DB and run migrations
+createdb urapex
+npx prisma migrate dev
+
+# 5. Seed initial data (simulators, achievements)
+npx prisma db seed
+
+# 6. Start dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+App at `http://localhost:3000`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Documentation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Full project documentation lives in [`/docs`](./docs):
 
-## Learn More
+- [`docs/README.md`](docs/README.md) — Full doc index
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — Phase roadmap
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Technical architecture
+- [`docs/MVP_SCOPE.md`](docs/MVP_SCOPE.md) — What's in/out of MVP
 
-To learn more about Next.js, take a look at the following resources:
+## Current Status
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Phase 1 — MVP in progress. See [`docs/CHANGELOG.md`](docs/CHANGELOG.md) for what's been built.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run dev          # Start development server
+npm run build        # Production build
+npm run test         # Run unit tests (Vitest)
+npm run db:migrate   # Run Prisma migrations
+npm run db:seed      # Seed the database
+npm run db:studio    # Open Prisma Studio
+```

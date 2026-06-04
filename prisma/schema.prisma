@@ -1,0 +1,562 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── AUTH ────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  password      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  accounts      Account[]
+  sessions      AuthSession[]
+  profile       DriverProfile?
+  importFiles   ImportFile[]
+  gameSessions  Session[]
+  goals         Goal[]
+  achievements  UserAchievement[]
+  setups        Setup[]
+
+  @@index([email])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model AuthSession {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── DRIVER PROFILE ──────────────────────────────────────────────────────────
+
+model DriverProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  displayName String?
+  country     String?
+  bio         String?  @db.Text
+  avatarUrl   String?
+  isPublic    Boolean  @default(false)
+
+  simulatorSlugs String[]
+
+  // Cached global stats — updated on each import
+  totalSessions    Int @default(0)
+  totalLaps        Int @default(0)
+  totalDriveTimeSec Int @default(0)
+  uniqueTracks     Int @default(0)
+  uniqueCars       Int @default(0)
+
+  // Cached global scores
+  paceScore        Float?
+  consistencyScore Float?
+  safetyScore      Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── SIMULATOR ───────────────────────────────────────────────────────────────
+
+model Simulator {
+  id       String  @id @default(cuid())
+  slug     String  @unique
+  name     String
+  isActive Boolean @default(true)
+
+  cars     Car[]
+  sessions Session[]
+  imports  ImportFile[]
+
+  @@index([slug])
+}
+
+// ─── IMPORT ──────────────────────────────────────────────────────────────────
+
+model ImportFile {
+  id          String  @id @default(cuid())
+  userId      String
+  simulatorId String?
+
+  originalName  String
+  storagePath   String
+  fileHash      String       @unique
+  fileSizeBytes Int
+  mimeType      String
+
+  status        ImportStatus @default(PENDING)
+  parserVersion String?
+  errorMessage  String?
+  errorDetails  Json?
+
+  importedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id])
+  simulator Simulator? @relation(fields: [simulatorId], references: [id])
+  session   Session?
+
+  @@index([userId])
+  @@index([fileHash])
+  @@index([status])
+  @@index([userId, status])
+}
+
+enum ImportStatus {
+  PENDING
+  PARSING
+  IMPORTED
+  FAILED
+  DUPLICATE
+}
+
+// ─── SESSION ─────────────────────────────────────────────────────────────────
+
+model Session {
+  id           String  @id @default(cuid())
+  userId       String
+  importFileId String? @unique
+  simulatorId  String
+  trackId      String
+  trackLayoutId String?
+  carId        String
+  carClassId   String?
+
+  sessionType  SessionType
+  sessionName  String?
+  serverName   String?
+  isOnline     Boolean   @default(false)
+  sessionDate  DateTime
+  durationSec  Int?
+
+  finalPosition Int?
+  totalLaps     Int     @default(0)
+  validLaps     Int     @default(0)
+  invalidLaps   Int     @default(0)
+  dnf           Boolean @default(false)
+  dq            Boolean @default(false)
+
+  weather      String?
+  tempAmbient  Float?
+  tempTrack    Float?
+  tyreCompound String?
+
+  // Cached metrics (ms = milliseconds)
+  bestLapMs        Int?
+  avgLapMs         Float?
+  medianLapMs      Float?
+  idealLapMs       Int?
+  stdDevMs         Float?
+  cleanLapRatio    Float?
+  consistencyScore Float?
+  safetyScore      Float?
+  paceScore        Float?
+  dropOffMs        Float?
+
+  isNewPB  Boolean @default(false)
+  isPublic Boolean @default(false)
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user         User                 @relation(fields: [userId], references: [id])
+  importFile   ImportFile?          @relation(fields: [importFileId], references: [id])
+  simulator    Simulator            @relation(fields: [simulatorId], references: [id])
+  track        Track                @relation(fields: [trackId], references: [id])
+  trackLayout  TrackLayout?         @relation(fields: [trackLayoutId], references: [id])
+  car          Car                  @relation(fields: [carId], references: [id])
+  carClass     CarClass?            @relation(fields: [carClassId], references: [id])
+  laps         Lap[]
+  participants SessionParticipant[]
+  incidents    Incident[]
+  penalties    Penalty[]
+  pitStops     PitStop[]
+  notes        SessionNote[]
+  setups       SessionSetup[]
+
+  @@index([userId])
+  @@index([trackId])
+  @@index([carId])
+  @@index([sessionDate])
+  @@index([sessionType])
+  @@index([simulatorId])
+  @@index([userId, sessionDate])
+  @@index([userId, trackId])
+  @@index([userId, carId])
+}
+
+enum SessionType {
+  PRACTICE
+  QUALIFYING
+  RACE
+  HOTLAP
+  TIME_TRIAL
+  UNKNOWN
+}
+
+// ─── LAPS ────────────────────────────────────────────────────────────────────
+
+model Lap {
+  id        String  @id @default(cuid())
+  sessionId String
+
+  lapNumber      Int
+  lapTimeMs      Int?
+  isValid        Boolean @default(true)
+  isPersonalBest Boolean @default(false)
+  isSessionBest  Boolean @default(false)
+
+  sector1Ms    Int?
+  sector2Ms    Int?
+  sector3Ms    Int?
+  fuelLoad     Float?
+  tyreCompound String?
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, lapNumber])
+  @@index([sessionId])
+  @@index([sessionId, isValid])
+}
+
+// ─── TRACKS ──────────────────────────────────────────────────────────────────
+
+model Track {
+  id       String  @id @default(cuid())
+  slug     String  @unique
+  name     String
+  country  String?
+  lengthM  Float?
+  timezone String?
+
+  aliases  TrackAlias[]
+  layouts  TrackLayout[]
+  sessions Session[]
+
+  @@index([slug])
+}
+
+model TrackLayout {
+  id      String @id @default(cuid())
+  trackId String
+  name    String
+  lengthM Float?
+
+  track    Track     @relation(fields: [trackId], references: [id])
+  sessions Session[]
+
+  @@unique([trackId, name])
+}
+
+model TrackAlias {
+  id          String @id @default(cuid())
+  trackId     String
+  rawName     String
+  simulatorId String
+
+  track Track @relation(fields: [trackId], references: [id])
+
+  @@unique([rawName, simulatorId])
+  @@index([trackId])
+}
+
+// ─── CARS ────────────────────────────────────────────────────────────────────
+
+model Car {
+  id           String  @id @default(cuid())
+  slug         String  @unique
+  name         String
+  manufacturer String?
+  year         Int?
+  simulatorId  String?
+  classId      String?
+
+  simulator Simulator? @relation(fields: [simulatorId], references: [id])
+  class     CarClass?  @relation(fields: [classId], references: [id])
+  aliases   CarAlias[]
+  sessions  Session[]
+
+  @@index([slug])
+  @@index([classId])
+}
+
+model CarAlias {
+  id          String @id @default(cuid())
+  carId       String
+  rawName     String
+  simulatorId String
+
+  car Car @relation(fields: [carId], references: [id])
+
+  @@unique([rawName, simulatorId])
+}
+
+model CarClass {
+  id          String  @id @default(cuid())
+  slug        String
+  name        String
+  simulatorId String?
+
+  cars     Car[]
+  sessions Session[]
+
+  @@unique([slug, simulatorId])
+}
+
+// ─── SESSION DATA ─────────────────────────────────────────────────────────────
+
+model SessionParticipant {
+  id        String @id @default(cuid())
+  sessionId String
+
+  driverName    String
+  teamName      String?
+  carName       String?
+  carClass      String?
+  position      Int?
+  lapsCompleted Int?
+  bestLapMs     Int?
+  totalTimeMs   BigInt?
+  gapToLeaderMs BigInt?
+  dnf           Boolean @default(false)
+  dq            Boolean @default(false)
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+model Incident {
+  id          String  @id @default(cuid())
+  sessionId   String
+  lapNumber   Int?
+  type        String?
+  description String?
+  severity    Int?
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+model Penalty {
+  id          String  @id @default(cuid())
+  sessionId   String
+  lapNumber   Int?
+  type        String?
+  description String?
+  timeSec     Float?
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+model PitStop {
+  id           String  @id @default(cuid())
+  sessionId    String
+  lapNumber    Int?
+  durationMs   Int?
+  fuelAdded    Float?
+  tyreChange   Boolean @default(false)
+  tyreCompound String?
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+model SessionNote {
+  id        String   @id @default(cuid())
+  sessionId String
+  content   String   @db.Text
+  tags      String[]
+  videoUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+// ─── SETUPS ──────────────────────────────────────────────────────────────────
+
+model Setup {
+  id          String  @id @default(cuid())
+  userId      String
+  simulatorId String
+  carId       String?
+  trackId     String?
+
+  name       String
+  conditions String?
+  type       String?
+  notes      String? @db.Text
+  isFavorite Boolean @default(false)
+  isObsolete Boolean @default(false)
+  isPublic   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User           @relation(fields: [userId], references: [id])
+  versions SetupVersion[]
+  sessions SessionSetup[]
+
+  @@index([userId])
+}
+
+model SetupVersion {
+  id          String   @id @default(cuid())
+  setupId     String
+  version     Int
+  storagePath String?
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  setup Setup @relation(fields: [setupId], references: [id], onDelete: Cascade)
+
+  @@unique([setupId, version])
+}
+
+model SessionSetup {
+  sessionId String
+  setupId   String
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  setup   Setup   @relation(fields: [setupId], references: [id])
+
+  @@id([sessionId, setupId])
+}
+
+// ─── GOALS ───────────────────────────────────────────────────────────────────
+
+model Goal {
+  id     String @id @default(cuid())
+  userId String
+
+  name        String
+  description String?
+  type        GoalType
+  status      GoalStatus @default(ACTIVE)
+
+  simulatorId String?
+  trackId     String?
+  carId       String?
+
+  targetValue  Float
+  currentValue Float  @default(0)
+  unit         String?
+
+  deadline    DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([userId, status])
+}
+
+enum GoalType {
+  BEST_LAP_TIME
+  CONSISTENCY_SCORE
+  CLEAN_LAP_COUNT
+  SESSION_COUNT
+  HOURS_DRIVEN
+  REDUCE_INCIDENTS
+  IMPROVE_SAFETY
+  COMPLETE_STINTS
+  CUSTOM
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  ABANDONED
+}
+
+// ─── ACHIEVEMENTS ─────────────────────────────────────────────────────────────
+
+model Achievement {
+  id          String            @id @default(cuid())
+  slug        String            @unique
+  name        String
+  description String
+  category    String
+  rarity      AchievementRarity
+  icon        String?
+  condition   Json
+  maxProgress Float             @default(100)
+
+  users UserAchievement[]
+}
+
+enum AchievementRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  progress      Float    @default(0)
+  unlockedAt    DateTime?
+
+  user        User        @relation(fields: [userId], references: [id])
+  achievement Achievement @relation(fields: [achievementId], references: [id])
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+}

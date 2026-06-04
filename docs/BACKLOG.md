@@ -1,0 +1,161 @@
+# UrApex — Development Backlog
+
+> Prioritized list of development tasks.
+> Each item is an actionable unit of work assigned to a phase and priority.
+> Update status as work progresses.
+
+---
+
+## Status Legend
+
+| Symbol | Status |
+|---|---|
+| 🔲 | To do |
+| 🔄 | In progress |
+| ✅ | Done |
+| ⏸ | Blocked |
+| ❌ | Cancelled |
+
+---
+
+## Phase 0 — Research
+
+| ID | Task | Priority | Status | Notes |
+|---|---|---|---|---|
+| R-001 | Collect 5+ LMU XML result files (practice, qualifying, race) | P0 | 🔲 | Need real files before any parser work |
+| R-002 | Document all XML fields found across file types | P0 | 🔲 | Create `docs/technical/lmu-xml-structure.md` |
+| R-003 | Create anonymized test fixtures in `fixtures/lmu/` | P0 | 🔲 | Remove driver names, server names |
+| R-004 | Define `NormalizedSession` TypeScript type | P0 | 🔲 | Based on real data only |
+| R-005 | List all metrics calculable from XML alone | P0 | 🔲 | Document in `docs/technical/import-pipeline.md` |
+| R-006 | List metrics requiring telemetry | P0 | 🔲 | Set correct phase expectations |
+| R-007 | Write LMU parser skeleton with basic tests | P0 | 🔲 | Validate the approach |
+
+---
+
+## Phase 1 — MVP
+
+### Infrastructure
+
+| ID | Task | Priority | Status | Notes |
+|---|---|---|---|---|
+| I-001 | Create Next.js 16 project with TypeScript strict | P0 | ✅ | Next.js 16 + Turbopack |
+| I-002 | Configure TailwindCSS v4 + shadcn/ui | P0 | ✅ | |
+| I-003 | Set up Docker Compose (PostgreSQL + Redis) | P0 | ✅ | |
+| I-004 | Configure Prisma 7 with PostgreSQL | P0 | ✅ | Required adapter pattern + prisma.config.ts |
+| I-005 | Write MVP Prisma schema (21 models) | P0 | ✅ | |
+| I-006 | Run first migration + seed | P0 | ✅ | 7 sims, 10 achievements seeded |
+| I-007 | Create seed script | P1 | ✅ | |
+| I-008 | Configure environment variables + `.env.example` | P0 | ✅ | |
+| I-009 | Set up Vitest for unit tests | P1 | ✅ | |
+| I-010 | Set up Playwright for E2E tests | P2 | 🔲 | Delay to Phase 3 |
+| I-011 | Create folder structure | P0 | ✅ | As defined in ARCHITECTURE.md |
+
+### Auth
+
+| ID | Task | Priority | Status | Notes |
+|---|---|---|---|---|
+| A-001 | Configure Auth.js v5 with Credentials provider | P0 | ✅ | JWT strategy, edge-safe split config |
+| A-002 | Register page + API route | P0 | ✅ | bcrypt cost 12, creates User + DriverProfile |
+| A-003 | Login page | P0 | ✅ | |
+| A-004 | Auth proxy (protect app routes) — Next.js 16 | P0 | ✅ | `proxy.ts` replaces `middleware.ts` |
+| A-005 | Create DriverProfile on register | P0 | ✅ | Created in same transaction as User |
+| A-006 | Logout action | P0 | ✅ | In sidebar via signOut() |
+| A-007 | Password reset flow | P1 | 🔲 | Delay to Phase 2 |
+
+### Storage
+
+| ID | Task | Priority | Status | Notes |
+|---|---|---|---|---|
+| S-001 | StorageService abstraction (local / S3) | P0 | 🔲 | Next up |
+| S-002 | Local storage implementation | P0 | 🔲 | Save to `./storage/raw/` |
+| S-003 | SHA-256 hash utility | P0 | ✅ | `lib/hash.ts` |
+| S-004 | S3-compatible storage implementation | P2 | 🔲 | Delay to Phase 2 |
+
+### Import Pipeline
+
+| ID | Task | Priority | Status | Notes |
+|---|---|---|---|---|
+| P-001 | Upload API route (`POST /api/upload`) | P0 | 🔲 | Next up |
+| P-002 | File type + size validation | P0 | 🔲 | |
+| P-003 | Hash calculation + duplicate check | P0 | 🔲 | |
+| P-004 | ImportFile record creation | P0 | 🔲 | |
+| P-005 | LMU parser implementation | P0 | 🔲 | Needs XML fixtures first |
+| P-006 | Parser registry | P0 | 🔲 | |
+| P-007 | Track normalizer | P0 | 🔲 | |
+| P-008 | Car normalizer | P0 | 🔲 | |
+| P-009 | Import job (sync MVP) | P0 | 🔲 | |
+| P-010 | Metrics calculation on import | P0 | 🔲 | `lib/time.ts` helpers ready |
+| P-011 | Import status polling endpoint | P1 | 🔲 | |
+| P-012 | Parser tests with fixtures | P0 | 🔲 | Needs real XML files |
+
+### Pages — MVP
+
+| ID | Task | Priority | Status | Notes |
+|---|---|---|---|---|
+| PG-001 | App layout with sidebar | P0 | ✅ | Dark theme, responsive sidebar |
+| PG-002 | Dashboard page | P0 | ✅ | Stats cards + recent sessions + empty state |
+| PG-003 | Upload Center page | P0 | 🔲 | Next up |
+| PG-004 | Session history page | P0 | 🔲 | |
+| PG-005 | Session detail page | P0 | 🔲 | |
+| PG-006 | Track detail page (basic) | P1 | 🔲 | |
+| PG-007 | Car detail page (basic) | P1 | 🔲 | |
+| PG-008 | Empty states for all pages | P1 | ✅ | `EmptyState` component done |
+| PG-009 | Loading skeletons | P1 | 🔲 | |
+| PG-010 | 404 page | P1 | 🔲 | |
+| PG-011 | Error boundaries | P1 | 🔲 | |
+
+---
+
+## Phase 2 — Analytics
+
+| ID | Task | Priority | Status | Notes |
+|---|---|---|---|---|
+| AN-001 | Pace Score calculation | P1 | 🔲 | Requires historical PBs |
+| AN-002 | Improvement Score calculation | P1 | 🔲 | |
+| AN-003 | Full track analytics page | P1 | 🔲 | Extend PG-006 |
+| AN-004 | Full car analytics page | P1 | 🔲 | Extend PG-007 |
+| AN-005 | Session comparison view | P1 | 🔲 | Pick 2 sessions, compare |
+| AN-006 | Lap comparison (sector delta) | P1 | 🔲 | |
+| AN-007 | Goals CRUD | P1 | 🔲 | |
+| AN-008 | Goal auto-progress on import | P1 | 🔲 | |
+| AN-009 | Achievement definitions (config) | P1 | 🔲 | 10 initial achievements |
+| AN-010 | Achievement unlock on import | P1 | 🔲 | |
+| AN-011 | Achievement page | P1 | 🔲 | |
+| AN-012 | Session notes | P1 | 🔲 | |
+| AN-013 | Auto insight generation (rule-based) | P1 | 🔲 | Post-import |
+| AN-014 | Weekly evolution charts | P1 | 🔲 | |
+| AN-015 | BullMQ + Redis for async jobs | P1 | 🔲 | Replace sync processing |
+| AN-016 | Metric recalculation job | P1 | 🔲 | For parser updates |
+
+---
+
+## Phase 3 — Polish
+
+| ID | Task | Priority | Status | Notes |
+|---|---|---|---|---|
+| PO-001 | Onboarding flow (3 steps) | P1 | 🔲 | |
+| PO-002 | Setup manager | P1 | 🔲 | |
+| PO-003 | Driver profile page | P1 | 🔲 | |
+| PO-004 | Privacy controls | P1 | 🔲 | |
+| PO-005 | Advanced session filters | P2 | 🔲 | |
+| PO-006 | Data export (CSV) | P2 | 🔲 | GDPR requirement |
+| PO-007 | Responsive design audit | P1 | 🔲 | |
+| PO-008 | Cmd+K command palette | P2 | 🔲 | |
+| PO-009 | Post-session ritual modal | P2 | 🔲 | |
+| PO-010 | Racecraft Score | P2 | 🔲 | |
+| PO-011 | Qualifying Score | P2 | 🔲 | |
+
+---
+
+## Unplanned / Ideas
+
+> Items here are not committed to any phase. See IDEAS.md for full list.
+
+| ID | Idea | Source |
+|---|---|---|
+| U-001 | Heatmap calendar (GitHub-style) | Internal idea |
+| U-002 | Driver DNA radar chart | Internal idea |
+| U-003 | Streak tracking | Internal idea |
+| U-004 | Progress certificates (shareable image) | Internal idea |
+| U-005 | Voice notes via Whisper API | Internal idea |
+| U-006 | "Weak spot detector" without telemetry | Internal idea |
