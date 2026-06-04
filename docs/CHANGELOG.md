@@ -8,7 +8,38 @@
 
 ## [Unreleased]
 
-> Next up: onboarding flow, advanced session filters, CSV export, AN-015 BullMQ, compile companion app on Windows.
+> Next up: AN-015 BullMQ, recent achievements widget on dashboard, compile companion app on Windows.
+
+---
+
+## [0.17.0] — 2026-06-04
+
+> PO-001 onboarding + PO-005 advanced session filters + PO-006 CSV export.
+
+### Added
+- **Onboarding wizard** (`/onboarding`) — 3-step flow for new users:
+  - Step 1: Welcome screen with feature grid (4 cards) + skip link
+  - Step 2: Upload first XML (full UploadZone embedded — driver selection modal appears
+    automatically); advances to Step 3 via `onImported(sessionId)` callback
+  - Step 3: Done screen with what's-next checklist; "View my session" deep-links to the
+    newly imported session; fires `PATCH /api/profile { onboardingDone: true }`
+  - Own layout (`/onboarding/layout.tsx`) — no sidebar, full-screen centered
+- **`DriverProfile.onboardingDone`** — Boolean flag (default false); migration marks
+  existing users with sessions as done; register now redirects to `/onboarding`
+- **App layout** — redirects to `/onboarding` when `!profile.onboardingDone`
+- **`UploadZone.onImported`** — optional callback prop fires after first successful import
+- **Advanced session filters** (`SessionFilters` client component):
+  - Session type chips (All / Practice / Qualifying / Race / Hot lap)
+  - PB-only toggle (shows only sessions where `isNewPB = true`)
+  - Track dropdown (populated from user's driven tracks)
+  - Car dropdown (populated from user's driven cars)
+  - Date range picker (from / to)
+  - Sort: newest first / oldest first / best lap ↑ / consistency ↓
+  - All filters via URL searchParams → server-rendered, shareable, bookmark-friendly
+  - "Clear (N)" button shows count of active filters
+- **CSV export** — two endpoints, download links in Settings → Data export:
+  - `GET /api/export/sessions` — all sessions: date, track, car, type, all metrics
+  - `GET /api/export/laps` — all laps: session context, lap time, sectors, fuel, tyre
 
 ---
 

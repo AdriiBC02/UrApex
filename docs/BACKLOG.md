@@ -133,12 +133,12 @@
 
 | ID | Task | Priority | Status | Notes |
 |---|---|---|---|---|
-| PO-001 | Onboarding flow (3 steps) | P1 | 🔲 | |
+| PO-001 | Onboarding flow (3 steps) | P1 | ✅ | 3-step wizard: welcome, upload+driver selection, done screen | |
 | PO-002 | Setup manager | P1 | 🔄 | List + CRUD API + create form done; detail page + version history pending |
 | PO-003 | Driver profile page | P1 | 🔲 | |
 | PO-004 | Privacy controls | P1 | 🔲 | |
-| PO-005 | Advanced session filters | P2 | 🔲 | |
-| PO-006 | Data export (CSV) | P2 | 🔲 | GDPR requirement |
+| PO-005 | Advanced session filters | P2 | ✅ | type chips, PB-only, track/car dropdowns, date range, sort — all via URL searchParams |
+| PO-006 | Data export (CSV) | P2 | ✅ | GET /api/export/sessions + /api/export/laps; download links in Settings |
 | PO-007 | Responsive design audit | P1 | 🔲 | |
 | PO-008 | Cmd+K command palette | P2 | 🔲 | |
 | PO-009 | Post-session ritual modal | P2 | 🔲 | |
