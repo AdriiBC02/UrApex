@@ -66,8 +66,8 @@
 
 | ID | Task | Priority | Status | Notes |
 |---|---|---|---|---|
-| S-001 | StorageService abstraction (local / S3) | P0 | 🔲 | Next up |
-| S-002 | Local storage implementation | P0 | 🔲 | Save to `./storage/raw/` |
+| S-001 | StorageService abstraction (local / S3) | P0 | ✅ | |
+| S-002 | Local storage implementation | P0 | ✅ | `./storage/raw/{userId}/{hash}.xml` |
 | S-003 | SHA-256 hash utility | P0 | ✅ | `lib/hash.ts` |
 | S-004 | S3-compatible storage implementation | P2 | 🔲 | Delay to Phase 2 |
 
@@ -75,18 +75,18 @@
 
 | ID | Task | Priority | Status | Notes |
 |---|---|---|---|---|
-| P-001 | Upload API route (`POST /api/upload`) | P0 | 🔲 | Next up |
-| P-002 | File type + size validation | P0 | 🔲 | |
-| P-003 | Hash calculation + duplicate check | P0 | 🔲 | |
-| P-004 | ImportFile record creation | P0 | 🔲 | |
-| P-005 | LMU parser implementation | P0 | 🔲 | Needs XML fixtures first |
-| P-006 | Parser registry | P0 | 🔲 | |
-| P-007 | Track normalizer | P0 | 🔲 | |
-| P-008 | Car normalizer | P0 | 🔲 | |
-| P-009 | Import job (sync MVP) | P0 | 🔲 | |
-| P-010 | Metrics calculation on import | P0 | 🔲 | `lib/time.ts` helpers ready |
-| P-011 | Import status polling endpoint | P1 | 🔲 | |
-| P-012 | Parser tests with fixtures | P0 | 🔲 | Needs real XML files |
+| P-001 | Upload API route (`POST /api/upload`) | P0 | ✅ | |
+| P-002 | File type + size validation | P0 | ✅ | |
+| P-003 | Hash calculation + duplicate check | P0 | ✅ | |
+| P-004 | ImportFile record creation | P0 | ✅ | |
+| P-005 | LMU parser implementation | P0 | ✅ | Skeleton — adjustable with real XMLs |
+| P-006 | Parser registry | P0 | ✅ | |
+| P-007 | Track normalizer | P0 | ✅ | |
+| P-008 | Car normalizer | P0 | ✅ | |
+| P-009 | Import job (sync MVP) | P0 | ✅ | |
+| P-010 | Metrics calculation on import | P0 | ✅ | |
+| P-011 | Import status check endpoint | P1 | ✅ | GET/POST/DELETE /api/import/[id] |
+| P-012 | Parser tests with fixtures | P0 | ✅ | 15 tests passing |
 
 ### Pages — MVP
 
@@ -94,10 +94,10 @@
 |---|---|---|---|---|
 | PG-001 | App layout with sidebar | P0 | ✅ | Dark theme, responsive sidebar |
 | PG-002 | Dashboard page | P0 | ✅ | Stats cards + recent sessions + empty state |
-| PG-003 | Upload Center page | P0 | 🔲 | Next up |
-| PG-004 | Session history page | P0 | 🔲 | |
-| PG-005 | Session detail page | P0 | 🔲 | |
-| PG-006 | Track detail page (basic) | P1 | 🔲 | |
+| PG-003 | Upload Center page | P0 | ✅ | Drag & drop + history |
+| PG-004 | Session history page | P0 | ✅ | Table + type filters + pagination |
+| PG-005 | Session detail page | P0 | ✅ | Metrics, laps, sectors, participants, chart |
+| PG-006 | Track detail page (basic) | P1 | 🔲 | Next up |
 | PG-007 | Car detail page (basic) | P1 | 🔲 | |
 | PG-008 | Empty states for all pages | P1 | ✅ | `EmptyState` component done |
 | PG-009 | Loading skeletons | P1 | 🔲 | |

@@ -8,7 +8,65 @@
 
 ## [Unreleased]
 
-> Next up: Storage service, upload API, LMU XML parser, import job.
+> Next up: Track detail, Car detail, basic track/car pages, session notes, track/car analytics.
+
+---
+
+## [0.2.0] — 2026-06-04
+
+> Phase 1 — Complete import pipeline: storage, parser, normalizers, metrics, upload UI, session pages.
+
+### Added
+
+**StorageService**
+- `StorageService` interface with `save`, `read`, `delete`, `exists`
+- `LocalStorageService` implementation (dev/single-instance prod)
+- `rawFileKey(userId, fileHash)` helper for consistent paths
+
+**Parser system**
+- `IParser` interface + `NormalizedSession` type + `ParsedLap/Participant/Incident/Penalty/PitStop`
+- `LMUParser` — rFactor 2/LMU XML parser with defensive field extraction
+  - Handles multiple root elements: `<Standings>`, `<Race>`, `<Qualify>`, `<Practice>`
+  - Converts rF2 time format (seconds float → milliseconds)
+  - Auto-detects session type, extracts laps, sectors, participants, pit stops, penalties
+  - Non-fatal warnings instead of crashes on missing optional fields
+- `ParserRegistry` with `detectParser()` and `getParser()` + `parseFile()` helper
+- `fixtures/lmu/race_minimal.xml` — test fixture with 5 laps, 3 participants
+- `tests/unit/parsers/lmu.test.ts` — 15 unit tests, all passing
+
+**Normalizers**
+- `TrackNormalizer.findOrCreateTrack()` — rawName → Track with alias table
+- `CarNormalizer.findOrCreateCar()` / `findOrCreateCarClass()` — rawName → Car/CarClass with alias
+
+**Metrics service**
+- `bestLap`, `avgLap`, `medianLap`, `idealLap` (sum of best sectors)
+- `stdDev`, `cleanLapRatio`, `dropOff` (pace degradation)
+- `consistencyScore` — 0–100 based on coefficient of variation
+- `safetyScore` — 0–100 weighted by incidents, penalties, DNF/DQ, invalid laps
+
+**Import service**
+- `handleUpload()` — SHA-256 dedup check, raw file save, ImportFile record creation
+- `processImport()` — full pipeline: parse → normalize → metrics → PB detection → DB transaction
+- Bulk inserts for laps (100+), participants, incidents, penalties, pit stops
+- PB detection against historical best at same track/car
+- `updateProfileStats()` — recalculates and caches DriverProfile aggregates
+
+**API routes**
+- `POST /api/upload` — multipart file upload with type/size validation, sync import
+- `GET /api/import/[id]` — import status check
+- `POST /api/import/[id]` — retry failed import
+- `DELETE /api/import/[id]` — soft-delete session + hard-delete ImportFile
+
+**Pages**
+- `/upload` — drag & drop zone + real-time status feedback + import history
+- `/sessions` — table with type filter chips + pagination (20/page)
+- `/sessions/[id]` — full session detail: metric cards, lap table, sector breakdown, participants, incidents/penalties
+
+**Charts**
+- `LapTimeChart` — Recharts line chart with PB highlighted in green, invalid laps muted
+
+### Internal
+- `vitest.config.ts` — Vitest configured with path alias `@/` → `src/`
 
 ---
 
