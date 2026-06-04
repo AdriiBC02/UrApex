@@ -8,7 +8,42 @@
 
 ## [Unreleased]
 
-> Next up: AN-015 BullMQ, recent achievements widget on dashboard, compile companion app on Windows.
+> Next up: AN-015 BullMQ, compile companion app on Windows.
+
+---
+
+## [0.18.0] — 2026-06-04
+
+> Dashboard achievements widget + PO-002 setup detail + PO-003 driver profile + PO-010/011 scores.
+
+### Added
+- **Recent achievements widget** on dashboard right column (last 3 unlocked, rarity icon + color, unlock date)
+- **Setup detail page** (`/setups/[id]`) — PO-002 complete:
+  - Header with name, favorite star, simulator, conditions, updated-at
+  - 4 meta cards: car (linked), circuit (linked), version count, session count
+  - Notes section
+  - Version history with "Add version vN" inline form (`AddVersionForm` client component)
+  - Sessions linked to this setup
+  - `POST /api/setups/[id]/versions` — creates `SetupVersion`, bumps `updatedAt`
+  - Setups list cards: title is now a link + "View →" arrow link
+- **Driver profile page** (`/profile`) — PO-003:
+  - Profile card: avatar initial, display name, country, in-game name, join date, bio
+  - 5-stat strip: sessions, laps, drive time, circuits, cars
+  - 6-score grade grid: Consistency/Safety/Pace/Improvement/Racecraft/Qualifying
+  - Top 3 circuits + top 3 cars by session count with best lap times
+  - Achievements progress bar with count and link
+  - Recent sessions list
+  - "Profile" link added to sidebar footer
+- **Racecraft Score (0–100)** — PO-010 — RACE sessions only:
+  - Formula: position_score×0.5 + safety×0.3 + consistency×0.2
+  - position_score = (participants − finalPosition) / (participants − 1) × 100
+  - Stored per session + rolling avg on DriverProfile
+  - Shows as 5th ring on dashboard (when available), metric tile on session detail
+- **Qualifying Score (0–100)** — PO-011 — QUALIFYING sessions only:
+  - Formula: position_score×0.7 + consistency×0.3
+  - Stored per session + rolling avg on DriverProfile
+  - Shows as 6th ring on dashboard (when available), metric tile on session detail
+- Schema migration `add_racecraft_qualifying_scores`
 
 ---
 

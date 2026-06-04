@@ -134,16 +134,16 @@
 | ID | Task | Priority | Status | Notes |
 |---|---|---|---|---|
 | PO-001 | Onboarding flow (3 steps) | P1 | ✅ | 3-step wizard: welcome, upload+driver selection, done screen | |
-| PO-002 | Setup manager | P1 | 🔄 | List + CRUD API + create form done; detail page + version history pending |
-| PO-003 | Driver profile page | P1 | 🔲 | |
+| PO-002 | Setup manager | P1 | ✅ | List + CRUD API + create form + detail page + version history + sessions linked |
+| PO-003 | Driver profile page | P1 | ✅ | /profile — stats, scores, top circuits/cars, achievements bar, recent sessions |
 | PO-004 | Privacy controls | P1 | 🔲 | |
 | PO-005 | Advanced session filters | P2 | ✅ | type chips, PB-only, track/car dropdowns, date range, sort — all via URL searchParams |
 | PO-006 | Data export (CSV) | P2 | ✅ | GET /api/export/sessions + /api/export/laps; download links in Settings |
 | PO-007 | Responsive design audit | P1 | 🔲 | |
 | PO-008 | Cmd+K command palette | P2 | 🔲 | |
 | PO-009 | Post-session ritual modal | P2 | 🔲 | |
-| PO-010 | Racecraft Score | P2 | 🔲 | |
-| PO-011 | Qualifying Score | P2 | 🔲 | |
+| PO-010 | Racecraft Score | P2 | ✅ | position(50%)+safety(30%)+consistency(20%) on RACE sessions; ring on dashboard |
+| PO-011 | Qualifying Score | P2 | ✅ | grid-position(70%)+consistency(30%) on QUALIFYING sessions; ring on dashboard |
 
 ---
 
