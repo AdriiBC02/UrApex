@@ -117,7 +117,7 @@
 | AN-005 | Session comparison view | P1 | 🔲 | Pick 2 sessions, compare |
 | AN-006 | Lap comparison (sector delta) | P1 | 🔲 | |
 | AN-007 | Goals page (list + progress + actions) | P1 | ✅ | List, create form, PATCH/DELETE API, GoalActions dropdown |
-| AN-008 | Goal auto-progress on import | P1 | 🔲 | |
+| AN-008 | Goal auto-progress on import | P1 | ✅ | goals.service.ts; all 8 types + auto-complete + track/car scoping |
 | AN-009 | Achievement definitions (config) | P1 | 🔲 | 10 initial achievements |
 | AN-010 | Achievement unlock on import | P1 | 🔲 | |
 | AN-011 | Achievement page | P1 | 🔲 | |

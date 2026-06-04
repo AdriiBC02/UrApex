@@ -8,6 +8,7 @@ import {
   bestLap, avgLap, medianLap, idealLap, stdDev,
   consistencyScore, safetyScore, cleanLapRatio, dropOff,
 } from "./metrics.service"
+import { updateGoalProgress } from "./goals.service"
 import type { NormalizedSession } from "@/server/parsers/types"
 import type { ImportStatus } from "@prisma/client"
 
@@ -264,8 +265,27 @@ async function runImport(importFileId: string): Promise<void> {
     data: { parserVersion: parsed.parserVersion },
   })
 
-  // Update cached profile stats (outside transaction — non-critical)
-  await updateProfileStats(userId)
+  // Update cached profile stats + goal progress (outside transaction — non-critical)
+  const [savedSession] = await Promise.all([
+    db.session.findFirst({
+      where: { importFileId },
+      include: { _count: { select: { incidents: true } } },
+    }),
+    updateProfileStats(userId),
+  ])
+
+  if (savedSession) {
+    await updateGoalProgress(userId, {
+      trackId: savedSession.trackId,
+      carId: savedSession.carId,
+      bestLapMs: savedSession.bestLapMs,
+      validLaps: savedSession.validLaps,
+      consistencyScore: savedSession.consistencyScore,
+      safetyScore: savedSession.safetyScore,
+      durationSec: savedSession.durationSec,
+      incidentCount: savedSession._count.incidents,
+    })
+  }
 }
 
 // ─── Metrics ──────────────────────────────────────────────────────────────────

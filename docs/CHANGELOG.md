@@ -8,7 +8,26 @@
 
 ## [Unreleased]
 
-> Next up: Session notes, goal auto-progress on import, setups manager, loading states wired per-page.
+> Next up: Session notes, setups manager, session detail page polish, loading states wired per-page.
+
+---
+
+## [0.5.0] — 2026-06-05
+
+> AN-008 complete + full UI redesign — sidebar, dashboard, sessions, goals, upload.
+
+### Added
+- `goals.service.ts` — `updateGoalProgress()` called after every successful import; handles all 8 auto-trackable goal types (BEST_LAP_TIME, CONSISTENCY_SCORE, CLEAN_LAP_COUNT, SESSION_COUNT, HOURS_DRIVEN, REDUCE_INCIDENTS, IMPROVE_SAFETY, COMPLETE_STINTS); auto-completes goals when target is reached
+- Track/car scoping: goals with `trackId`/`carId` only update for matching sessions
+
+### Changed
+- **Sidebar** — section labels (Overview / Analysis / Progress), left-edge active indicator, gradient logo shadow, avatar initials, inline sign-out button, `w-58`
+- **StatCard** — icon in colored container, gradient hover overlay, bottom accent line, `sublabel` prop, removed Card dependency
+- **Dashboard** — greeting with time-of-day, `Import session` CTA in header, active goals widget, recent PBs as section, dot color per session type, removed Card wrappers
+- **Sessions page** — type filter chips with dot indicators and count, redesigned table header, color-coded type badges with dot, improved pagination with icons
+- **Goals page** — section layout with counts, per-goal top accent bar, `LOWER_IS_BETTER` progress logic for lap times/incidents, deadline overdue state in red
+- **Upload page** — icon-per-status in history list, border on status badges, `max-w-2xl` scoped to content
+- **App layout** — `px-8 py-7` for better breathing room
 
 ---
 
