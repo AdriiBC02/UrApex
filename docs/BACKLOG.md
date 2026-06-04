@@ -116,7 +116,7 @@
 | AN-004 | Full car analytics page | P1 | 🔲 | Extend PG-007 |
 | AN-005 | Session comparison view | P1 | 🔲 | Pick 2 sessions, compare |
 | AN-006 | Lap comparison (sector delta) | P1 | 🔲 | |
-| AN-007 | Goals page (list + progress) | P1 | ✅ | Create form in next commit |
+| AN-007 | Goals page (list + progress + actions) | P1 | ✅ | List, create form, PATCH/DELETE API, GoalActions dropdown |
 | AN-008 | Goal auto-progress on import | P1 | 🔲 | |
 | AN-009 | Achievement definitions (config) | P1 | 🔲 | 10 initial achievements |
 | AN-010 | Achievement unlock on import | P1 | 🔲 | |

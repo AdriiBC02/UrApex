@@ -8,7 +8,25 @@
 
 ## [Unreleased]
 
-> Next up: Session notes, goals create form, setups manager, loading states wired per-page.
+> Next up: Session notes, goal auto-progress on import, setups manager, loading states wired per-page.
+
+---
+
+## [0.4.0] — 2026-06-05
+
+> Goals feature complete — create, list, mark complete/abandon/reactivate, delete.
+
+### Added
+- `POST /api/goals` — create goal with Zod validation (name, type, targetValue, optional trackId/carId/deadline)
+- `GET /api/goals` — list all goals for the authenticated user
+- `PATCH /api/goals/[id]` — update status (ACTIVE/COMPLETED/ABANDONED), name, targetValue, deadline
+- `DELETE /api/goals/[id]` — hard delete goal (ownership-checked)
+- `GoalActions` component — dropdown per card: mark complete, abandon, reactivate, delete with optimistic `router.refresh()`
+- Abandoned goals section on goals list page (collapsible — only shown when there are abandoned goals)
+
+### Fixed
+- `GoalForm` Select `onValueChange` typed as `string | null` in BaseUI — coerced to `""` on null/deselect
+- `GoalForm` did not handle null value from Select deselect for trackId/carId
 
 ---
 
