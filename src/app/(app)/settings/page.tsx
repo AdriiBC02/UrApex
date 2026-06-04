@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
-import { Settings, User, Shield, Gamepad2, KeyRound } from "lucide-react"
+import { Settings, User, Shield, Gamepad2, KeyRound, Download } from "lucide-react"
 import { ProfileForm } from "@/features/auth/ProfileForm"
 import { SimDriverForm } from "@/features/auth/SimDriverForm"
 import { ApiKeyForm } from "@/features/auth/ApiKeyForm"
@@ -67,6 +67,36 @@ export default async function SettingsPage() {
             hasKey={Boolean(user?.apiKey)}
             preview={user?.apiKey ? `...${user.apiKey.slice(-8)}` : null}
           />
+        </div>
+      </div>
+
+      {/* Data export */}
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden">
+        <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-zinc-800/60">
+          <Download className="w-3.5 h-3.5 text-zinc-500" />
+          <h2 className="text-sm font-semibold text-zinc-300">Data export</h2>
+          <span className="text-xs text-zinc-600 ml-auto">CSV download</span>
+        </div>
+        <div className="p-5 space-y-3">
+          <p className="text-xs text-zinc-500">Download your data as CSV files for external analysis.</p>
+          <div className="flex gap-3">
+            <a
+              href="/api/export/sessions"
+              download
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 text-xs font-medium transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Sessions CSV
+            </a>
+            <a
+              href="/api/export/laps"
+              download
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 text-xs font-medium transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Laps CSV
+            </a>
+          </div>
         </div>
       </div>
 

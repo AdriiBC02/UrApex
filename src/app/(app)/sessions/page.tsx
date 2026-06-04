@@ -4,12 +4,19 @@ import { db } from "@/lib/db"
 import { formatLapTime } from "@/lib/time"
 import { SESSION_TYPE_LABELS } from "@/lib/constants"
 import { EmptyState } from "@/components/shared/EmptyState"
-import { Upload, Flag, ArrowLeft, ArrowRight, GitCompare } from "lucide-react"
+import { SessionFilters } from "@/features/sessions/SessionFilters"
+import { Upload, Flag, GitCompare, ArrowLeft, ArrowRight } from "lucide-react"
 import Link from "next/link"
-import type { SessionType } from "@prisma/client"
+import type { SessionType, Prisma } from "@prisma/client"
 
 interface SearchParams {
   type?: string
+  sort?: string
+  track?: string
+  car?: string
+  pb?: string
+  from?: string
+  to?: string
   page?: string
 }
 
@@ -23,6 +30,15 @@ const TYPE_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   TIME_TRIAL:  { bg: "bg-purple-500/10", text: "text-purple-400", dot: "bg-purple-400" },
 }
 
+function buildOrderBy(sort?: string): Prisma.SessionOrderByWithRelationInput {
+  switch (sort) {
+    case "date_asc":          return { sessionDate: "asc" }
+    case "best_lap_asc":      return { bestLapMs: "asc" }
+    case "consistency_desc":  return { consistencyScore: "desc" }
+    default:                  return { sessionDate: "desc" }
+  }
+}
+
 export default async function SessionsPage({
   searchParams,
 }: {
@@ -34,41 +50,75 @@ export default async function SessionsPage({
   const params = await searchParams
   const userId = session.user.id
   const page = Math.max(1, parseInt(params.page ?? "1"))
-  const typeFilter = params.type as SessionType | undefined
 
-  const where = {
+  const typeFilter  = params.type as SessionType | undefined
+  const sortParam   = params.sort
+  const trackSlug   = params.track
+  const carSlug     = params.car
+  const pbOnly      = params.pb === "1"
+  const fromDate    = params.from ? new Date(params.from) : undefined
+  const toDate      = params.to   ? new Date(params.to + "T23:59:59Z") : undefined
+
+  const activeFilters = [typeFilter, trackSlug, carSlug, pbOnly || undefined, fromDate, toDate].filter(Boolean).length
+
+  const where: Prisma.SessionWhereInput = {
     userId,
     deletedAt: null,
     ...(typeFilter ? { sessionType: typeFilter } : {}),
+    ...(pbOnly ? { isNewPB: true } : {}),
+    ...(fromDate || toDate ? { sessionDate: { gte: fromDate, lte: toDate } } : {}),
+    ...(trackSlug ? { track: { slug: trackSlug } } : {}),
+    ...(carSlug   ? { car:   { slug: carSlug } }   : {}),
   }
 
-  const [sessions, total] = await Promise.all([
+  const [sessions, total, userTracks, userCars] = await Promise.all([
     db.session.findMany({
       where,
-      orderBy: { sessionDate: "desc" },
+      orderBy: buildOrderBy(sortParam),
       skip: (page - 1) * PER_PAGE,
       take: PER_PAGE,
       include: {
         track: { select: { name: true, slug: true } },
-        car: { select: { name: true, slug: true } },
+        car:   { select: { name: true, slug: true } },
         simulator: { select: { slug: true, name: true } },
       },
     }),
     db.session.count({ where }),
+    // Distinct tracks this user has driven
+    db.track.findMany({
+      where: { sessions: { some: { userId, deletedAt: null } } },
+      select: { slug: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    // Distinct cars this user has driven
+    db.car.findMany({
+      where: { sessions: { some: { userId, deletedAt: null } } },
+      select: { slug: true, name: true },
+      orderBy: { name: "asc" },
+    }),
   ])
 
   const totalPages = Math.ceil(total / PER_PAGE)
-  const types: SessionType[] = ["PRACTICE", "QUALIFYING", "RACE", "HOTLAP", "TIME_TRIAL"]
+
+  const paginationBase = new URLSearchParams({
+    ...(typeFilter ? { type: typeFilter } : {}),
+    ...(sortParam ? { sort: sortParam } : {}),
+    ...(trackSlug ? { track: trackSlug } : {}),
+    ...(carSlug ? { car: carSlug } : {}),
+    ...(pbOnly ? { pb: "1" } : {}),
+    ...(params.from ? { from: params.from } : {}),
+    ...(params.to ? { to: params.to } : {}),
+  }).toString()
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">Sessions</h1>
           <p className="text-sm text-zinc-500 mt-0.5">
             {total} session{total !== 1 ? "s" : ""}
-            {typeFilter ? ` · filtered by ${SESSION_TYPE_LABELS[typeFilter] ?? typeFilter}` : ""}
+            {activeFilters > 0 ? ` · ${activeFilters} filter${activeFilters > 1 ? "s" : ""} active` : ""}
           </p>
         </div>
         <Link
@@ -80,28 +130,30 @@ export default async function SessionsPage({
         </Link>
       </div>
 
-      {/* Type filters */}
-      <div className="flex gap-2 flex-wrap">
-        <FilterChip label="All" href="/sessions" active={!typeFilter} count={total} />
-        {types.map((t) => (
-          <FilterChip
-            key={t}
-            label={SESSION_TYPE_LABELS[t] ?? t}
-            href={`/sessions?type=${t}`}
-            active={typeFilter === t}
-            color={TYPE_COLORS[t]}
-          />
-        ))}
-      </div>
+      {/* Filters */}
+      <SessionFilters
+        tracks={userTracks.map((t) => ({ value: t.slug, label: t.name }))}
+        cars={userCars.map((c) => ({ value: c.slug, label: c.name }))}
+        current={{
+          type: typeFilter,
+          sort: sortParam,
+          track: trackSlug,
+          car: carSlug,
+          pb: params.pb,
+          from: params.from,
+          to: params.to,
+        }}
+        totalActive={activeFilters}
+      />
 
       {sessions.length === 0 ? (
         <EmptyState
           icon={total === 0 ? Upload : Flag}
-          title={total === 0 ? "No sessions yet" : "No sessions match this filter"}
+          title={total === 0 ? "No sessions yet" : "No sessions match these filters"}
           description={
             total === 0
               ? "Import your first XML result file to start tracking your performance."
-              : "Try removing the filter to see all sessions."
+              : "Try changing or clearing the filters."
           }
           action={total === 0 ? { label: "Upload session", href: "/upload" } : undefined}
         />
@@ -172,17 +224,13 @@ export default async function SessionsPage({
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <ScoreCell value={s.consistencyScore} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <ScoreCell value={s.safetyScore} />
-                      </td>
+                      <td className="px-4 py-3"><ScoreCell value={s.consistencyScore} /></td>
+                      <td className="px-4 py-3"><ScoreCell value={s.safetyScore} /></td>
                       <td className="px-4 py-3">
                         <Link
                           href={`/sessions/compare?a=${s.id}`}
                           className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-600 hover:text-cyan-400"
-                          title="Compare this session"
+                          title="Compare"
                         >
                           <GitCompare className="w-3.5 h-3.5" />
                         </Link>
@@ -194,7 +242,6 @@ export default async function SessionsPage({
             </table>
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between">
               <span className="text-sm text-zinc-500">
@@ -203,7 +250,7 @@ export default async function SessionsPage({
               <div className="flex gap-2">
                 {page > 1 ? (
                   <Link
-                    href={`/sessions?${typeFilter ? `type=${typeFilter}&` : ""}page=${page - 1}`}
+                    href={`/sessions?${paginationBase ? paginationBase + "&" : ""}page=${page - 1}`}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm transition-colors border border-zinc-700"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" /> Prev
@@ -211,7 +258,7 @@ export default async function SessionsPage({
                 ) : <div />}
                 {page < totalPages && (
                   <Link
-                    href={`/sessions?${typeFilter ? `type=${typeFilter}&` : ""}page=${page + 1}`}
+                    href={`/sessions?${paginationBase ? paginationBase + "&" : ""}page=${page + 1}`}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm transition-colors border border-zinc-700"
                   >
                     Next <ArrowRight className="w-3.5 h-3.5" />
@@ -223,37 +270,6 @@ export default async function SessionsPage({
         </>
       )}
     </div>
-  )
-}
-
-function FilterChip({
-  label,
-  href,
-  active,
-  count,
-  color,
-}: {
-  label: string
-  href: string
-  active: boolean
-  count?: number
-  color?: { bg: string; text: string; dot: string }
-}) {
-  return (
-    <Link
-      href={href}
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-        active
-          ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/30"
-          : "bg-zinc-900 text-zinc-500 border border-zinc-800 hover:border-zinc-700 hover:text-zinc-300"
-      }`}
-    >
-      {color && <span className={`w-1.5 h-1.5 rounded-full ${active ? "bg-cyan-400" : color.dot}`} />}
-      {label}
-      {count !== undefined && (
-        <span className={`ml-0.5 ${active ? "text-cyan-500" : "text-zinc-600"}`}>{count}</span>
-      )}
-    </Link>
   )
 }
 
