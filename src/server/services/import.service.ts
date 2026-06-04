@@ -1,7 +1,7 @@
 import { db } from "@/lib/db"
 import { sha256 } from "@/lib/hash"
 import { getStorageService, rawFileKey } from "./storage.service"
-import { parseFile } from "@/server/parsers/registry"
+import { parseFile, extractDriverNames } from "@/server/parsers/registry"
 import { findOrCreateTrack } from "@/server/normalizers/track.normalizer"
 import { findOrCreateCar, findOrCreateCarClass } from "@/server/normalizers/car.normalizer"
 import {
@@ -22,6 +22,7 @@ export interface UploadResult {
   status: ImportStatus
   isDuplicate: boolean
   existingSessionId?: string
+  driverNames?: string[]
 }
 
 // ─── Step 1: Receive upload, dedup, save raw file ─────────────────────────────
@@ -54,15 +55,18 @@ export async function handleUpload(
   const key = rawFileKey(userId, fileHash)
   const storagePath = await storage.save(buffer, key)
 
-  // Detect simulator for display (non-blocking, best-effort)
+  // Detect simulator and extract driver names
   const content = buffer.toString("utf-8")
-  const { detectParser } = await import("@/server/parsers/registry")
+  const { detectParser, extractDriverNames } = await import("@/server/parsers/registry")
   const parser = detectParser(content)
 
   // Get simulator DB record if detected
   const simulator = parser
     ? await db.simulator.findUnique({ where: { slug: parser.simulatorSlug } })
     : null
+
+  // Extract driver names for selection (only when simulator is detected)
+  const driverNames = parser ? extractDriverNames(content, parser.simulatorSlug) : []
 
   // Create ImportFile record
   const importFile = await db.importFile.create({
@@ -83,6 +87,7 @@ export async function handleUpload(
     originalName: file.name,
     status: "PENDING",
     isDuplicate: false,
+    driverNames,
   }
 }
 
@@ -119,7 +124,7 @@ export async function processImport(importFileId: string): Promise<void> {
 async function runImport(importFileId: string): Promise<void> {
   const importFile = await db.importFile.findUniqueOrThrow({
     where: { id: importFileId },
-    include: { simulator: true, user: true },
+    include: { simulator: true, user: { include: { profile: true } } },
   })
 
   // Read raw file
@@ -127,8 +132,11 @@ async function runImport(importFileId: string): Promise<void> {
   const buffer = await storage.read(importFile.storagePath)
   const content = buffer.toString("utf-8")
 
+  // Resolve driver name from user profile (used to identify the player in multiplayer files)
+  const driverName = importFile.user.profile?.simDriverName ?? undefined
+
   // Parse
-  const result = await parseFile(content, importFile.simulator?.slug)
+  const result = await parseFile(content, importFile.simulator?.slug, { driverName })
   if (!result.success) throw new Error(result.error)
 
   const parsed = result.session

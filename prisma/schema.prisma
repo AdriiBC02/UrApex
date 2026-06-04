@@ -19,6 +19,8 @@ model User {
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
+  apiKey        String?   @unique // Companion app authentication token
+
   accounts      Account[]
   sessions      AuthSession[]
   profile       DriverProfile?
@@ -29,6 +31,7 @@ model User {
   setups        Setup[]
 
   @@index([email])
+  @@index([apiKey])
 }
 
 model Account {
@@ -77,11 +80,12 @@ model DriverProfile {
   userId      String   @unique
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  displayName String?
-  country     String?
-  bio         String?  @db.Text
-  avatarUrl   String?
-  isPublic    Boolean  @default(false)
+  displayName   String?
+  country       String?
+  bio           String?  @db.Text
+  avatarUrl     String?
+  isPublic      Boolean  @default(false)
+  simDriverName String?  // The driver's in-game name used to identify their laps in result files
 
   simulatorSlugs String[]
 

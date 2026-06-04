@@ -1,7 +1,10 @@
 "use client"
 
 import { useCallback, useRef, useState } from "react"
-import { Upload, X, FileText, CheckCircle2, AlertCircle, Copy, ArrowRight, Loader2, FolderOpen } from "lucide-react"
+import {
+  Upload, X, FileText, CheckCircle2, AlertCircle, Copy, ArrowRight,
+  Loader2, FolderOpen, User, ChevronDown,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -15,6 +18,11 @@ interface FileEntry {
   existingSessionId?: string
 }
 
+interface DriverSelectState {
+  driverNames: string[]
+  pendingIds: Array<{ importFileId: string; originalName: string }>
+}
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
@@ -26,6 +34,9 @@ export function UploadZone() {
   const [entries, setEntries] = useState<FileEntry[]>([])
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [driverSelect, setDriverSelect] = useState<DriverSelectState | null>(null)
+  const [selectedDriver, setSelectedDriver] = useState("")
+  const [confirming, setConfirming] = useState(false)
 
   const addFiles = useCallback((files: FileList | File[]) => {
     const arr = Array.from(files)
@@ -81,29 +92,35 @@ export function UploadZone() {
         return
       }
 
-      const resultMap = new Map<string, (typeof data.imports)[0]>()
-      for (const r of data.imports) resultMap.set(r.originalName, r)
+      // Driver selection needed before processing
+      if (data.needsDriverSelection) {
+        const deferred = (data.imports as Array<{
+          importFileId?: string; originalName: string; deferred?: boolean; isDuplicate?: boolean; status: string
+        }>).filter((r) => r.deferred)
+        const duplicates = (data.imports as Array<{
+          importFileId?: string; originalName: string; deferred?: boolean; isDuplicate?: boolean; status: string; existingSessionId?: string
+        }>).filter((r) => r.isDuplicate || r.status === "DUPLICATE")
 
-      setEntries((prev) =>
-        prev.map((e) => {
-          if (e.status !== "uploading") return e
-          const r = resultMap.get(e.file.name)
-          if (!r) return { ...e, status: "failed" as const, error: "No result" }
-          if (r.isDuplicate || r.status === "DUPLICATE")
-            return { ...e, status: "duplicate" as const, existingSessionId: r.existingSessionId }
-          if (r.status === "IMPORTED")
-            return { ...e, status: "imported" as const, sessionId: r.sessionId }
-          return { ...e, status: "failed" as const, error: r.error ?? r.errorMessage ?? "Import failed" }
-        })
-      )
+        // Mark duplicates immediately
+        setEntries((prev) =>
+          prev.map((e) => {
+            if (e.status !== "uploading") return e
+            const dup = duplicates.find((d) => d.originalName === e.file.name)
+            if (dup) return { ...e, status: "duplicate" as const, existingSessionId: dup.existingSessionId }
+            return e
+          })
+        )
 
-      const imported = data.imports.filter((r: { status: string }) => r.status === "IMPORTED").length
-      const dupes    = data.imports.filter((r: { isDuplicate: boolean }) => r.isDuplicate).length
-      const failed   = data.imports.filter((r: { status: string }) => r.status === "FAILED").length
+        if (deferred.length > 0) {
+          setDriverSelect({
+            driverNames: data.driverNames ?? [],
+            pendingIds: deferred.map((r) => ({ importFileId: r.importFileId!, originalName: r.originalName })),
+          })
+        }
+        return
+      }
 
-      if (imported > 0) toast.success(`${imported} session${imported > 1 ? "s" : ""} imported`)
-      if (dupes > 0)    toast.info(`${dupes} duplicate${dupes > 1 ? "s" : ""} skipped`)
-      if (failed > 0)   toast.error(`${failed} import${failed > 1 ? "s" : ""} failed`)
+      applyResults(data.imports, queued)
     } catch {
       toast.error("Network error — please try again")
       setEntries((prev) =>
@@ -114,12 +131,78 @@ export function UploadZone() {
     }
   }
 
+  function applyResults(
+    imports: Array<{
+      originalName: string; status: string; isDuplicate?: boolean;
+      existingSessionId?: string; sessionId?: string; error?: string; errorMessage?: string
+    }>,
+    queued: FileEntry[]
+  ) {
+    const resultMap = new Map(imports.map((r) => [r.originalName, r]))
+    setEntries((prev) =>
+      prev.map((e) => {
+        if (e.status !== "uploading") return e
+        const r = resultMap.get(e.file.name)
+        if (!r) return { ...e, status: "failed" as const, error: "No result" }
+        if (r.isDuplicate || r.status === "DUPLICATE")
+          return { ...e, status: "duplicate" as const, existingSessionId: r.existingSessionId }
+        if (r.status === "IMPORTED")
+          return { ...e, status: "imported" as const, sessionId: r.sessionId }
+        return { ...e, status: "failed" as const, error: r.error ?? r.errorMessage ?? "Import failed" }
+      })
+    )
+    const imported = imports.filter((r) => r.status === "IMPORTED").length
+    const dupes    = imports.filter((r) => r.isDuplicate).length
+    const failed   = imports.filter((r) => r.status === "FAILED").length
+    if (imported > 0) toast.success(`${imported} session${imported > 1 ? "s" : ""} imported`)
+    if (dupes > 0)    toast.info(`${dupes} duplicate${dupes > 1 ? "s" : ""} skipped`)
+    if (failed > 0)   toast.error(`${failed} import${failed > 1 ? "s" : ""} failed`)
+  }
+
+  const confirmDriver = async () => {
+    if (!driverSelect || !selectedDriver) return
+    setConfirming(true)
+    try {
+      const res = await fetch("/api/import/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          importFileIds: driverSelect.pendingIds.map((p) => p.importFileId),
+          driverName: selectedDriver,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? "Processing failed")
+        return
+      }
+
+      // Mark pending entries as uploading so applyResults can update them
+      setEntries((prev) =>
+        prev.map((e) =>
+          driverSelect.pendingIds.some((p) => p.originalName === e.file.name)
+            ? { ...e, status: "uploading" as const }
+            : e
+        )
+      )
+
+      applyResults(data.imports, [])
+      setDriverSelect(null)
+      setSelectedDriver("")
+      toast.success(`Driver set to "${selectedDriver}"`)
+    } catch {
+      toast.error("Network error")
+    } finally {
+      setConfirming(false)
+      setUploading(false)
+    }
+  }
+
   const queuedCount  = entries.filter((e) => e.status === "queued").length
   const hasCompleted = entries.some((e) => ["imported", "duplicate", "failed"].includes(e.status))
 
   return (
     <div className="space-y-3">
-      {/* Hidden real input — triggered programmatically */}
       <input
         ref={fileRef}
         type="file"
@@ -142,7 +225,6 @@ export function UploadZone() {
             : "border border-zinc-800 hover:border-zinc-700"
         )}
       >
-        {/* Subtle grid background */}
         <div
           className={cn(
             "absolute inset-0 transition-opacity duration-200 pointer-events-none",
@@ -154,7 +236,6 @@ export function UploadZone() {
             backgroundSize: "28px 28px",
           }}
         />
-        {/* Drag glow */}
         {dragging && (
           <div
             className="absolute inset-0 pointer-events-none"
@@ -162,27 +243,18 @@ export function UploadZone() {
           />
         )}
 
-        {/* Content — horizontal layout */}
         <div className="relative flex items-center gap-5 px-8 py-8">
-          {/* Icon */}
           <div className={cn(
             "shrink-0 w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-200",
             dragging
               ? "bg-cyan-500/15 border border-cyan-500/30 shadow-md shadow-cyan-500/20"
               : "bg-zinc-900 border border-zinc-700"
           )}>
-            <Upload className={cn(
-              "w-6 h-6 transition-colors duration-200",
-              dragging ? "text-cyan-400" : "text-zinc-500"
-            )} />
+            <Upload className={cn("w-6 h-6 transition-colors duration-200", dragging ? "text-cyan-400" : "text-zinc-500")} />
           </div>
 
-          {/* Text */}
           <div className="flex-1 min-w-0">
-            <p className={cn(
-              "text-base font-semibold transition-colors duration-200",
-              dragging ? "text-cyan-300" : "text-zinc-200"
-            )}>
+            <p className={cn("text-base font-semibold transition-colors duration-200", dragging ? "text-cyan-300" : "text-zinc-200")}>
               {dragging ? "Release to import" : "Drop session files here"}
             </p>
             <p className="text-sm text-zinc-500 mt-0.5">
@@ -194,7 +266,6 @@ export function UploadZone() {
             </div>
           </div>
 
-          {/* Browse button */}
           <div
             onClick={(e) => { e.stopPropagation(); fileRef.current?.click() }}
             className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 text-zinc-300 hover:text-zinc-100 text-sm font-medium transition-all"
@@ -204,6 +275,61 @@ export function UploadZone() {
           </div>
         </div>
       </div>
+
+      {/* Driver selection modal */}
+      {driverSelect && (
+        <div className="rounded-xl border border-cyan-500/30 bg-zinc-900 p-5 space-y-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center">
+              <User className="w-4 h-4 text-cyan-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-zinc-100">Who are you in these files?</p>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Select your driver name — this will be saved for future imports.
+              </p>
+            </div>
+          </div>
+
+          <div className="relative">
+            <select
+              value={selectedDriver}
+              onChange={(e) => setSelectedDriver(e.target.value)}
+              className="w-full appearance-none rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-100 text-sm px-3 py-2.5 pr-8 focus:outline-none focus:border-cyan-500/50"
+            >
+              <option value="">Select your name…</option>
+              {driverSelect.driverNames.map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={confirmDriver}
+              disabled={!selectedDriver || confirming}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 disabled:opacity-60 disabled:cursor-not-allowed text-zinc-950 font-bold text-sm transition-colors"
+            >
+              {confirming ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing…</> : "Confirm & import"}
+            </button>
+            <button
+              onClick={() => {
+                setDriverSelect(null)
+                setEntries((prev) => prev.filter((e) => e.status !== "uploading"))
+              }}
+              className="px-4 py-2.5 rounded-lg border border-zinc-700 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600 text-sm font-medium transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <p className="text-[11px] text-zinc-600">
+            {driverSelect.pendingIds.length} file{driverSelect.pendingIds.length !== 1 ? "s" : ""} waiting:{" "}
+            {driverSelect.pendingIds.map((p) => p.originalName).join(", ")}
+          </p>
+        </div>
+      )}
 
       {/* File queue */}
       {entries.length > 0 && (
@@ -235,7 +361,7 @@ export function UploadZone() {
       )}
 
       {/* Actions */}
-      {(queuedCount > 0 || hasCompleted) && (
+      {(queuedCount > 0 || hasCompleted) && !driverSelect && (
         <div className="flex items-center gap-2">
           {queuedCount > 0 && (
             <button
@@ -266,9 +392,9 @@ export function UploadZone() {
 
 function FileStatusIcon({ status }: { status: FileEntry["status"] }) {
   if (status === "imported")  return <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
-  if (status === "failed")    return <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-  if (status === "duplicate") return <Copy className="w-4 h-4 text-zinc-500 shrink-0" />
-  if (status === "uploading") return <Loader2 className="w-4 h-4 text-cyan-400 shrink-0 animate-spin" />
+  if (status === "failed")    return <AlertCircle  className="w-4 h-4 text-red-400 shrink-0" />
+  if (status === "duplicate") return <Copy         className="w-4 h-4 text-zinc-500 shrink-0" />
+  if (status === "uploading") return <Loader2      className="w-4 h-4 text-cyan-400 shrink-0 animate-spin" />
   return <FileText className="w-4 h-4 text-zinc-600 shrink-0" />
 }
 

@@ -100,6 +100,13 @@ export interface NormalizedSession {
   parseWarnings: string[]
 }
 
+// ─── Parser context (optional per-user hints) ────────────────────────────────
+
+export interface ParseContext {
+  /** The user's in-game driver name, used to identify their laps in multiplayer files. */
+  driverName?: string
+}
+
 // ─── Parser interface ─────────────────────────────────────────────────────────
 
 export interface IParser {
@@ -107,8 +114,10 @@ export interface IParser {
   readonly version: string
   /** Returns true if this parser can handle the given file content. */
   canParse(content: string): boolean
+  /** Extracts all unique driver names found in the file (lightweight, no full parse). */
+  extractDriverNames(content: string): string[]
   /** Parses raw file content into a NormalizedSession. May throw on fatal errors. */
-  parse(content: string): Promise<NormalizedSession>
+  parse(content: string, context?: ParseContext): Promise<NormalizedSession>
 }
 
 export type ParseResult =

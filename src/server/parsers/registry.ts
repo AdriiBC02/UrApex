@@ -1,4 +1,4 @@
-import type { IParser, NormalizedSession, ParseResult } from "./types"
+import type { IParser, NormalizedSession, ParseContext, ParseResult } from "./types"
 import { LMUParser } from "./lmu/parser"
 
 // Register all available parsers here. Order matters for auto-detection.
@@ -12,9 +12,15 @@ export function detectParser(content: string): IParser | null {
   return PARSERS.find((p) => p.canParse(content)) ?? null
 }
 
+export function extractDriverNames(content: string, simulatorSlug?: string): string[] {
+  const parser = simulatorSlug ? getParser(simulatorSlug) : detectParser(content)
+  return parser?.extractDriverNames(content) ?? []
+}
+
 export async function parseFile(
   content: string,
-  simulatorSlug?: string
+  simulatorSlug?: string,
+  context?: ParseContext
 ): Promise<ParseResult> {
   const parser = simulatorSlug ? getParser(simulatorSlug) : detectParser(content)
 
@@ -28,7 +34,7 @@ export async function parseFile(
   }
 
   try {
-    const session: NormalizedSession = await parser.parse(content)
+    const session: NormalizedSession = await parser.parse(content, context)
     return { success: true, session }
   } catch (err) {
     return {

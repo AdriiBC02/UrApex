@@ -1,8 +1,10 @@
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
-import { Settings, User, Shield } from "lucide-react"
+import { Settings, User, Shield, Gamepad2, KeyRound } from "lucide-react"
 import { ProfileForm } from "@/features/auth/ProfileForm"
+import { SimDriverForm } from "@/features/auth/SimDriverForm"
+import { ApiKeyForm } from "@/features/auth/ApiKeyForm"
 
 export default async function SettingsPage() {
   const session = await auth()
@@ -12,13 +14,12 @@ export default async function SettingsPage() {
     db.driverProfile.findUnique({ where: { userId: session.user.id } }),
     db.user.findUnique({
       where: { id: session.user.id },
-      select: { email: true, name: true },
+      select: { email: true, name: true, apiKey: true },
     }),
   ])
 
   return (
     <div className="space-y-8 max-w-2xl">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">Settings</h1>
         <p className="text-sm text-zinc-500 mt-0.5">Manage your profile and account preferences.</p>
@@ -38,6 +39,33 @@ export default async function SettingsPage() {
               country: profile?.country ?? "",
               bio: profile?.bio ?? "",
             }}
+          />
+        </div>
+      </div>
+
+      {/* Simulator identity */}
+      <div id="simulator" className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden">
+        <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-zinc-800/60">
+          <Gamepad2 className="w-3.5 h-3.5 text-zinc-500" />
+          <h2 className="text-sm font-semibold text-zinc-300">Simulator identity</h2>
+          <span className="text-xs text-zinc-600 ml-auto">Used to identify your laps in result files</span>
+        </div>
+        <div className="p-5">
+          <SimDriverForm initialName={profile?.simDriverName ?? ""} />
+        </div>
+      </div>
+
+      {/* Companion app API key */}
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden">
+        <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-zinc-800/60">
+          <KeyRound className="w-3.5 h-3.5 text-zinc-500" />
+          <h2 className="text-sm font-semibold text-zinc-300">Companion app</h2>
+          <span className="text-xs text-zinc-600 ml-auto">Auto-sync from your PC</span>
+        </div>
+        <div className="p-5">
+          <ApiKeyForm
+            hasKey={Boolean(user?.apiKey)}
+            preview={user?.apiKey ? `...${user.apiKey.slice(-8)}` : null}
           />
         </div>
       </div>

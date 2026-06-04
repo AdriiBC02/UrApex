@@ -1,6 +1,6 @@
 import { XMLParser } from "fast-xml-parser"
 import type {
-  IParser, NormalizedSession, ParsedLap, ParsedParticipant, ParsedPitStop, ParsedPenalty, NormalizedSessionType,
+  IParser, NormalizedSession, ParseContext, ParsedLap, ParsedParticipant, ParsedPitStop, ParsedPenalty, NormalizedSessionType,
 } from "../types"
 
 export const LMU_PARSER_VERSION = "lmu-v0.2.0"
@@ -60,7 +60,26 @@ export class LMUParser implements IParser {
     return content.includes("<rFactorXML") || content.includes("<RaceResults")
   }
 
-  async parse(content: string): Promise<NormalizedSession> {
+  extractDriverNames(content: string): string[] {
+    if (!this.canParse(content)) return []
+    try {
+      const raw = this.xml.parse(content) as Record<string, unknown>
+      const root = this.getRaceResults(raw)
+      if (!root) return []
+      const { data: sessionData } = this.findSession(root)
+      if (!sessionData) return []
+      const drivers = this.getDrivers(sessionData)
+      return [...new Set(
+        drivers
+          .map((d) => this.s(d, "Name"))
+          .filter((n): n is string => n !== null && n.trim() !== "")
+      )]
+    } catch {
+      return []
+    }
+  }
+
+  async parse(content: string, context?: ParseContext): Promise<NormalizedSession> {
     const warnings: string[] = []
 
     let raw: Record<string, unknown>
@@ -82,7 +101,7 @@ export class LMUParser implements IParser {
     const allDrivers = this.getDrivers(sessionData)
     if (allDrivers.length === 0) throw new Error("No driver data found in session.")
 
-    const player = this.findPlayer(allDrivers)
+    const player = this.findPlayer(allDrivers, context?.driverName)
     if (!player) throw new Error("Could not identify player driver in session.")
 
     const sessionType = this.parseSessionType(sessionKey)
@@ -172,14 +191,21 @@ export class LMUParser implements IParser {
     return (Array.isArray(raw) ? raw : [raw]) as Record<string, unknown>[]
   }
 
-  private findPlayer(drivers: Record<string, unknown>[]): Record<string, unknown> | null {
-    // First human driver with actual lap data
-    const withLaps = drivers.filter(d => {
+  private findPlayer(drivers: Record<string, unknown>[], driverName?: string): Record<string, unknown> | null {
+    // If a driver name is known, match by name first (exact, then case-insensitive)
+    if (driverName) {
+      const exact = drivers.find((d) => this.s(d, "Name") === driverName)
+      if (exact) return exact
+      const lower = driverName.toLowerCase()
+      const ci = drivers.find((d) => this.s(d, "Name")?.toLowerCase() === lower)
+      if (ci) return ci
+    }
+    // Fallback: first driver with a valid best lap time (all LMU multiplayer drivers have isPlayer=1)
+    const withLaps = drivers.filter((d) => {
       const best = this.s(d, "BestLapTime")
       return best && best !== "--.----" && best !== "0.0000" && parseFloat(best) > 0
     })
     if (withLaps.length > 0) return withLaps[0]
-    // Fallback: first driver
     return drivers[0] ?? null
   }
 

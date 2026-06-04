@@ -7,6 +7,7 @@ const schema = z.object({
   displayName: z.string().max(64).optional(),
   country: z.string().max(2).optional(),
   bio: z.string().max(300).optional(),
+  simDriverName: z.string().max(128).optional().nullable(),
 })
 
 export async function PATCH(req: NextRequest) {
@@ -17,12 +18,15 @@ export async function PATCH(req: NextRequest) {
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 422 })
 
+  const { displayName, country, bio, simDriverName } = parsed.data
+
   await db.driverProfile.update({
     where: { userId: session.user.id },
     data: {
-      displayName: parsed.data.displayName,
-      country: parsed.data.country || null,
-      bio: parsed.data.bio || null,
+      displayName,
+      country: country || null,
+      bio: bio || null,
+      ...(simDriverName !== undefined ? { simDriverName: simDriverName || null } : {}),
     },
   })
 
