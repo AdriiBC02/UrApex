@@ -1,0 +1,94 @@
+import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
+import { db } from "@/lib/db"
+import { processImport } from "@/server/services/import.service"
+
+// GET /api/import/[id] — status check
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const { id } = await params
+  const importFile = await db.importFile.findUnique({
+    where: { id },
+    include: { session: { select: { id: true } } },
+  })
+
+  if (!importFile || importFile.userId !== session.user.id) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
+
+  return NextResponse.json({
+    id: importFile.id,
+    status: importFile.status,
+    sessionId: importFile.session?.id,
+    errorMessage: importFile.errorMessage,
+    parserVersion: importFile.parserVersion,
+    importedAt: importFile.importedAt,
+  })
+}
+
+// POST /api/import/[id] — retry failed import
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const { id } = await params
+  const importFile = await db.importFile.findUnique({ where: { id } })
+
+  if (!importFile || importFile.userId !== session.user.id) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
+
+  if (importFile.status !== "FAILED") {
+    return NextResponse.json({ error: "Only failed imports can be retried" }, { status: 422 })
+  }
+
+  // Reset status
+  await db.importFile.update({
+    where: { id },
+    data: { status: "PENDING" as const, errorMessage: null, errorDetails: undefined },
+  })
+
+  try {
+    await processImport(id)
+    const updated = await db.importFile.findUnique({
+      where: { id },
+      include: { session: { select: { id: true } } },
+    })
+    return NextResponse.json({ status: updated?.status, sessionId: updated?.session?.id })
+  } catch (err) {
+    return NextResponse.json(
+      { status: "FAILED", error: err instanceof Error ? err.message : "Import failed" },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE /api/import/[id] — delete import + session
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const { id } = await params
+  const importFile = await db.importFile.findUnique({
+    where: { id },
+    include: { session: { select: { id: true } } },
+  })
+
+  if (!importFile || importFile.userId !== session.user.id) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
+
+  // Soft-delete session if it exists
+  if (importFile.session?.id) {
+    await db.session.update({
+      where: { id: importFile.session.id },
+      data: { deletedAt: new Date() },
+    })
+  }
+
+  await db.importFile.delete({ where: { id } })
+
+  return NextResponse.json({ deleted: true })
+}

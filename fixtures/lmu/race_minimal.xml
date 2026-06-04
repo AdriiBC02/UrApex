@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Minimal LMU-style race result for parser testing -->
+<Standings>
+  <Session>Race</Session>
+  <TrackName>Spa-Francorchamps</TrackName>
+  <TrackLayout>Grand Prix</TrackLayout>
+  <VehicleName>Ferrari 499P</VehicleName>
+  <VehicleClass>Hypercar</VehicleClass>
+  <Date>2026-06-04T18:30:00</Date>
+  <ServerName>UrApex Test Server</ServerName>
+  <MultiPlayer>1</MultiPlayer>
+  <SessionDuration>3600</SessionDuration>
+  <FinishPos>3</FinishPos>
+  <AmbientTemperature>22.5</AmbientTemperature>
+  <TrackTemperature>34.1</TrackTemperature>
+  <SkyType>Clear</SkyType>
+  <Laps>
+    <Lap num="1" time="145.321" invalid="0">
+      <Sector1>38.421</Sector1>
+      <Sector2>68.218</Sector2>
+      <Sector3>38.682</Sector3>
+    </Lap>
+    <Lap num="2" time="142.187" invalid="0">
+      <Sector1>37.900</Sector1>
+      <Sector2>67.015</Sector2>
+      <Sector3>37.272</Sector3>
+    </Lap>
+    <Lap num="3" time="141.742" invalid="0">
+      <Sector1>37.850</Sector1>
+      <Sector2>66.891</Sector2>
+      <Sector3>37.001</Sector3>
+    </Lap>
+    <Lap num="4" time="143.100" invalid="0">
+      <Sector1>38.100</Sector1>
+      <Sector2>67.500</Sector2>
+      <Sector3>37.500</Sector3>
+    </Lap>
+    <Lap num="5" time="0" invalid="1">
+      <Sector1>0</Sector1>
+      <Sector2>0</Sector2>
+      <Sector3>0</Sector3>
+    </Lap>
+  </Laps>
+  <Driver name="Test Driver" pos="1" laps="5" best="141.742">
+    <BestLapTime>141.742</BestLapTime>
+  </Driver>
+  <Driver name="Opponent A" pos="2" laps="5" best="142.100">
+    <BestLapTime>142.100</BestLapTime>
+  </Driver>
+  <Driver name="Opponent B" pos="3" laps="5" best="143.500">
+    <BestLapTime>143.500</BestLapTime>
+  </Driver>
+</Standings>
