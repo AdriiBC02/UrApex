@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
-import { handleUpload, processImport } from "@/server/services/import.service"
+import { handleUpload } from "@/server/services/import.service"
+import { getImportQueue } from "@/server/queue/import.queue"
 import { MAX_UPLOAD_SIZE_BYTES, ALLOWED_MIME_TYPES } from "@/lib/constants"
 
 async function resolveUserId(req: NextRequest): Promise<string | null> {
@@ -83,21 +84,12 @@ export async function POST(req: NextRequest) {
       }
 
       if (hasDriverName) {
-        // Process immediately — driver name fetched from DB inside processImport
-        await processImport(uploadResult.importFileId)
-
-        const updated = await db.importFile.findUnique({
-          where: { id: uploadResult.importFileId },
-          include: { session: { select: { id: true } } },
-        })
-
+        await getImportQueue().add("process", { importFileId: uploadResult.importFileId })
         results.push({
           importFileId: uploadResult.importFileId,
           originalName: file.name,
-          status: updated?.status ?? "IMPORTED",
+          status: "PENDING",
           isDuplicate: false,
-          sessionId: updated?.session?.id,
-          errorMessage: updated?.errorMessage,
         })
       } else {
         // Defer processing until driver name is selected

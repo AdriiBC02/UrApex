@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { processImport } from "@/server/services/import.service"
+import { getImportQueue } from "@/server/queue/import.queue"
 
 // GET /api/import/[id] — status check
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -44,25 +44,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Only failed imports can be retried" }, { status: 422 })
   }
 
-  // Reset status
   await db.importFile.update({
     where: { id },
     data: { status: "PENDING" as const, errorMessage: null, errorDetails: undefined },
   })
 
-  try {
-    await processImport(id)
-    const updated = await db.importFile.findUnique({
-      where: { id },
-      include: { session: { select: { id: true } } },
-    })
-    return NextResponse.json({ status: updated?.status, sessionId: updated?.session?.id })
-  } catch (err) {
-    return NextResponse.json(
-      { status: "FAILED", error: err instanceof Error ? err.message : "Import failed" },
-      { status: 500 }
-    )
-  }
+  await getImportQueue().add("process", { importFileId: id })
+  return NextResponse.json({ status: "PENDING" })
 }
 
 // DELETE /api/import/[id] — delete import + session

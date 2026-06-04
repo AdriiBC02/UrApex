@@ -12,10 +12,11 @@ import { toast } from "sonner"
 interface FileEntry {
   file: File
   id: string
-  status: "queued" | "uploading" | "imported" | "duplicate" | "failed"
+  status: "queued" | "uploading" | "processing" | "imported" | "duplicate" | "failed"
   error?: string
   sessionId?: string
   existingSessionId?: string
+  importFileId?: string
 }
 
 interface DriverSelectState {
@@ -71,6 +72,43 @@ export function UploadZone({ onImported }: UploadZoneProps = {}) {
     if (e.target.files) addFiles(e.target.files)
     e.target.value = ""
   }
+
+  const pollImportFile = useCallback(async (importFileId: string, entryId: string) => {
+    const INTERVAL = 1500
+    const TIMEOUT  = 120_000
+    const start    = Date.now()
+
+    const tick = async () => {
+      if (Date.now() - start > TIMEOUT) {
+        setEntries((prev) =>
+          prev.map((e) => e.id === entryId ? { ...e, status: "failed", error: "Timed out" } : e)
+        )
+        return
+      }
+      try {
+        const res  = await fetch(`/api/import/${importFileId}`)
+        const data = await res.json() as { status: string; sessionId?: string; errorMessage?: string }
+
+        if (data.status === "IMPORTED") {
+          setEntries((prev) =>
+            prev.map((e) => e.id === entryId ? { ...e, status: "imported", sessionId: data.sessionId } : e)
+          )
+          if (data.sessionId && onImported) onImported(data.sessionId)
+          toast.success("Session imported")
+        } else if (data.status === "FAILED") {
+          setEntries((prev) =>
+            prev.map((e) => e.id === entryId ? { ...e, status: "failed", error: data.errorMessage ?? "Import failed" } : e)
+          )
+          toast.error("Import failed")
+        } else {
+          setTimeout(tick, INTERVAL)
+        }
+      } catch {
+        setTimeout(tick, INTERVAL)
+      }
+    }
+    setTimeout(tick, INTERVAL)
+  }, [onImported])
 
   const uploadAll = async () => {
     const queued = entries.filter((e) => e.status === "queued")
@@ -138,13 +176,16 @@ export function UploadZone({ onImported }: UploadZoneProps = {}) {
   function applyResults(
     imports: Array<{
       originalName: string; status: string; isDuplicate?: boolean;
-      existingSessionId?: string; sessionId?: string; error?: string; errorMessage?: string
+      existingSessionId?: string; sessionId?: string; importFileId?: string;
+      error?: string; errorMessage?: string
     }>,
     queued: FileEntry[]
   ) {
     const resultMap = new Map(imports.map((r) => [r.originalName, r]))
-    setEntries((prev) =>
-      prev.map((e) => {
+    const pendingPolls: Array<{ importFileId: string; entryId: string }> = []
+
+    setEntries((prev) => {
+      const next = prev.map((e) => {
         if (e.status !== "uploading") return e
         const r = resultMap.get(e.file.name)
         if (!r) return { ...e, status: "failed" as const, error: "No result" }
@@ -152,20 +193,26 @@ export function UploadZone({ onImported }: UploadZoneProps = {}) {
           return { ...e, status: "duplicate" as const, existingSessionId: r.existingSessionId }
         if (r.status === "IMPORTED")
           return { ...e, status: "imported" as const, sessionId: r.sessionId }
+        if ((r.status === "PENDING" || r.status === "PARSING") && r.importFileId) {
+          pendingPolls.push({ importFileId: r.importFileId, entryId: e.id })
+          return { ...e, status: "processing" as const, importFileId: r.importFileId }
+        }
         return { ...e, status: "failed" as const, error: r.error ?? r.errorMessage ?? "Import failed" }
       })
-    )
-    const imported = imports.filter((r) => r.status === "IMPORTED")
-    const dupes    = imports.filter((r) => r.isDuplicate).length
-    const failed   = imports.filter((r) => r.status === "FAILED").length
-    if (imported.length > 0) toast.success(`${imported.length} session${imported.length > 1 ? "s" : ""} imported`)
-    if (dupes > 0)            toast.info(`${dupes} duplicate${dupes > 1 ? "s" : ""} skipped`)
-    if (failed > 0)           toast.error(`${failed} import${failed > 1 ? "s" : ""} failed`)
-    // Notify parent when at least one session was imported
-    if (imported.length > 0 && onImported) {
-      const firstSessionId = imported.find((r) => r.sessionId)?.sessionId
-      if (firstSessionId) onImported(firstSessionId)
-    }
+      return next
+    })
+
+    // Kick off polling outside of setState
+    setTimeout(() => {
+      for (const { importFileId, entryId } of pendingPolls) {
+        pollImportFile(importFileId, entryId)
+      }
+    }, 0)
+
+    const dupes  = imports.filter((r) => r.isDuplicate).length
+    const failed = imports.filter((r) => r.status === "FAILED").length
+    if (dupes > 0)  toast.info(`${dupes} duplicate${dupes > 1 ? "s" : ""} skipped`)
+    if (failed > 0) toast.error(`${failed} import${failed > 1 ? "s" : ""} failed`)
   }
 
   const confirmDriver = async () => {
@@ -186,7 +233,6 @@ export function UploadZone({ onImported }: UploadZoneProps = {}) {
         return
       }
 
-      // Mark pending entries as uploading so applyResults can update them
       setEntries((prev) =>
         prev.map((e) =>
           driverSelect.pendingIds.some((p) => p.originalName === e.file.name)
@@ -198,7 +244,7 @@ export function UploadZone({ onImported }: UploadZoneProps = {}) {
       applyResults(data.imports, [])
       setDriverSelect(null)
       setSelectedDriver("")
-      toast.success(`Driver set to "${selectedDriver}"`)
+      toast.success(`Driver set to "${selectedDriver}" — processing…`)
     } catch {
       toast.error("Network error")
     } finally {
@@ -208,7 +254,7 @@ export function UploadZone({ onImported }: UploadZoneProps = {}) {
   }
 
   const queuedCount  = entries.filter((e) => e.status === "queued").length
-  const hasCompleted = entries.some((e) => ["imported", "duplicate", "failed"].includes(e.status))
+  const hasCompleted = entries.some((e) => ["imported", "duplicate", "failed", "processing"].includes(e.status))
 
   return (
     <div className="space-y-3">
@@ -400,10 +446,11 @@ export function UploadZone({ onImported }: UploadZoneProps = {}) {
 }
 
 function FileStatusIcon({ status }: { status: FileEntry["status"] }) {
-  if (status === "imported")  return <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
-  if (status === "failed")    return <AlertCircle  className="w-4 h-4 text-red-400 shrink-0" />
-  if (status === "duplicate") return <Copy         className="w-4 h-4 text-zinc-500 shrink-0" />
-  if (status === "uploading") return <Loader2      className="w-4 h-4 text-cyan-400 shrink-0 animate-spin" />
+  if (status === "imported")   return <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+  if (status === "failed")     return <AlertCircle  className="w-4 h-4 text-red-400 shrink-0" />
+  if (status === "duplicate")  return <Copy         className="w-4 h-4 text-zinc-500 shrink-0" />
+  if (status === "uploading" || status === "processing")
+    return <Loader2 className="w-4 h-4 text-cyan-400 shrink-0 animate-spin" />
   return <FileText className="w-4 h-4 text-zinc-600 shrink-0" />
 }
 
@@ -412,7 +459,9 @@ function StatusPill({ entry }: { entry: FileEntry }) {
     case "queued":
       return <span className="text-[11px] font-medium text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded">Queued</span>
     case "uploading":
-      return <span className="text-[11px] font-medium text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded animate-pulse">Importing…</span>
+      return <span className="text-[11px] font-medium text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded animate-pulse">Uploading…</span>
+    case "processing":
+      return <span className="text-[11px] font-medium text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded animate-pulse">Processing…</span>
     case "imported":
       return (
         <div className="flex items-center gap-1.5">

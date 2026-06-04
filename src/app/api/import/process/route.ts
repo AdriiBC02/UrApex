@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { processImport } from "@/server/services/import.service"
+import { getImportQueue } from "@/server/queue/import.queue"
 import { z } from "zod"
 
 const schema = z.object({
@@ -43,30 +43,13 @@ export async function POST(req: NextRequest) {
       data: { status: "PENDING", errorMessage: null, errorDetails: undefined },
     })
 
-    try {
-      await processImport(importFileId)
-
-      const updated = await db.importFile.findUnique({
-        where: { id: importFileId },
-        include: { session: { select: { id: true } } },
-      })
-
-      results.push({
-        importFileId,
-        originalName: importFile.originalName,
-        status: updated?.status ?? "IMPORTED",
-        isDuplicate: false,
-        sessionId: updated?.session?.id,
-        errorMessage: updated?.errorMessage,
-      })
-    } catch (err) {
-      results.push({
-        importFileId,
-        originalName: importFile.originalName,
-        status: "FAILED",
-        error: err instanceof Error ? err.message : "Import failed",
-      })
-    }
+    await getImportQueue().add("process", { importFileId })
+    results.push({
+      importFileId,
+      originalName: importFile.originalName,
+      status: "PENDING",
+      isDuplicate: false,
+    })
   }
 
   return NextResponse.json({ imports: results })
