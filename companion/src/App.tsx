@@ -33,7 +33,7 @@ export default function App() {
   const [tab, setTab] = useState<"sync" | "settings">("sync")
 
   useEffect(() => {
-    load("companion-settings.json", { autoSave: true }).then((s) => {
+    load("companion-settings.json", { autoSave: true, defaults: {} }).then((s) => {
       store = s
       s.get<Settings>("settings").then((saved) => {
         if (saved) setSettings(saved)
