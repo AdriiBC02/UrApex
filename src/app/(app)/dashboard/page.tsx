@@ -164,7 +164,7 @@ export default async function DashboardPage() {
   const lastSession = recentSessions[0]
   const weekDelta = thisWeekCount - lastWeekCount
 
-  const rating = driverRating([profile?.consistencyScore, profile?.safetyScore, profile?.paceScore])
+  const rating = driverRating([profile?.consistencyScore, profile?.safetyScore, profile?.paceScore, profile?.improvementScore])
   const ratingInfo = rating != null ? scoreColor(rating) : null
 
   return (
@@ -273,11 +273,12 @@ export default async function DashboardPage() {
           {/* Divider */}
           <div className="w-px self-stretch bg-zinc-700/40 shrink-0" />
 
-          {/* Three rings */}
-          <div className="flex items-center gap-8 flex-1">
+          {/* Four rings */}
+          <div className="flex items-center gap-6 flex-1 justify-around">
             <ScoreRing value={profile?.consistencyScore} label="Consistency" size="lg" />
             <ScoreRing value={profile?.safetyScore}      label="Safety"      size="lg" />
             <ScoreRing value={profile?.paceScore}        label="Pace"        size="lg" />
+            <ScoreRing value={profile?.improvementScore} label="Improvement" size="lg" />
           </div>
 
           {/* Right: hint */}

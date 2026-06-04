@@ -8,7 +8,23 @@
 
 ## [Unreleased]
 
-> Next up: AN-001/002 Pace+Improvement scores, AN-014 evolution charts, AN-013 auto insights.
+> Next up: AN-014 weekly evolution charts, AN-005 session comparison, AN-013 auto insights.
+
+---
+
+## [0.11.0] — 2026-06-05
+
+> AN-001/002 — Pace Score + Improvement Score. All 4 driver scores now live.
+
+### Added
+- `paceScore(bestMs, idealMs)` in metrics.service — measures how well the driver extracts maximum pace; `(idealLap / bestLap) * 100`, requires sector data
+- `calculateImprovementScore(userId)` — per track+car combo: `(firstBestMs - currentBestMs) / firstBestMs * 100`, averaged and scaled (20% avg → 100)
+- `improvementScore Float?` field on `DriverProfile` (migration `20260604095811_add_improvement_score`)
+
+### Changed
+- `calculateMetrics()` now includes `paceScore` stored on every Session
+- `updateProfileStats()` now calculates and persists all 4 profile scores (rolling avg of last 20 sessions for consistency/safety/pace; improvement via combo analysis)
+- Dashboard Driver Rating card: 4 rings (Consistency, Safety, Pace, Improvement); rating composite uses all 4
 
 ---
 

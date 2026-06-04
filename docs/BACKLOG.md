@@ -110,8 +110,8 @@
 
 | ID | Task | Priority | Status | Notes |
 |---|---|---|---|---|
-| AN-001 | Pace Score calculation | P1 | 🔲 | Requires historical PBs |
-| AN-002 | Improvement Score calculation | P1 | 🔲 | |
+| AN-001 | Pace Score calculation | P1 | ✅ | paceScore = idealLap/bestLap*100; stored per session + profile rolling avg |
+| AN-002 | Improvement Score calculation | P1 | ✅ | Per track+car combo improvement; schema migration; 4th ring in dashboard |
 | AN-003 | Full track analytics page | P1 | ✅ | PB evolution, improvement badge, session types, consistency trend, glass cards |
 | AN-004 | Full car analytics page | P1 | ✅ | Same as AN-003 + best-by-circuit + circuits count stat |
 | AN-005 | Session comparison view | P1 | 🔲 | Pick 2 sessions, compare |

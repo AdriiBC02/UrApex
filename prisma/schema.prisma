@@ -96,6 +96,7 @@ model DriverProfile {
   paceScore        Float?
   consistencyScore Float?
   safetyScore      Float?
+  improvementScore Float?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

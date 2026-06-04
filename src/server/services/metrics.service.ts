@@ -98,6 +98,19 @@ export function dropOff(laps: ParsedLap[]): number | null {
   return round(lastAvg - firstAvg)
 }
 
+/**
+ * Pace Score (0–100).
+ * Measures how well the driver extracts maximum pace from the car.
+ * Compares best lap achieved to the theoretical ideal lap (sum of best sectors).
+ * 100 = best lap equals ideal lap (perfect execution). Lower = gap to ideal.
+ * Returns null when sector data is unavailable (ideal lap can't be calculated).
+ */
+export function paceScore(bestMs: number | null, idealMs: number | null): number | null {
+  if (!bestMs || !idealMs || idealMs <= 0) return null
+  // idealMs is always <= bestMs; ratio approaches 1 as driver extracts max pace
+  return round(Math.max(0, Math.min(100, (idealMs / bestMs) * 100)))
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function validTimes(laps: ParsedLap[]): number[] {

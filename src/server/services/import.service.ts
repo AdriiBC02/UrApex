@@ -6,7 +6,7 @@ import { findOrCreateTrack } from "@/server/normalizers/track.normalizer"
 import { findOrCreateCar, findOrCreateCarClass } from "@/server/normalizers/car.normalizer"
 import {
   bestLap, avgLap, medianLap, idealLap, stdDev,
-  consistencyScore, safetyScore, cleanLapRatio, dropOff,
+  consistencyScore, safetyScore, cleanLapRatio, dropOff, paceScore,
 } from "./metrics.service"
 import { updateGoalProgress } from "./goals.service"
 import { evaluateAchievements } from "./achievements.service"
@@ -308,15 +308,18 @@ function calculateMetrics(parsed: NormalizedSession, _userId: string) {
   const { laps, incidents, penalties, dnf, dq } = parsed
   const validLaps = laps.filter((l) => l.isValid)
 
+  const best  = bestLap(laps)
+  const ideal = idealLap(laps)
+
   return {
-    bestLapMs: bestLap(laps),
-    avgLapMs: avgLap(laps),
-    medianLapMs: medianLap(laps),
-    idealLapMs: idealLap(laps),
-    stdDevMs: stdDev(laps),
-    cleanLapRatio: cleanLapRatio(laps),
+    bestLapMs:        best,
+    avgLapMs:         avgLap(laps),
+    medianLapMs:      medianLap(laps),
+    idealLapMs:       ideal,
+    stdDevMs:         stdDev(laps),
+    cleanLapRatio:    cleanLapRatio(laps),
     consistencyScore: consistencyScore(laps),
-    safetyScore: safetyScore({
+    safetyScore:      safetyScore({
       incidents: incidents.length,
       penalties: penalties.length,
       dnf,
@@ -324,7 +327,8 @@ function calculateMetrics(parsed: NormalizedSession, _userId: string) {
       validLaps: validLaps.length,
       totalLaps: laps.length,
     }),
-    dropOffMs: dropOff(laps),
+    paceScore:  paceScore(best, ideal),
+    dropOffMs:  dropOff(laps),
   }
 }
 
@@ -350,36 +354,101 @@ async function detectPersonalBest(
 // ─── Profile stats cache ──────────────────────────────────────────────────────
 
 async function updateProfileStats(userId: string): Promise<void> {
-  const [sessionCount, lapAgg, trackCount, carCount] = await Promise.all([
-    db.session.count({ where: { userId, deletedAt: null } }),
-    db.lap.aggregate({
-      where: { session: { userId, deletedAt: null } },
-      _count: { id: true },
-      _sum: {},
-    }),
-    db.session.groupBy({
-      by: ["trackId"],
-      where: { userId, deletedAt: null },
-    }).then((r) => r.length),
-    db.session.groupBy({
-      by: ["carId"],
-      where: { userId, deletedAt: null },
-    }).then((r) => r.length),
-  ])
+  const [sessionCount, lapAgg, trackCount, carCount, totalDriveSec, recentSessions] =
+    await Promise.all([
+      db.session.count({ where: { userId, deletedAt: null } }),
+      db.lap.aggregate({
+        where: { session: { userId, deletedAt: null } },
+        _count: { id: true },
+        _sum: {},
+      }),
+      db.session.groupBy({ by: ["trackId"], where: { userId, deletedAt: null } }).then(r => r.length),
+      db.session.groupBy({ by: ["carId"],   where: { userId, deletedAt: null } }).then(r => r.length),
+      db.session.aggregate({
+        where: { userId, deletedAt: null, durationSec: { not: null } },
+        _sum: { durationSec: true },
+      }).then(r => r._sum.durationSec ?? 0),
+      // Last 20 sessions for rolling score averages
+      db.session.findMany({
+        where: { userId, deletedAt: null },
+        orderBy: { sessionDate: "desc" },
+        take: 20,
+        select: {
+          consistencyScore: true, safetyScore: true, paceScore: true,
+          trackId: true, carId: true, bestLapMs: true, sessionDate: true,
+        },
+      }),
+    ])
 
-  const totalDriveSec = await db.session.aggregate({
-    where: { userId, deletedAt: null, durationSec: { not: null } },
-    _sum: { durationSec: true },
-  }).then((r) => r._sum.durationSec ?? 0)
+  // ── Rolling score averages (last 20 sessions) ──────────────────────────────
+  const avg = (vals: (number | null)[]) => {
+    const v = vals.filter((x): x is number => x != null)
+    return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : null
+  }
+
+  const profileConsistency = avg(recentSessions.map(s => s.consistencyScore))
+  const profileSafety      = avg(recentSessions.map(s => s.safetyScore))
+  const profilePace        = avg(recentSessions.map(s => s.paceScore))
+
+  // ── Improvement Score ──────────────────────────────────────────────────────
+  // For each track+car combo, compare first-session best lap to current best.
+  // improvement% per combo = (firstBest - currentBest) / firstBest * 100
+  // Profile score = avg(improvement%) * 5, capped 0–100 (20% avg improvement → 100)
+  const profileImprovementScore = await calculateImprovementScore(userId)
 
   await db.driverProfile.update({
     where: { userId },
     data: {
-      totalSessions: sessionCount,
-      totalLaps: lapAgg._count.id,
+      totalSessions:    sessionCount,
+      totalLaps:        lapAgg._count.id,
       totalDriveTimeSec: totalDriveSec,
-      uniqueTracks: trackCount,
-      uniqueCars: carCount,
+      uniqueTracks:     trackCount,
+      uniqueCars:       carCount,
+      consistencyScore: profileConsistency,
+      safetyScore:      profileSafety,
+      paceScore:        profilePace,
+      improvementScore: profileImprovementScore,
     },
   })
+}
+
+async function calculateImprovementScore(userId: string): Promise<number | null> {
+  // Fetch all track+car combos with 2+ sessions
+  const combos = await db.session.groupBy({
+    by: ["trackId", "carId"],
+    where: { userId, deletedAt: null, bestLapMs: { not: null } },
+    _count: { id: true },
+    having: { id: { _count: { gte: 2 } } },
+  })
+
+  if (!combos.length) return null
+
+  const improvements: number[] = []
+
+  await Promise.all(combos.map(async ({ trackId, carId }) => {
+    const [first, best] = await Promise.all([
+      // Oldest session with a lap time at this track+car
+      db.session.findFirst({
+        where: { userId, trackId, carId, deletedAt: null, bestLapMs: { not: null } },
+        orderBy: { sessionDate: "asc" },
+        select: { bestLapMs: true },
+      }),
+      // Overall best at this combo
+      db.session.findFirst({
+        where: { userId, trackId, carId, deletedAt: null, bestLapMs: { not: null } },
+        orderBy: { bestLapMs: "asc" },
+        select: { bestLapMs: true },
+      }),
+    ])
+
+    if (!first?.bestLapMs || !best?.bestLapMs) return
+    const improvePct = ((first.bestLapMs - best.bestLapMs) / first.bestLapMs) * 100
+    if (improvePct >= 0) improvements.push(improvePct)
+  }))
+
+  if (!improvements.length) return 0
+
+  const avgImprove = improvements.reduce((a, b) => a + b, 0) / improvements.length
+  // Scale: 20% average improvement across all combos → score 100
+  return Math.round(Math.min(100, avgImprove * 5) * 10) / 10
 }
