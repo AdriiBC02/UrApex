@@ -8,6 +8,9 @@ on:
       - ".github/workflows/companion-build.yml"
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: windows-latest
@@ -22,8 +25,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: companion/package-lock.json
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -37,38 +38,47 @@ jobs:
 
       - name: Install Node dependencies
         working-directory: companion
-        run: npm ci
+        run: npm install
 
       - name: Generate icons
         working-directory: companion
-        run: npx @tauri-apps/cli@latest icon icon.png --output src-tauri/icons
+        run: npx @tauri-apps/cli icon icon.png --output src-tauri/icons
 
       - name: Build Tauri app
         working-directory: companion
-        run: npm run tauri build
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ""
+        run: npx @tauri-apps/cli build
 
-      - name: Update "latest" release
+      - name: List build output
+        working-directory: companion
+        run: |
+          echo "=== NSIS ==="
+          dir src-tauri\target\release\bundle\nsis\ 2>nul || echo "(empty)"
+          echo "=== MSI ==="
+          dir src-tauri\target\release\bundle\msi\ 2>nul || echo "(empty)"
+        shell: cmd
+
+      - name: Update companion-latest release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: companion-latest
           name: "UrApex Companion — latest build"
           prerelease: true
+          make_latest: false
+          fail_on_unmatched_files: false
           body: |
             ## UrApex Companion App — Windows
 
-            > Built automatically from `main` on ${{ github.event.head_commit.message }}
+            > Compilado automáticamente desde `main`.
 
             ### Instalación
-            1. Descarga el `.exe` (instalador) o el `.msi`
-            2. Ejecuta el instalador en tu PC de Windows
+            1. Descarga el `.exe` (NSIS) o `.msi` de abajo
+            2. Ejecútalo en tu PC de Windows
             3. En UrApex → **Settings → Companion app** → genera una API key
-            4. En la app → **Settings** → pega la API key, la URL de UrApex y la ruta a tu carpeta de resultados de LMU
+            4. En la app → **Settings** → pega la API key, la URL de UrApex y la ruta de resultados LMU
             5. **Start watching** — las sesiones se subirán automáticamente
 
             **Ruta de resultados LMU:**
-            `C:\Users\<tu usuario>\Documents\Le Mans Ultimate\UserData\player\Results\`
+            `C:\Users\<usuario>\Documents\Le Mans Ultimate\UserData\player\Results\`
           files: |
             companion/src-tauri/target/release/bundle/nsis/*.exe
             companion/src-tauri/target/release/bundle/msi/*.msi
