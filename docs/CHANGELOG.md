@@ -8,7 +8,28 @@
 
 ## [Unreleased]
 
-> Next up: AN-016 metric recalculation job, PO-004 privacy controls, PO-007 responsive audit.
+> Next up: conectar servicios en Vercel dashboard, AN-016 metric recalculation job.
+
+---
+
+## [0.20.0] — 2026-06-05
+
+> Stack listo para Vercel free tier (Neon + Upstash + Cloudflare R2).
+
+### Added
+- **S3StorageService** — `@aws-sdk/client-s3`, compatible con Cloudflare R2 (`forcePathStyle`, endpoint custom); seleccionado vía `STORAGE_PROVIDER=s3`
+- **Vercel Cron** — `GET /api/cron/process-imports` cada minuto; fallback serverless del worker BullMQ; protegido con `CRON_SECRET`
+- **`vercel.json`** — define el cron schedule (`* * * * *`)
+- **GitHub Actions CI** — `ci.yml`: install → `prisma generate` → `prisma migrate deploy` (con `DIRECT_URL`) → `tsc` → lint → test
+- **`.env.example`** — documentado con vars para Neon, Upstash, R2, `CRON_SECRET`
+- **`prisma.config.ts`** — `directUrl` fallback via override de `DATABASE_URL` en CI
+
+### Servicios a configurar (manual, una sola vez)
+1. [Neon](https://neon.tech) — crear proyecto, añadir `DATABASE_URL` y `DIRECT_URL` en Vercel
+2. [Upstash](https://upstash.com) — crear Redis, añadir `REDIS_URL`
+3. [Cloudflare R2](https://cloudflare.com) — crear bucket, añadir `S3_*` vars + `STORAGE_PROVIDER=s3`
+4. Conectar repo GitHub a Vercel — deploy automático en cada push a `main`
+5. Build command en Vercel: `prisma migrate deploy && next build`
 
 ---
 

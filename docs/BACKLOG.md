@@ -69,7 +69,7 @@
 | S-001 | StorageService abstraction (local / S3) | P0 | ✅ | |
 | S-002 | Local storage implementation | P0 | ✅ | `./storage/raw/{userId}/{hash}.xml` |
 | S-003 | SHA-256 hash utility | P0 | ✅ | `lib/hash.ts` |
-| S-004 | S3-compatible storage implementation | P2 | 🔲 | Delay to Phase 2 |
+| S-004 | S3-compatible storage implementation | P2 | ✅ | @aws-sdk/client-s3, R2-compatible (forcePathStyle + endpoint) |
 
 ### Import Pipeline
 
