@@ -111,6 +111,44 @@ export function paceScore(bestMs: number | null, idealMs: number | null): number
   return round(Math.max(0, Math.min(100, (idealMs / bestMs) * 100)))
 }
 
+/**
+ * Racecraft Score (0–100) — RACE sessions only.
+ * Weighted: finishing position (50%) + safety (30%) + consistency (20%).
+ * finalPosition: 1-indexed finishing position.
+ * participantCount: total drivers in the session.
+ */
+export function racecraftScore(params: {
+  sessionType: string
+  finalPosition: number | null | undefined
+  participantCount: number
+  safetyScore: number | null
+  consistencyScore: number | null
+}): number | null {
+  if (params.sessionType !== "RACE") return null
+  if (!params.finalPosition || params.participantCount < 2) return null
+  const posScore = ((params.participantCount - params.finalPosition) / (params.participantCount - 1)) * 100
+  const safety      = params.safetyScore      ?? 50
+  const consistency = params.consistencyScore ?? 50
+  return round(Math.max(0, Math.min(100, posScore * 0.5 + safety * 0.3 + consistency * 0.2)))
+}
+
+/**
+ * Qualifying Score (0–100) — QUALIFYING sessions only.
+ * Weighted: grid position relative to classified drivers (70%) + consistency (30%).
+ */
+export function qualifyingScore(params: {
+  sessionType: string
+  finalPosition: number | null | undefined
+  participantCount: number
+  consistencyScore: number | null
+}): number | null {
+  if (params.sessionType !== "QUALIFYING") return null
+  if (!params.finalPosition || params.participantCount < 2) return null
+  const posScore = ((params.participantCount - params.finalPosition) / (params.participantCount - 1)) * 100
+  const consistency = params.consistencyScore ?? 50
+  return round(Math.max(0, Math.min(100, posScore * 0.7 + consistency * 0.3)))
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function validTimes(laps: ParsedLap[]): number[] {

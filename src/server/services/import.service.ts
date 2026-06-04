@@ -7,6 +7,7 @@ import { findOrCreateCar, findOrCreateCarClass } from "@/server/normalizers/car.
 import {
   bestLap, avgLap, medianLap, idealLap, stdDev,
   consistencyScore, safetyScore, cleanLapRatio, dropOff, paceScore,
+  racecraftScore, qualifyingScore,
 } from "./metrics.service"
 import { updateGoalProgress } from "./goals.service"
 import { evaluateAchievements } from "./achievements.service"
@@ -347,6 +348,18 @@ function calculateMetrics(parsed: NormalizedSession, _userId: string) {
   const best  = bestLap(laps)
   const ideal = idealLap(laps)
 
+  const cScore = consistencyScore(laps)
+  const sScore = safetyScore({
+    incidents: incidents.length,
+    penalties: penalties.length,
+    dnf,
+    dq,
+    validLaps: validLaps.length,
+    totalLaps: laps.length,
+  })
+
+  const participantCount = parsed.participants.length
+
   return {
     bestLapMs:        best,
     avgLapMs:         avgLap(laps),
@@ -354,16 +367,22 @@ function calculateMetrics(parsed: NormalizedSession, _userId: string) {
     idealLapMs:       ideal,
     stdDevMs:         stdDev(laps),
     cleanLapRatio:    cleanLapRatio(laps),
-    consistencyScore: consistencyScore(laps),
-    safetyScore:      safetyScore({
-      incidents: incidents.length,
-      penalties: penalties.length,
-      dnf,
-      dq,
-      validLaps: validLaps.length,
-      totalLaps: laps.length,
+    consistencyScore: cScore,
+    safetyScore:      sScore,
+    paceScore:        paceScore(best, ideal),
+    racecraftScore:   racecraftScore({
+      sessionType:    parsed.sessionType,
+      finalPosition:  parsed.finalPosition,
+      participantCount,
+      safetyScore:    sScore,
+      consistencyScore: cScore,
     }),
-    paceScore:  paceScore(best, ideal),
+    qualifyingScore:  qualifyingScore({
+      sessionType:    parsed.sessionType,
+      finalPosition:  parsed.finalPosition,
+      participantCount,
+      consistencyScore: cScore,
+    }),
     dropOffMs:  dropOff(laps),
   }
 }
@@ -407,6 +426,7 @@ async function updateProfileStats(userId: string): Promise<void> {
         take: 20,
         select: {
           consistencyScore: true, safetyScore: true, paceScore: true,
+          racecraftScore: true, qualifyingScore: true,
           trackId: true, carId: true, bestLapMs: true, sessionDate: true,
         },
       }),
@@ -418,9 +438,11 @@ async function updateProfileStats(userId: string): Promise<void> {
     return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : null
   }
 
-  const profileConsistency = avg(recentSessions.map(s => s.consistencyScore))
-  const profileSafety      = avg(recentSessions.map(s => s.safetyScore))
-  const profilePace        = avg(recentSessions.map(s => s.paceScore))
+  const profileConsistency  = avg(recentSessions.map(s => s.consistencyScore))
+  const profileSafety       = avg(recentSessions.map(s => s.safetyScore))
+  const profilePace         = avg(recentSessions.map(s => s.paceScore))
+  const profileRacecraft    = avg(recentSessions.filter(s => s.racecraftScore != null).map(s => s.racecraftScore))
+  const profileQualifying   = avg(recentSessions.filter(s => s.qualifyingScore != null).map(s => s.qualifyingScore))
 
   // ── Improvement Score ──────────────────────────────────────────────────────
   // For each track+car combo, compare first-session best lap to current best.
@@ -439,6 +461,8 @@ async function updateProfileStats(userId: string): Promise<void> {
       consistencyScore: profileConsistency,
       safetyScore:      profileSafety,
       paceScore:        profilePace,
+      racecraftScore:   profileRacecraft,
+      qualifyingScore:  profileQualifying,
       improvementScore: profileImprovementScore,
     },
   })

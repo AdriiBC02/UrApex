@@ -81,11 +81,13 @@ export default async function ProfilePage() {
   const hasData = (profile?.totalSessions ?? 0) > 0
 
   const SCORES = [
-    { label: "Consistency", value: profile?.consistencyScore },
-    { label: "Safety",      value: profile?.safetyScore },
-    { label: "Pace",        value: profile?.paceScore },
-    { label: "Improvement", value: profile?.improvementScore },
-  ]
+    { label: "Consistency",  value: profile?.consistencyScore },
+    { label: "Safety",       value: profile?.safetyScore },
+    { label: "Pace",         value: profile?.paceScore },
+    { label: "Improvement",  value: profile?.improvementScore },
+    { label: "Racecraft",    value: profile?.racecraftScore },
+    { label: "Qualifying",   value: profile?.qualifyingScore },
+  ].filter(s => s.value != null || ["Consistency","Safety","Pace","Improvement"].includes(s.label))
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -149,7 +151,7 @@ export default async function ProfilePage() {
       {hasData && (
         <div className="rounded-2xl border border-zinc-800/60 bg-zinc-900/50 backdrop-blur-sm p-5">
           <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-4">Driver scores</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             {SCORES.map(({ label, value }) => {
               const { grade, color } = scoreLabel(value)
               return (

@@ -102,6 +102,8 @@ model DriverProfile {
   consistencyScore Float?
   safetyScore      Float?
   improvementScore Float?
+  racecraftScore   Float?   // Rolling avg of race session racecraftScores
+  qualifyingScore  Float?   // Rolling avg of qualifying session qualifyingScores
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -204,6 +206,8 @@ model Session {
   consistencyScore Float?
   safetyScore      Float?
   paceScore        Float?
+  racecraftScore   Float?  // RACE sessions only: position + safety + consistency
+  qualifyingScore  Float?  // QUALIFYING sessions only: grid position + consistency
   dropOffMs        Float?
 
   isNewPB  Boolean @default(false)

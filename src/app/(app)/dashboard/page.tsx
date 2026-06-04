@@ -311,12 +311,18 @@ export default async function DashboardPage() {
           {/* Divider */}
           <div className="w-px self-stretch bg-zinc-700/40 shrink-0" />
 
-          {/* Four rings */}
-          <div className="flex items-center gap-6 flex-1 justify-around">
+          {/* Score rings — always show 4 core; add Racecraft/Qualifying if available */}
+          <div className="flex items-center gap-5 flex-1 justify-around flex-wrap">
             <ScoreRing value={profile?.consistencyScore} label="Consistency" size="lg" />
             <ScoreRing value={profile?.safetyScore}      label="Safety"      size="lg" />
             <ScoreRing value={profile?.paceScore}        label="Pace"        size="lg" />
             <ScoreRing value={profile?.improvementScore} label="Improvement" size="lg" />
+            {profile?.racecraftScore != null && (
+              <ScoreRing value={profile.racecraftScore} label="Racecraft" size="lg" />
+            )}
+            {profile?.qualifyingScore != null && (
+              <ScoreRing value={profile.qualifyingScore} label="Qualifying" size="lg" />
+            )}
           </div>
 
           {/* Right: hint */}

@@ -1,0 +1,4 @@
+ALTER TABLE "Session" ADD COLUMN "racecraftScore" DOUBLE PRECISION;
+ALTER TABLE "Session" ADD COLUMN "qualifyingScore" DOUBLE PRECISION;
+ALTER TABLE "DriverProfile" ADD COLUMN "racecraftScore" DOUBLE PRECISION;
+ALTER TABLE "DriverProfile" ADD COLUMN "qualifyingScore" DOUBLE PRECISION;

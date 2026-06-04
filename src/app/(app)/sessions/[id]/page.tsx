@@ -200,6 +200,20 @@ export default async function SessionDetailPage({
           value={s.safetyScore?.toFixed(1) ?? "—"}
           score={s.safetyScore}
         />
+        {s.racecraftScore != null && (
+          <MetricTile
+            label="Racecraft"
+            value={s.racecraftScore.toFixed(1)}
+            score={s.racecraftScore}
+          />
+        )}
+        {s.qualifyingScore != null && (
+          <MetricTile
+            label="Qualifying"
+            value={s.qualifyingScore.toFixed(1)}
+            score={s.qualifyingScore}
+          />
+        )}
         <MetricTile
           label="Drop-off"
           value={s.dropOffMs != null ? formatDelta(s.dropOffMs) : "—"}
