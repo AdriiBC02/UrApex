@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { EmptyState } from "@/components/shared/EmptyState"
-import { Wrench, Plus, Star, Flag, Map } from "lucide-react"
+import { Wrench, Plus, Star, Flag, Map, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { SetupActions } from "@/features/setups/SetupActions"
 
@@ -80,7 +80,9 @@ export default async function SetupsPage() {
               )}
 
               <div className="flex-1 min-w-0 pr-6">
-                <h3 className="font-semibold text-zinc-100 truncate text-base mb-1">{setup.name}</h3>
+                <Link href={`/setups/${setup.id}`} className="block">
+                  <h3 className="font-semibold text-zinc-100 truncate text-base mb-1 hover:text-cyan-400 transition-colors">{setup.name}</h3>
+                </Link>
 
                 <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-zinc-500 mb-3">
                   {setup.track && (
@@ -120,7 +122,15 @@ export default async function SetupsPage() {
                 <span className="text-[11px] text-zinc-600 uppercase tracking-wide font-medium">
                   {setup.simulator.name}
                 </span>
-                <SetupActions setupId={setup.id} isFavorite={setup.isFavorite} />
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/setups/${setup.id}`}
+                    className="flex items-center gap-1 text-xs text-zinc-600 hover:text-cyan-400 transition-colors"
+                  >
+                    View <ArrowRight className="w-3 h-3" />
+                  </Link>
+                  <SetupActions setupId={setup.id} isFavorite={setup.isFavorite} />
+                </div>
               </div>
             </div>
           ))}

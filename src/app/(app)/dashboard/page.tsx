@@ -137,7 +137,7 @@ export default async function DashboardPage() {
   const twelveWeeksAgo = new Date(weekStart)
   twelveWeeksAgo.setDate(weekStart.getDate() - 11 * 7)
 
-  const [profile, recentSessions, recentPBs, activeGoals, thisWeekCount, lastWeekCount, activitySessions] =
+  const [profile, recentSessions, recentPBs, activeGoals, recentAchievements, thisWeekCount, lastWeekCount, activitySessions] =
     await Promise.all([
       db.driverProfile.findUnique({ where: { userId } }),
       db.session.findMany({
@@ -160,6 +160,12 @@ export default async function DashboardPage() {
         where: { userId, status: "ACTIVE" },
         orderBy: { createdAt: "desc" },
         take: 3,
+      }),
+      db.userAchievement.findMany({
+        where: { userId, unlockedAt: { not: null } },
+        orderBy: { unlockedAt: "desc" },
+        take: 3,
+        include: { achievement: { select: { name: true, description: true, rarity: true } } },
       }),
       db.session.count({ where: { userId, deletedAt: null, sessionDate: { gte: weekStart } } }),
       db.session.count({ where: { userId, deletedAt: null, sessionDate: { gte: prevWeekStart, lt: weekStart } } }),
@@ -496,6 +502,49 @@ export default async function DashboardPage() {
                     </span>
                   </Link>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recent achievements */}
+          {recentAchievements.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
+                  <Trophy className="w-3.5 h-3.5 text-orange-400" />
+                  Achievements
+                </h2>
+                <Link href="/achievements" className="flex items-center gap-1 text-xs text-zinc-500 hover:text-cyan-400 transition-colors">
+                  All <ArrowRight className="w-3 h-3" />
+                </Link>
+              </div>
+              <div className="rounded-2xl border border-zinc-800/60 bg-zinc-900/50 backdrop-blur-sm overflow-hidden divide-y divide-zinc-800/40">
+                {recentAchievements.map((ua) => {
+                  const RARITY_COLOR: Record<string, string> = {
+                    COMMON: "text-zinc-400", UNCOMMON: "text-green-400",
+                    RARE: "text-blue-400", EPIC: "text-purple-400", LEGENDARY: "text-orange-400",
+                  }
+                  const RARITY_ICON: Record<string, string> = {
+                    COMMON: "⬡", UNCOMMON: "◆", RARE: "◈", EPIC: "✦", LEGENDARY: "★",
+                  }
+                  const color = RARITY_COLOR[ua.achievement.rarity] ?? "text-zinc-400"
+                  const icon  = RARITY_ICON[ua.achievement.rarity]  ?? "⬡"
+                  return (
+                    <Link key={ua.achievementId} href="/achievements"
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-800/40 transition-colors group">
+                      <span className={`text-base shrink-0 ${color}`}>{icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-zinc-300 group-hover:text-zinc-100 truncate transition-colors">
+                          {ua.achievement.name}
+                        </p>
+                        <p className="text-[11px] text-zinc-600 mt-0.5 truncate">{ua.achievement.description}</p>
+                      </div>
+                      <p className="text-[10px] text-zinc-600 shrink-0">
+                        {ua.unlockedAt ? new Date(ua.unlockedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""}
+                      </p>
+                    </Link>
+                  )
+                })}
               </div>
             </div>
           )}

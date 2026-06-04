@@ -15,6 +15,7 @@ import {
   LogOut,
   Wrench,
   ChevronRight,
+  User,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -113,6 +114,18 @@ export function AppSidebar({ user }: AppSidebarProps) {
 
       {/* Footer */}
       <div className="px-3 py-3 border-t border-zinc-800/60 space-y-1">
+        <Link
+          href="/profile"
+          className={cn(
+            "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150",
+            pathname.startsWith("/profile")
+              ? "bg-cyan-500/10 text-cyan-400 font-medium"
+              : "text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/60"
+          )}
+        >
+          <User className="w-4 h-4 shrink-0" />
+          Profile
+        </Link>
         <Link
           href="/settings"
           className={cn(
