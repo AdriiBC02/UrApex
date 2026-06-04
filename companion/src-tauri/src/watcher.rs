@@ -1,8 +1,7 @@
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::Serialize;
 use std::{path::Path, sync::mpsc, thread, time::Duration};
-use tauri::AppHandle;
-use tauri::Emitter;
+use tauri::{AppHandle, Emitter};
 
 pub struct WatcherHandle {
     stop_tx: mpsc::Sender<()>,
@@ -32,40 +31,26 @@ pub fn start(
     watcher.watch(Path::new(&folder), RecursiveMode::NonRecursive)?;
 
     thread::spawn(move || {
-        // Keep watcher alive in this thread
         let _watcher = watcher;
 
         loop {
-            // Check for stop signal (non-blocking)
             if stop_rx.try_recv().is_ok() {
                 break;
             }
 
-            // Process file events
             match event_rx.recv_timeout(Duration::from_millis(200)) {
                 Ok(Ok(event)) => {
-                    if matches!(
-                        event.kind,
-                        EventKind::Create(_) | EventKind::Modify(_)
-                    ) {
+                    if matches!(event.kind, EventKind::Create(_) | EventKind::Modify(_)) {
                         for path in &event.paths {
                             let path_str = path.to_string_lossy().to_string();
-
-                            // Only process XML files
                             if !path_str.to_lowercase().ends_with(".xml") {
                                 continue;
                             }
-
-                            // Small delay to ensure file is fully written by LMU
+                            // Small delay to ensure LMU has finished writing
                             thread::sleep(Duration::from_millis(500));
 
-                            // Emit event to the frontend
-                            let _ = app.emit(
-                                "file-detected",
-                                FileDetectedPayload { file: path_str.clone() },
-                            );
+                            let _ = app.emit("file-detected", FileDetectedPayload { file: path_str.clone() });
 
-                            // Upload in background
                             let api_url = api_url.clone();
                             let api_key = api_key.clone();
                             let app_clone = app.clone();
@@ -81,26 +66,17 @@ pub fn start(
                                             .and_then(|s| s.as_str())
                                             .unwrap_or("UNKNOWN");
 
-                                        // Send system notification
                                         let msg = match status {
-                                            "IMPORTED" => "Session imported successfully",
+                                            "IMPORTED"  => "Session imported successfully",
                                             "DUPLICATE" => "Session already exists",
-                                            _ => "Import failed — check the app",
+                                            _           => "Import failed — check the companion app",
                                         };
 
-                                        if let Some(notification) =
-                                            tauri_plugin_notification::NotificationExt::notification(
-                                                &app_clone,
-                                            ).ok()
-                                        {
-                                            let _ = notification
-                                                .title("UrApex")
-                                                .body(msg)
-                                                .show();
-                                        }
+                                        crate::send_notification(&app_clone, "UrApex", msg);
                                     }
                                     Err(e) => {
                                         log::error!("Upload error: {}", e);
+                                        crate::send_notification(&app_clone, "UrApex", "Upload failed — check your connection");
                                     }
                                 }
                             });
@@ -108,7 +84,7 @@ pub fn start(
                     }
                 }
                 Ok(Err(e)) => log::error!("Watcher error: {}", e),
-                Err(mpsc::RecvTimeoutError::Timeout) => {} // normal, continue
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
                 Err(mpsc::RecvTimeoutError::Disconnected) => break,
             }
         }

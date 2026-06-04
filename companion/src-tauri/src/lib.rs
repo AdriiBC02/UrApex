@@ -15,15 +15,11 @@ async fn start_watching(
     state: State<'_, WatcherState>,
 ) -> Result<(), String> {
     let mut guard = state.0.lock().map_err(|e| e.to_string())?;
-
-    // Stop any existing watcher
     if let Some(handle) = guard.take() {
         handle.stop();
     }
-
     let handle = watcher::start(folder, api_url, api_key, app)
         .map_err(|e| e.to_string())?;
-
     *guard = Some(handle);
     Ok(())
 }
@@ -48,6 +44,16 @@ async fn upload_file(
         .map_err(|e| e.to_string())
 }
 
+pub fn send_notification(app: &AppHandle, title: &str, body: &str) {
+    use tauri_plugin_notification::NotificationExt;
+    let _ = app
+        .notification()
+        .builder()
+        .title(title)
+        .body(body)
+        .show();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -63,11 +69,8 @@ pub fn run() {
             upload_file,
         ])
         .setup(|app| {
-            // System tray
             use tauri::tray::{TrayIconBuilder, TrayIconEvent};
-            use tauri::image::Image;
-
-            let _tray = TrayIconBuilder::new()
+            let _tray = TrayIconBuilder::with_id("main")
                 .tooltip("UrApex Companion")
                 .on_tray_icon_event(|tray, event| {
                     if let TrayIconEvent::Click { .. } = event {
@@ -78,11 +81,9 @@ pub fn run() {
                     }
                 })
                 .build(app)?;
-
             Ok(())
         })
         .on_window_event(|window, event| {
-            // Minimize to tray instead of closing
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 window.hide().unwrap_or_default();
                 api.prevent_close();

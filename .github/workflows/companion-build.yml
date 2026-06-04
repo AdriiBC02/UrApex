@@ -1,0 +1,92 @@
+name: Build Companion App (Windows)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "companion/**"
+      - ".github/workflows/companion-build.yml"
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: "Create a GitHub Release with the installer"
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: companion/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: companion/src-tauri
+
+      - name: Install Node dependencies
+        working-directory: companion
+        run: npm ci
+
+      - name: Generate icons from source PNG
+        working-directory: companion
+        run: npx @tauri-apps/cli@latest icon icon.png --output src-tauri/icons
+
+      - name: Build Tauri app
+        working-directory: companion
+        run: npm run tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ""
+
+      - name: Upload NSIS installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: urapex-companion-windows-nsis
+          path: companion/src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: warn
+
+      - name: Upload MSI installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: urapex-companion-windows-msi
+          path: companion/src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: warn
+
+      - name: Create GitHub Release
+        if: github.event.inputs.create_release == 'true' || startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: companion-${{ github.run_number }}
+          name: "UrApex Companion v0.1.${{ github.run_number }}"
+          body: |
+            ## UrApex Companion App — Windows Installer
+
+            Auto-syncs your Le Mans Ultimate session files to your UrApex dashboard.
+
+            ### Installation
+            1. Download the `.exe` (NSIS) or `.msi` installer below
+            2. Run the installer
+            3. Open UrApex → Settings → Companion app → Generate API key
+            4. Open the companion app → Settings → paste the API key + your LMU results folder
+            5. Click "Start watching" — done!
+
+            **LMU results folder:** `C:\Users\<you>\Documents\Le Mans Ultimate\UserData\player\Results\`
+          files: |
+            companion/src-tauri/target/release/bundle/nsis/*.exe
+            companion/src-tauri/target/release/bundle/msi/*.msi

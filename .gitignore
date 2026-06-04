@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Companion app (Rust/Tauri)
+companion/src-tauri/target/
+companion/node_modules/

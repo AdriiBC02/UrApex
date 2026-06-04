@@ -41,31 +41,15 @@ export default function App() {
     })
 
     // Listen for file-detected events from the Rust backend
-    const unlisten = (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__
-      ? import("@tauri-apps/api/event").then(({ listen }) =>
-          listen<{ file: string }>("file-detected", async (event) => {
-            const file = event.payload.file
-            addLog(file, "uploading")
-            try {
-              const result = await invoke<{ status: string; sessionId?: string; error?: string }>(
-                "upload_file",
-                { filePath: file }
-              )
-              if (result.status === "DUPLICATE") {
-                updateLog(file, "duplicate", "Already imported")
-              } else if (result.status === "IMPORTED") {
-                updateLog(file, "success", `Session created`)
-              } else {
-                updateLog(file, "error", result.error ?? "Import failed")
-              }
-            } catch (err) {
-              updateLog(file, "error", String(err))
-            }
-          })
-        )
-      : Promise.resolve(() => {})
+    let unlistenFn: (() => void) | undefined
+    import("@tauri-apps/api/event").then(({ listen }) => {
+      listen<{ file: string }>("file-detected", (event) => {
+        const file = event.payload.file
+        addLog(file, "uploading")
+      }).then((fn) => { unlistenFn = fn })
+    }).catch(console.error)
 
-    return () => { unlisten.then((fn) => typeof fn === "function" && fn()) }
+    return () => { unlistenFn?.() }
   }, [])
 
   function addLog(file: string, status: LogEntry["status"]) {
