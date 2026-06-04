@@ -382,14 +382,10 @@ async function detectPersonalBest(
 // ─── Profile stats cache ──────────────────────────────────────────────────────
 
 async function updateProfileStats(userId: string): Promise<void> {
-  const [sessionCount, lapAgg, trackCount, carCount, totalDriveSec, recentSessions] =
+  const [sessionCount, lapCount, trackCount, carCount, totalDriveSec, recentSessions] =
     await Promise.all([
       db.session.count({ where: { userId, deletedAt: null } }),
-      db.lap.aggregate({
-        where: { session: { userId, deletedAt: null } },
-        _count: { id: true },
-        _sum: {},
-      }),
+      db.lap.count({ where: { session: { userId, deletedAt: null } } }),
       db.session.groupBy({ by: ["trackId"], where: { userId, deletedAt: null } }).then(r => r.length),
       db.session.groupBy({ by: ["carId"],   where: { userId, deletedAt: null } }).then(r => r.length),
       db.session.aggregate({
@@ -428,7 +424,7 @@ async function updateProfileStats(userId: string): Promise<void> {
     where: { userId },
     data: {
       totalSessions:    sessionCount,
-      totalLaps:        lapAgg._count.id,
+      totalLaps:        lapCount,
       totalDriveTimeSec: totalDriveSec,
       uniqueTracks:     trackCount,
       uniqueCars:       carCount,

@@ -8,7 +8,17 @@
 
 ## [Unreleased]
 
-> Next up: AN-015 BullMQ async jobs, session comparison polish, setups detail page.
+> Next up: verify real XML imports work, setups detail page, AN-015 BullMQ.
+
+---
+
+## [0.14.0] — 2026-06-05
+
+> Fix real LMU XML parsing + _sum bug.
+
+### Fixed
+- **LMU parser v0.2.0** — complete rewrite based on actual file structure: root is `<rFactorXML><RaceResults>`, session type from child element name (Practice1/Qualify/Race1), lap times are text content in seconds (×1000→ms), sectors in attributes, player = first Driver with valid BestLapTime, date from `TimeString` "YYYY/MM/DD HH:MM:SS", penalties from `<Stream><Penalty>`, `canParse` now checks for `<rFactorXML` or `<RaceResults`
+- **`updateProfileStats`** — replaced `db.lap.aggregate({ _sum: {} })` with `db.lap.count()` (Prisma 7 rejects empty `_sum`)
 
 ---
 
