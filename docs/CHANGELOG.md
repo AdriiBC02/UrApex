@@ -12,6 +12,19 @@
 
 ---
 
+## [CI fix] — 2026-06-04
+
+### Fixed
+- **Companion CI workflow** — Node.js 24 action compatibility (`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`)
+- Removed broken npm cache step (no `package-lock.json` in CI context)
+- Switched `npm ci` → `npm install`, `npx @tauri-apps/cli@latest` → local binary
+- Replaced `npm run tauri build` with `npx @tauri-apps/cli build` (removes unsigned-key env hack)
+- Added build output listing step for artifact path debugging
+- Added `make_latest: false` + `fail_on_unmatched_files: false` to release step
+- Fixed capabilities `$schema` URL: local `node_modules` path → `https://schema.tauri.app/config/2`
+
+---
+
 ## [0.18.0] — 2026-06-04
 
 > Dashboard achievements widget + PO-002 setup detail + PO-003 driver profile + PO-010/011 scores.

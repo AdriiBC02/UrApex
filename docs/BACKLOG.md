@@ -158,7 +158,8 @@
 | CA-005 | HTTP upload from companion | P1 | ✅ | `reqwest` multipart, bearer token |
 | CA-006 | System tray + minimize-to-tray | P1 | ✅ | Shows/hides on tray icon click |
 | CA-007 | Windows notifications | P1 | ✅ | `tauri-plugin-notification` on upload result |
-| CA-008 | Compile and test on Windows | P0 | 🔲 | Requires `rustup` install on Windows PC |
+| CA-008 | GitHub Actions companion build CI | P1 | ✅ | Node 24 compat, schema URL fix, npx cli binary, artifact listing |
+| CA-016 | Compile and test on Windows | P0 | 🔲 | Requires `rustup` install on Windows PC; CI build now automated |
 | CA-009 | Local hash dedup before upload | P1 | 🔲 | Avoids uploading already-imported files |
 | CA-010 | Upload queue with retry | P1 | 🔲 | In-memory queue, retry on network error |
 | CA-011 | Persistent sync history | P2 | 🔲 | Log file across app restarts |
