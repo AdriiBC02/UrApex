@@ -8,7 +8,21 @@
 
 ## [Unreleased]
 
-> Next up: Session notes, setups manager, session detail page polish, loading states wired per-page.
+> Next up: Session notes, setups manager, loading states per-page, AN-009 achievements config.
+
+---
+
+## [0.6.0] — 2026-06-05
+
+> UI polish pass 2 — session detail hero, tracks/cars grid, achievements rarity, empty state.
+
+### Changed
+- **Session detail** — hero header with gradient top bar + type/PB badges, new `MetricTile` with score progress bar, `Section` wrapper replaces Card, back nav, lap table PB/SB badges, invalid lap opacity, removed all Card imports
+- **Tracks page** — card redesign with country + length in meta row, session count pill, last-session stat, hover gradient, `orderBy lastSession`
+- **Cars page** — same card pattern as tracks: class label, session count pill, last-session stat, hover gradient, `NonNullable` type guard
+- **Achievements page** — rarity config table with per-rarity border/bg/glow/icon, legendary shimmer overlay, `SectionLabel` with icon, progress bar uses rarity color, locked state opacity, removed PageHeader dependency
+- **EmptyState** — outer glow ring, cyan ghost-button style for action, removed shadcn Button dependency
+- **globals.css** — no change (all styling via Tailwind)
 
 ---
 
