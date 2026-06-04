@@ -8,7 +8,20 @@
 
 ## [Unreleased]
 
-> Next up: AN-014 weekly evolution charts, AN-005 session comparison, AN-013 auto insights.
+> Next up: AN-013 auto insights, AN-006 lap comparison (sector delta), setups manager.
+
+---
+
+## [0.12.0] — 2026-06-05
+
+> AN-014 weekly activity + AN-005 session comparison — training history and side-by-side analysis.
+
+### Added
+- `ActivityChart` — recharts bar chart for weekly session counts (12-week window, current week in cyan)
+- `LapComparisonChart` — dual-line recharts chart overlaying two sessions' lap times (cyan vs orange dashed)
+- `/sessions/compare` — session comparison page with slot UI, session picker, metrics diff grid, lap overlay chart, lap-by-lap delta table
+- Dashboard "Training activity" section: sessions per week bar + consistency trend (last 12 weeks, only shown with data)
+- Sessions list: `⇄` compare icon on row hover → `/sessions/compare?a=ID`
 
 ---
 

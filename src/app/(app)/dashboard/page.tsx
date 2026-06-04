@@ -6,11 +6,13 @@ import { formatDriveTime, formatLapTime } from "@/lib/time"
 import { SESSION_TYPE_LABELS, SIMULATOR_LABELS } from "@/lib/constants"
 import {
   Upload, Clock, Flag, Map, Car, TrendingUp,
-  Trophy, Target, ArrowRight, Timer,
+  Trophy, Target, ArrowRight, Timer, Activity,
   BarChart2, CheckCircle2, ShieldOff, Shield, Sliders,
 } from "lucide-react"
 import Link from "next/link"
 import type { GoalType } from "@prisma/client"
+import { ActivityChart } from "@/components/charts/ActivityChart"
+import { TrendChart } from "@/components/charts/TrendChart"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -131,7 +133,11 @@ export default async function DashboardPage() {
   const prevWeekStart = new Date(weekStart)
   prevWeekStart.setDate(weekStart.getDate() - 7)
 
-  const [profile, recentSessions, recentPBs, activeGoals, thisWeekCount, lastWeekCount] =
+  // 12-week activity window
+  const twelveWeeksAgo = new Date(weekStart)
+  twelveWeeksAgo.setDate(weekStart.getDate() - 11 * 7)
+
+  const [profile, recentSessions, recentPBs, activeGoals, thisWeekCount, lastWeekCount, activitySessions] =
     await Promise.all([
       db.driverProfile.findUnique({ where: { userId } }),
       db.session.findMany({
@@ -157,6 +163,11 @@ export default async function DashboardPage() {
       }),
       db.session.count({ where: { userId, deletedAt: null, sessionDate: { gte: weekStart } } }),
       db.session.count({ where: { userId, deletedAt: null, sessionDate: { gte: prevWeekStart, lt: weekStart } } }),
+      db.session.findMany({
+        where: { userId, deletedAt: null, sessionDate: { gte: twelveWeeksAgo } },
+        select: { sessionDate: true, consistencyScore: true },
+        orderBy: { sessionDate: "asc" },
+      }),
     ])
 
   const hasData  = (profile?.totalSessions ?? 0) > 0
@@ -166,6 +177,27 @@ export default async function DashboardPage() {
 
   const rating = driverRating([profile?.consistencyScore, profile?.safetyScore, profile?.paceScore, profile?.improvementScore])
   const ratingInfo = rating != null ? scoreColor(rating) : null
+
+  // Build 12-week activity buckets
+  const weekBuckets = Array.from({ length: 12 }, (_, i) => {
+    const start = new Date(weekStart)
+    start.setDate(weekStart.getDate() - (11 - i) * 7)
+    const end = new Date(start); end.setDate(start.getDate() + 7)
+    const count = activitySessions.filter(s => {
+      const d = new Date(s.sessionDate)
+      return d >= start && d < end
+    }).length
+    const label = start.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+    return { label, sessions: count, isCurrentWeek: i === 11 }
+  })
+
+  // Consistency trend from activity sessions
+  const consistencyTrend = activitySessions
+    .filter(s => s.consistencyScore != null)
+    .map(s => ({
+      date: new Date(s.sessionDate).toISOString().split("T")[0],
+      value: s.consistencyScore!,
+    }))
 
   return (
     <div className="space-y-6">
@@ -494,6 +526,48 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* ── Progress section ── */}
+      {hasData && (weekBuckets.some(b => b.sessions > 0) || consistencyTrend.length >= 3) && (
+        <div className="space-y-3">
+          <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
+            <Activity className="w-3.5 h-3.5" />
+            Training activity
+          </h2>
+          <div className="grid lg:grid-cols-2 gap-4">
+            {/* Weekly sessions */}
+            <div className="rounded-2xl border border-zinc-800/60 bg-zinc-900/50 backdrop-blur-sm overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-800/50">
+                <h3 className="text-sm font-semibold text-zinc-300">Sessions per week</h3>
+                <span className="text-xs text-zinc-600">last 12 weeks</span>
+              </div>
+              <div className="px-4 py-4">
+                <ActivityChart data={weekBuckets} />
+              </div>
+            </div>
+
+            {/* Consistency trend */}
+            {consistencyTrend.length >= 3 && (
+              <div className="rounded-2xl border border-zinc-800/60 bg-zinc-900/50 backdrop-blur-sm overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-800/50">
+                  <h3 className="text-sm font-semibold text-zinc-300">Consistency trend</h3>
+                  <span className="text-xs text-zinc-600">last 12 weeks</span>
+                </div>
+                <div className="px-4 py-4">
+                  <TrendChart
+                    data={consistencyTrend}
+                    color="#4ade80"
+                    domain={[0, 100]}
+                    formatter={(v) => v.toFixed(0)}
+                    label="Consistency"
+                    height={120}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

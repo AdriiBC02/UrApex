@@ -4,7 +4,7 @@ import { db } from "@/lib/db"
 import { formatLapTime } from "@/lib/time"
 import { SESSION_TYPE_LABELS } from "@/lib/constants"
 import { EmptyState } from "@/components/shared/EmptyState"
-import { Upload, Flag, ArrowLeft, ArrowRight } from "lucide-react"
+import { Upload, Flag, ArrowLeft, ArrowRight, GitCompare } from "lucide-react"
 import Link from "next/link"
 import type { SessionType } from "@prisma/client"
 
@@ -121,6 +121,7 @@ export default async function SessionsPage({
                     { label: "Best lap", w: "w-24" },
                     { label: "Cons.", w: "w-14" },
                     { label: "Safety", w: "w-14" },
+                    { label: "", w: "w-10" },
                   ].map(({ label, w }) => (
                     <th key={label} className={`text-left px-4 py-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider ${w}`}>
                       {label}
@@ -176,6 +177,15 @@ export default async function SessionsPage({
                       </td>
                       <td className="px-4 py-3">
                         <ScoreCell value={s.safetyScore} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/sessions/compare?a=${s.id}`}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-600 hover:text-cyan-400"
+                          title="Compare this session"
+                        >
+                          <GitCompare className="w-3.5 h-3.5" />
+                        </Link>
                       </td>
                     </tr>
                   )
