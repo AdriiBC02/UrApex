@@ -1,66 +1,69 @@
+import { CheckCircle2, AlertCircle, CopyMinus, Loader2, CloudUpload } from "lucide-react"
+
 export type SyncStatus = "uploading" | "success" | "duplicate" | "error"
 
 interface LogEntry {
-  id: number
-  file: string
-  status: SyncStatus
-  message?: string
+  id:        number
+  file:      string
+  status:    SyncStatus
+  message?:  string
   timestamp: Date
 }
 
-const STATUS_CONFIG: Record<SyncStatus, { icon: string; color: string; label: string }> = {
-  uploading: { icon: "↑", color: "var(--cyan)",  label: "Uploading" },
-  success:   { icon: "✓", color: "var(--green)", label: "Imported" },
-  duplicate: { icon: "=", color: "var(--text-dim)", label: "Duplicate" },
-  error:     { icon: "✕", color: "var(--red)",   label: "Failed" },
+const STATUS: Record<SyncStatus, {
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>
+  color: string
+  label: string
+}> = {
+  uploading: { icon: Loader2,       color: "var(--cyan)",     label: "Uploading"  },
+  success:   { icon: CheckCircle2,  color: "var(--green)",    label: "Imported"   },
+  duplicate: { icon: CopyMinus,     color: "var(--text-dim)", label: "Duplicate"  },
+  error:     { icon: AlertCircle,   color: "var(--red)",      label: "Failed"     },
 }
 
 export function SyncLog({ logs }: { logs: LogEntry[] }) {
   if (logs.length === 0) {
     return (
-      <div style={{
-        flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        color: "var(--text-dim)", gap: 8,
-      }}>
-        <span style={{ fontSize: 28 }}>📂</span>
-        <p style={{ fontSize: 13 }}>No sessions synced yet</p>
-        <p style={{ fontSize: 11, color: "var(--text-dim)" }}>
-          Start watching to auto-upload new LMU result files
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: 32, minHeight: 140 }}>
+        <CloudUpload size={32} strokeWidth={1.25} style={{ color: "var(--text-dim)" }} />
+        <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)" }}>No activity yet</p>
+        <p style={{ fontSize: 11, color: "var(--text-dim)", textAlign: "center" }}>
+          Start watching to auto-import new LMU result files
         </p>
       </div>
     )
   }
 
   return (
-    <div style={{
-      flex: 1, overflow: "auto", borderRadius: 8, border: "1px solid var(--border)",
-      background: "var(--surface)",
-    }}>
-      {logs.map((entry) => {
-        const cfg = STATUS_CONFIG[entry.status]
+    <div style={{ flex: 1, overflow: "auto", borderRadius: 10, border: "1px solid var(--border)", background: "var(--surface-2)" }}>
+      {logs.map((entry, i) => {
+        const cfg = STATUS[entry.status]
+        const Icon = cfg.icon
         return (
           <div
             key={entry.id}
             style={{
-              display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
-              borderBottom: "1px solid var(--border)",
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "8px 12px",
+              borderBottom: i < logs.length - 1 ? "1px solid var(--border-soft)" : "none",
             }}
           >
-            <span style={{ color: cfg.color, fontSize: 14, width: 16, textAlign: "center", flexShrink: 0 }}>
-              {cfg.icon}
-            </span>
-            <span style={{
-              fontFamily: "monospace", fontSize: 11, color: "var(--text)", flex: 1,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>
+            <Icon
+              size={13} strokeWidth={2}
+              className={entry.status === "uploading" ? "spin" : undefined}
+              style={{ color: cfg.color, flexShrink: 0 }}
+            />
+            <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {entry.file || "—"}
             </span>
-            <span style={{ fontSize: 11, color: cfg.color, flexShrink: 0 }}>
-              {cfg.label}
-              {entry.message ? ` — ${entry.message}` : ""}
-            </span>
-            <span style={{ fontSize: 10, color: "var(--text-dim)", flexShrink: 0 }}>
-              {entry.timestamp.toLocaleTimeString()}
+            {entry.message && (
+              <span style={{ fontSize: 10, color: "var(--text-dim)", flexShrink: 0, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {entry.message}
+              </span>
+            )}
+            <span style={{ fontSize: 10, fontWeight: 600, color: cfg.color, flexShrink: 0 }}>{cfg.label}</span>
+            <span style={{ fontSize: 9, color: "var(--text-dim)", flexShrink: 0, minWidth: 48, textAlign: "right" }}>
+              {entry.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
             </span>
           </div>
         )
