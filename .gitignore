@@ -48,3 +48,7 @@ next-env.d.ts
 companion/src-tauri/target/
 companion/node_modules/
 companion/dist/
+
+# Tauri signing keys — never commit
+companion/tauri.key
+companion/tauri.key.pub
