@@ -1,16 +1,16 @@
 [package]
-name = "urapex-companion"
+name = "urapex"
 version = "0.1.0"
 edition = "2021"
-description = "UrApex Companion — auto-syncs LMU session files"
+description = "UrApex — auto-syncs LMU session files"
 authors = ["UrApex"]
 
 [lib]
-name = "urapex_companion_lib"
+name = "urapex_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [[bin]]
-name = "urapex-companion"
+name = "urapex"
 path = "src/main.rs"
 
 [build-dependencies]

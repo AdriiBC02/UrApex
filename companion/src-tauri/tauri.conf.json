@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "UrApex Companion",
+        "title": "UrApex",
         "width": 480,
         "height": 540,
         "minWidth": 400,
@@ -39,7 +39,8 @@
       "webviewInstallMode": { "type": "embedBootstrapper" },
       "nsis": {
         "displayLanguageSelector": false,
-        "installMode": "perMachine"
+        "installMode": "perMachine",
+        "installerHooks": "installer-hooks.nsh"
       }
     }
   },

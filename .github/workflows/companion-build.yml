@@ -57,22 +57,27 @@ jobs:
           dir src-tauri\target\release\bundle\msi\ 2>nul || echo "(empty)"
         shell: cmd
 
+      - name: Delete existing release (clean up old assets)
+        run: gh release delete companion-latest --yes --cleanup-tag || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Update companion-latest release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: companion-latest
-          name: "UrApex Companion — latest build"
+          name: "UrApex — latest build"
           prerelease: true
           make_latest: false
           fail_on_unmatched_files: false
           body: |
-            ## UrApex Companion App — Windows
+            ## UrApex App — Windows
 
             > Compilado automáticamente desde `main`.
 
             ### Instalación
             1. Descarga el `.exe` (NSIS) o `.msi` de abajo
-            2. Ejecútalo en tu PC de Windows
+            2. Ejecútalo en tu PC de Windows (requiere admin para instalar en `Program Files (x86)`)
             3. En UrApex → **Settings → Companion app** → genera una API key
             4. En la app → **Settings** → pega la API key, la URL de UrApex y la ruta de resultados LMU
             5. **Start watching** — las sesiones se subirán automáticamente

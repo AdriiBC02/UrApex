@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    urapex_companion_lib::run()
+    urapex_lib::run()
 }

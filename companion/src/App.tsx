@@ -209,7 +209,7 @@ export default function App() {
       {/* Title bar */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderBottom: "1px solid var(--border)", background: "var(--surface)" }} data-tauri-drag-region>
         <span style={{ fontSize: 15 }}>⚡</span>
-        <span style={{ fontWeight: 700, fontSize: 13 }}>UrApex Companion</span>
+        <span style={{ fontWeight: 700, fontSize: 13 }}>UrApex</span>
         <StatusDot watching={watching} />
         <div style={{ marginLeft: "auto", display: "flex", gap: 2 }}>
           {tabs.map((t) => (
