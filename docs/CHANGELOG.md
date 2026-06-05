@@ -8,7 +8,17 @@
 
 ## [Unreleased]
 
-> Next up: PO-004 privacy controls, PO-007 responsive audit, PO-008 Cmd+K, PO-009 post-session modal.
+> Next up: PO-008 Cmd+K command palette, PO-009 post-session ritual modal.
+
+---
+
+## [0.23.0] — 2026-06-05
+
+> PO-004 privacy controls + PO-007 responsive design.
+
+### Added
+- **Privacy controls** (PO-004) — `PATCH /api/sessions/[id]` para toggle `isPublic`; `SessionPrivacyToggle` en session detail (lock/globe); sección Privacy en Settings con toggle de perfil y nota sobre sesiones individuales; `PATCH /api/profile` ahora acepta `isPublic`
+- **Responsive design** (PO-007) — `AppShell` client wrapper con estado mobile sidebar; header mobile con hamburger + logo (solo en mobile); sidebar como drawer fijo con overlay negro; nav links cierran el sidebar al navegar; tablas con `overflow-x-auto` y ancho mínimo; padding reducido en mobile (`px-4 py-5` vs `px-8 py-7`)
 
 ---
 
