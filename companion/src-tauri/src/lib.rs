@@ -159,6 +159,13 @@ fn get_dashboard_stats(db_state: State<'_, DbState>) -> Result<db::DashboardStat
     db::get_dashboard_stats(&db_state.0.lock().map_err(|e| e.to_string())?)
 }
 
+// ── Achievements ─────────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn get_achievements(db_state: State<'_, DbState>) -> Result<Vec<db::Achievement>, String> {
+    db::get_achievements(&db_state.0.lock().map_err(|e| e.to_string())?)
+}
+
 // ── Setups ────────────────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -273,6 +280,37 @@ pub async fn process_file(
         );
     }
 
+    // Evaluate achievements — notify for each newly unlocked
+    {
+        let ctx = db::SessionContext {
+            session_id:        sess_id.clone(),
+            valid_laps:        session.valid_laps,
+            session_type:      session.session_type.clone(),
+            final_position:    session.final_position,
+            dnf:               session.dnf,
+            is_new_pb:         is_pb,
+            track_name:        session.track_name.clone(),
+            car_name:          session.car_name.clone(),
+            consistency_score: snap.consistency_score,
+            is_online:         session.is_online,
+        };
+        if let Ok(c) = conn.lock() {
+            match db::evaluate_achievements(&c, &ctx) {
+                Ok(unlocked) => {
+                    for slug in unlocked {
+                        let name = db::get_achievements(&c)
+                            .ok()
+                            .and_then(|a| a.into_iter().find(|x| x.slug == slug))
+                            .map(|a| a.name)
+                            .unwrap_or_else(|| slug.clone());
+                        send_notification(app, "Achievement unlocked!", &format!("🏆 {name}"));
+                    }
+                }
+                Err(e) => log::warn!("Achievement eval error: {e}"),
+            }
+        }
+    }
+
     // Optional server sync
     if !api_url.is_empty() && !api_key.is_empty() {
         match uploader::upload(file_path, api_url, api_key).await {
@@ -333,6 +371,7 @@ pub fn run() {
             get_goals, create_goal, delete_goal, update_goal_status,
             get_notes, create_note, delete_note,
             get_dashboard_stats,
+            get_achievements,
             get_setups, create_setup, toggle_setup_favorite, update_setup_notes, delete_setup,
             get_replays, add_replay, match_replay, delete_replay,
         ])

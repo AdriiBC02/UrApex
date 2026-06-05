@@ -147,6 +147,33 @@ pub struct RecentPb {
 
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct Achievement {
+    pub slug:        String,
+    pub name:        String,
+    pub description: String,
+    pub category:    String,
+    pub rarity:      String,
+    pub icon:        String,
+    pub target:      f64,
+    pub progress:    f64,
+    pub unlocked_at: Option<String>,
+}
+
+pub struct SessionContext {
+    pub session_id:        String,
+    pub valid_laps:        i32,
+    pub session_type:      String,
+    pub final_position:    Option<i32>,
+    pub dnf:               bool,
+    pub is_new_pb:         bool,
+    pub is_online:         bool,
+    pub track_name:        String,
+    pub car_name:          String,
+    pub consistency_score: Option<f64>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Setup {
     pub id:          String,
     pub name:        String,
@@ -362,6 +389,25 @@ fn migrate(conn: &Connection) -> Result<(), String> {
             CREATE INDEX IF NOT EXISTS idx_setups_track ON setups(track_name);
         ").map_err(|e| e.to_string())?;
         set_schema_version(conn, 4);
+    }
+
+    // v5 — achievements
+    if v < 5 {
+        conn.execute_batch("
+            CREATE TABLE IF NOT EXISTS achievements (
+                slug        TEXT PRIMARY KEY,
+                name        TEXT NOT NULL,
+                description TEXT NOT NULL,
+                category    TEXT NOT NULL,
+                rarity      TEXT NOT NULL,
+                icon        TEXT NOT NULL DEFAULT '🏆',
+                target      REAL NOT NULL DEFAULT 1,
+                progress    REAL NOT NULL DEFAULT 0,
+                unlocked_at TEXT
+            );
+        ").map_err(|e| e.to_string())?;
+        seed_achievements(conn)?;
+        set_schema_version(conn, 5);
     }
 
     Ok(())
@@ -848,6 +894,294 @@ pub fn get_dashboard_stats(conn: &Connection) -> Result<DashboardStats, String> 
         pb_count,
         recent_pb,
     })
+}
+
+// ── Achievements ─────────────────────────────────────────────────────────────
+
+// (slug, name, description, category, rarity, icon, target)
+const ACHIEVEMENT_DEFS: &[(&str, &str, &str, &str, &str, &str, f64)] = &[
+    // ── Volume ──────────────────────────────────────────────────────────────
+    ("first_session",    "First Session",       "Complete your first session",                            "VOLUME",      "COMMON",     "🚥", 1.0),
+    ("lap_apprentice",   "Lap Apprentice",      "Complete 10 valid laps",                                "VOLUME",      "COMMON",     "🏁", 10.0),
+    ("century_driver",   "Century Driver",      "Complete 100 valid laps",                               "VOLUME",      "RARE",       "💯", 100.0),
+    ("road_warrior",     "Road Warrior",        "Complete 500 valid laps",                               "VOLUME",      "EPIC",       "🛣️", 500.0),
+    ("elite_driver",     "Elite Driver",        "Complete 1000 valid laps",                              "VOLUME",      "LEGENDARY",  "👑", 1000.0),
+    ("dedicated",        "Dedicated",           "Complete 10 sessions",                                  "VOLUME",      "UNCOMMON",   "📅", 10.0),
+    ("committed",        "Committed",           "Complete 50 sessions",                                  "VOLUME",      "RARE",       "🔒", 50.0),
+    ("sim_pro",          "Sim Pro",             "Complete 200 sessions",                                 "VOLUME",      "EPIC",       "🏆", 200.0),
+    ("night_owl",        "Night Owl",           "Accumulate 10 hours of driving",                        "VOLUME",      "UNCOMMON",   "🦉", 10.0),
+    ("time_lord",        "Time Lord",           "Accumulate 50 hours of driving",                        "VOLUME",      "EPIC",       "⌛", 50.0),
+    // ── Pace ────────────────────────────────────────────────────────────────
+    ("first_pb",         "Setting The Bar",     "Set your first personal best lap time",                 "PACE",        "UNCOMMON",   "⚡", 1.0),
+    ("speed_chaser",     "Speed Chaser",        "Set 5 personal bests across all circuits",              "PACE",        "RARE",       "🎯", 5.0),
+    ("speed_demon",      "Speed Demon",         "Set 10 personal bests across all circuits",             "PACE",        "EPIC",       "🔥", 10.0),
+    ("sector_hunter",    "Sector Hunter",       "Set personal bests in all 3 sectors in one session",   "PACE",        "EPIC",       "🔍", 1.0),
+    // ── Consistency ─────────────────────────────────────────────────────────
+    ("consistency_king", "Consistency King",    "Score above 90 consistency in a session",               "CONSISTENCY", "RARE",       "📊", 1.0),
+    ("rock_solid",       "Rock Solid",          "Score above 95 consistency in a session",               "CONSISTENCY", "EPIC",       "💎", 1.0),
+    ("on_rails",         "On Rails",            "Complete 5 sessions with consistency above 85",         "CONSISTENCY", "RARE",       "⚙️", 5.0),
+    // ── Endurance ───────────────────────────────────────────────────────────
+    ("endurance_pilot",  "Endurance Pilot",     "Complete 20 or more laps in one session",               "ENDURANCE",   "UNCOMMON",   "⏱️", 1.0),
+    ("marathon_man",     "Marathon Man",        "Complete 50 or more laps in one session",               "ENDURANCE",   "RARE",       "🏃", 1.0),
+    ("endurance_legend", "Endurance Legend",    "Complete 100 or more laps in one session",              "ENDURANCE",   "LEGENDARY",  "🌟", 1.0),
+    // ── Race craft ──────────────────────────────────────────────────────────
+    ("glass_clean",      "Glass Clean",         "Finish a race without DNF",                             "RACE_CRAFT",  "UNCOMMON",   "🧹", 1.0),
+    ("podium",           "Podium",              "Finish in the top 3 in an online race",                 "RACE_CRAFT",  "UNCOMMON",   "🥉", 1.0),
+    ("race_winner",      "Race Winner",         "Finish P1 in an online race",                           "RACE_CRAFT",  "RARE",       "🥇", 1.0),
+    ("hat_trick",        "Hat Trick",           "Win 3 online races",                                    "RACE_CRAFT",  "EPIC",       "🎩", 3.0),
+    ("iron_will",        "Iron Will",           "Complete 10 races without DNF",                         "RACE_CRAFT",  "RARE",       "🛡️", 10.0),
+    // ── Exploration ─────────────────────────────────────────────────────────
+    ("track_explorer",   "Track Explorer",      "Race at 3 different tracks",                            "EXPLORATION", "COMMON",     "🗺️", 3.0),
+    ("track_collector",  "Track Collector",     "Race at 5 different tracks",                            "EXPLORATION", "UNCOMMON",   "📍", 5.0),
+    ("world_traveler",   "World Traveler",      "Race at 10 different tracks",                           "EXPLORATION", "RARE",       "🌍", 10.0),
+    ("car_collector",    "Car Collector",       "Drive 5 different cars",                                "EXPLORATION", "UNCOMMON",   "🚗", 5.0),
+    ("fleet_owner",      "Fleet Owner",         "Drive 10 different cars",                               "EXPLORATION", "RARE",       "🏎️", 10.0),
+    ("triple_threat",    "Triple Threat",       "Complete practice, qualifying and race at the same track", "EXPLORATION", "RARE",    "🔱", 1.0),
+];
+
+fn seed_achievements(conn: &Connection) -> Result<(), String> {
+    let mut stmt = conn.prepare(
+        "INSERT OR IGNORE INTO achievements (slug, name, description, category, rarity, icon, target)
+         VALUES (?1,?2,?3,?4,?5,?6,?7)"
+    ).map_err(|e| e.to_string())?;
+
+    for (slug, name, desc, cat, rarity, icon, target) in ACHIEVEMENT_DEFS {
+        stmt.execute(params![slug, name, desc, cat, rarity, icon, target])
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+pub fn get_achievements(conn: &Connection) -> Result<Vec<Achievement>, String> {
+    let mut stmt = conn.prepare(
+        "SELECT slug, name, description, category, rarity, icon, target, progress, unlocked_at
+         FROM achievements
+         ORDER BY
+           CASE rarity
+             WHEN 'LEGENDARY' THEN 1 WHEN 'EPIC' THEN 2 WHEN 'RARE' THEN 3
+             WHEN 'UNCOMMON' THEN 4 ELSE 5 END,
+           unlocked_at DESC NULLS LAST,
+           name ASC"
+    ).map_err(|e| e.to_string())?;
+
+    let rows = stmt.query_map([], |row| Ok(Achievement {
+        slug:        row.get(0)?,
+        name:        row.get(1)?,
+        description: row.get(2)?,
+        category:    row.get(3)?,
+        rarity:      row.get(4)?,
+        icon:        row.get(5)?,
+        target:      row.get(6)?,
+        progress:    row.get(7)?,
+        unlocked_at: row.get(8)?,
+    })).map_err(|e| e.to_string())?;
+
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+/// Evaluates all achievements after a session import.
+/// Returns slugs of achievements newly unlocked in this call.
+pub fn evaluate_achievements(conn: &Connection, ctx: &SessionContext) -> Result<Vec<String>, String> {
+    let now = now_iso();
+    let mut newly_unlocked: Vec<String> = Vec::new();
+
+    // ── Pre-compute aggregates ─────────────────────────────────────────────
+    let total_sessions: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM sessions", [], |r| r.get(0),
+    ).unwrap_or(0);
+
+    let total_valid_laps: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM laps WHERE is_valid=1", [], |r| r.get(0),
+    ).unwrap_or(0);
+
+    let total_pbs: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM sessions WHERE is_new_pb=1", [], |r| r.get(0),
+    ).unwrap_or(0);
+
+    let total_hours: f64 = conn.query_row(
+        "SELECT COALESCE(SUM(duration_sec), 0) FROM sessions WHERE duration_sec IS NOT NULL",
+        [], |r| r.get::<_, f64>(0),
+    ).unwrap_or(0.0) / 3600.0;
+
+    let unique_tracks: i32 = conn.query_row(
+        "SELECT COUNT(DISTINCT track_name) FROM sessions", [], |r| r.get(0),
+    ).unwrap_or(0);
+
+    let unique_cars: i32 = conn.query_row(
+        "SELECT COUNT(DISTINCT car_name) FROM sessions", [], |r| r.get(0),
+    ).unwrap_or(0);
+
+    let consistency_above_85: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM sessions WHERE consistency_score > 85", [], |r| r.get(0),
+    ).unwrap_or(0);
+
+    let race_wins: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM sessions WHERE session_type='RACE' AND final_position=1 AND is_online=1",
+        [], |r| r.get(0),
+    ).unwrap_or(0);
+
+    let races_no_dnf: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM sessions WHERE session_type='RACE' AND dnf=0",
+        [], |r| r.get(0),
+    ).unwrap_or(0);
+
+    // Triple threat: same track has PRACTICE + QUALIFYING + RACE
+    let triple_threat_met: bool = conn.query_row(
+        "SELECT COUNT(DISTINCT session_type) FROM sessions
+         WHERE track_name=?1 AND session_type IN ('PRACTICE','QUALIFYING','RACE')",
+        params![ctx.track_name],
+        |r| r.get::<_, i32>(0),
+    ).unwrap_or(0) >= 3;
+
+    // Sector PBs: current session best S1/S2/S3 vs historical at same track+car
+    let sector_pbs_met = check_sector_pbs(conn, &ctx.session_id, &ctx.track_name, &ctx.car_name);
+
+    // ── Per-achievement update ─────────────────────────────────────────────
+    let achievements = get_achievements(conn)?;
+
+    for ach in &achievements {
+        if ach.unlocked_at.is_some() { continue; } // already unlocked
+
+        let (new_progress, unlocked) = compute_progress(
+            ach, ctx,
+            total_sessions, total_valid_laps, total_pbs, total_hours,
+            unique_tracks, unique_cars, consistency_above_85,
+            race_wins, races_no_dnf, triple_threat_met, sector_pbs_met,
+        );
+
+        // Only write if changed
+        if (new_progress - ach.progress).abs() < f64::EPSILON && !unlocked { continue; }
+
+        let unlock_ts = if unlocked { Some(now.as_str()) } else { None };
+        conn.execute(
+            "UPDATE achievements SET progress=?1, unlocked_at=COALESCE(?2, unlocked_at) WHERE slug=?3",
+            params![new_progress, unlock_ts, ach.slug],
+        ).map_err(|e| e.to_string())?;
+
+        if unlocked {
+            newly_unlocked.push(ach.slug.clone());
+        }
+    }
+
+    Ok(newly_unlocked)
+}
+
+fn compute_progress(
+    ach: &Achievement,
+    ctx: &SessionContext,
+    total_sessions:      i32,
+    total_valid_laps:    i32,
+    total_pbs:           i32,
+    total_hours:         f64,
+    unique_tracks:       i32,
+    unique_cars:         i32,
+    consistency_above_85: i32,
+    race_wins:           i32,
+    races_no_dnf:        i32,
+    triple_threat_met:   bool,
+    sector_pbs_met:      bool,
+) -> (f64, bool) {
+    let t = ach.target;
+
+    let (raw, unlocked) = match ach.slug.as_str() {
+        // Volume
+        "first_session"   => (total_sessions as f64,     total_sessions >= 1),
+        "lap_apprentice"  => (total_valid_laps as f64,   total_valid_laps >= 10),
+        "century_driver"  => (total_valid_laps as f64,   total_valid_laps >= 100),
+        "road_warrior"    => (total_valid_laps as f64,   total_valid_laps >= 500),
+        "elite_driver"    => (total_valid_laps as f64,   total_valid_laps >= 1000),
+        "dedicated"       => (total_sessions as f64,     total_sessions >= 10),
+        "committed"       => (total_sessions as f64,     total_sessions >= 50),
+        "sim_pro"         => (total_sessions as f64,     total_sessions >= 200),
+        "night_owl"       => (total_hours,               total_hours >= 10.0),
+        "time_lord"       => (total_hours,               total_hours >= 50.0),
+        // Pace
+        "first_pb"        => (total_pbs as f64,          total_pbs >= 1),
+        "speed_chaser"    => (total_pbs as f64,          total_pbs >= 5),
+        "speed_demon"     => (total_pbs as f64,          total_pbs >= 10),
+        "sector_hunter"   => (if sector_pbs_met { 1.0 } else { ach.progress }, sector_pbs_met),
+        // Consistency
+        "consistency_king" => {
+            let hit = ctx.consistency_score.map(|s| s > 90.0).unwrap_or(false);
+            (if hit { 1.0 } else { ach.progress }, hit)
+        }
+        "rock_solid" => {
+            let hit = ctx.consistency_score.map(|s| s > 95.0).unwrap_or(false);
+            (if hit { 1.0 } else { ach.progress }, hit)
+        }
+        "on_rails" => (consistency_above_85 as f64, consistency_above_85 >= 5),
+        // Endurance
+        "endurance_pilot"  => {
+            let hit = ctx.valid_laps >= 20;
+            (if hit { 1.0 } else { ach.progress }, hit)
+        }
+        "marathon_man" => {
+            let hit = ctx.valid_laps >= 50;
+            (if hit { 1.0 } else { ach.progress }, hit)
+        }
+        "endurance_legend" => {
+            let hit = ctx.valid_laps >= 100;
+            (if hit { 1.0 } else { ach.progress }, hit)
+        }
+        // Race craft
+        "glass_clean" => {
+            let hit = ctx.session_type == "RACE" && !ctx.dnf;
+            (if hit { 1.0 } else { ach.progress }, hit)
+        }
+        "podium" => {
+            let hit = ctx.session_type == "RACE"
+                && ctx.is_online
+                && ctx.final_position.map(|p| p <= 3).unwrap_or(false);
+            (if hit { 1.0 } else { ach.progress }, hit)
+        }
+        "race_winner" => {
+            let hit = ctx.session_type == "RACE"
+                && ctx.is_online
+                && ctx.final_position == Some(1);
+            (if hit { 1.0 } else { ach.progress }, hit)
+        }
+        "hat_trick"  => (race_wins as f64, race_wins >= 3),
+        "iron_will"  => (races_no_dnf as f64, races_no_dnf >= 10),
+        // Exploration
+        "track_explorer"  => (unique_tracks as f64, unique_tracks >= 3),
+        "track_collector" => (unique_tracks as f64, unique_tracks >= 5),
+        "world_traveler"  => (unique_tracks as f64, unique_tracks >= 10),
+        "car_collector"   => (unique_cars as f64,   unique_cars >= 5),
+        "fleet_owner"     => (unique_cars as f64,   unique_cars >= 10),
+        "triple_threat"   => (if triple_threat_met { 1.0 } else { ach.progress }, triple_threat_met),
+        _ => return (ach.progress, false),
+    };
+
+    let capped = raw.min(t);
+    (capped, unlocked)
+}
+
+fn check_sector_pbs(conn: &Connection, session_id: &str, track_name: &str, car_name: &str) -> bool {
+    // Best sectors in THIS session
+    let cur = conn.query_row(
+        "SELECT MIN(sector1_ms), MIN(sector2_ms), MIN(sector3_ms)
+         FROM laps WHERE session_id=?1 AND is_valid=1",
+        params![session_id],
+        |r| Ok((r.get::<_, Option<i32>>(0)?, r.get::<_, Option<i32>>(1)?, r.get::<_, Option<i32>>(2)?)),
+    );
+
+    let Ok((Some(s1), Some(s2), Some(s3))) = cur else { return false };
+
+    // Best sectors from ALL OTHER sessions at same track+car
+    let prev = conn.query_row(
+        "SELECT MIN(l.sector1_ms), MIN(l.sector2_ms), MIN(l.sector3_ms)
+         FROM laps l
+         JOIN sessions s ON l.session_id = s.id
+         WHERE s.track_name=?1 AND s.car_name=?2 AND s.id != ?3 AND l.is_valid=1",
+        params![track_name, car_name, session_id],
+        |r| Ok((r.get::<_, Option<i32>>(0)?, r.get::<_, Option<i32>>(1)?, r.get::<_, Option<i32>>(2)?)),
+    );
+
+    match prev {
+        Ok((Some(ps1), Some(ps2), Some(ps3))) => s1 < ps1 && s2 < ps2 && s3 < ps3,
+        Ok((None, _, _)) | Ok((_, None, _)) | Ok((_, _, None)) => true, // first session with sectors = PB
+        Err(_) => true,
+    }
 }
 
 // ── Setups ────────────────────────────────────────────────────────────────────

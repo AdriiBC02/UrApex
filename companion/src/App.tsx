@@ -11,6 +11,7 @@ import { GoalsView } from "./components/Goals"
 import { DashboardView } from "./components/Dashboard"
 import { SetupsView } from "./components/Setups"
 import { CompareView } from "./components/CompareView"
+import { AchievementsView } from "./components/Achievements"
 
 interface Settings {
   watchFolder:   string
@@ -45,7 +46,7 @@ export default function App() {
   const [settings, setSettings]             = useState<Settings>({ watchFolder: "", replayFolder: "", apiUrl: "", apiKey: "", driverName: "" })
   const [watching, setWatching]             = useState(false)
   const [logs, setLogs]                     = useState<LogEntry[]>([])
-  const [tab, setTab]                       = useState<"dashboard" | "sync" | "sessions" | "goals" | "setups" | "replays" | "settings">("dashboard")
+  const [tab, setTab]                       = useState<"dashboard" | "sync" | "sessions" | "goals" | "setups" | "achievements" | "replays" | "settings">("dashboard")
   const [autostart, setAutostart]           = useState(false)
   const [importing, setImporting]           = useState(false)
   const [sessions, setSessions]             = useState<SessionSummary[]>([])
@@ -201,7 +202,7 @@ export default function App() {
   }
 
   const canWatch = Boolean(settings.watchFolder)
-  const tabs = ["dashboard", "sync", "sessions", "goals", "setups", "replays", "settings"] as const
+  const tabs = ["dashboard", "sync", "sessions", "goals", "setups", "achievements", "replays", "settings"] as const
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
@@ -239,6 +240,9 @@ export default function App() {
 
         {/* ── SETUPS TAB ── */}
         {tab === "setups" && <SetupsView />}
+
+        {/* ── ACHIEVEMENTS TAB ── */}
+        {tab === "achievements" && <AchievementsView />}
 
         {/* ── SYNC TAB ── */}
         {tab === "sync" && (
