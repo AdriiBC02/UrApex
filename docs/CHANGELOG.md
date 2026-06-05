@@ -12,6 +12,23 @@
 
 ---
 
+## [0.21.0] — 2026-06-05
+
+> Gestión de replays .Vcr: subida, descarga, eliminación y gestor de capacidad.
+
+### Added
+- **Modelo `Replay`** — `userId`, `sessionId`, `storagePath`, `originalName`, `fileSizeBytes`, `fileHash` (dedup)
+- **`POST /api/sessions/[id]/replays`** — sube un `.vcr`; dedup por hash SHA-256
+- **`GET /api/sessions/[id]/replays`** — lista replays de una sesión
+- **`DELETE /api/replays/[id]`** — elimina del storage y de la DB
+- **`GET /api/replays/[id]/download`** — descarga el archivo como attachment
+- **`GET /api/storage`** — estadísticas de uso + lista ordenada por tamaño
+- **`ReplaySection`** en session detail — subida drag/browse + download + delete por sesión
+- **`/storage` page** — barra de uso (referencia free tier 10 GB R2), aviso al 80%+, lista completa con enlace a sesión y acciones
+- **Sidebar**: enlace Storage bajo la sección Progress
+
+---
+
 ## [0.20.0] — 2026-06-05
 
 > Stack listo para Vercel free tier (Neon + Upstash + Cloudflare R2).
