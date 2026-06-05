@@ -10,7 +10,6 @@ use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 pub struct WatcherState(pub Mutex<Option<watcher::WatcherHandle>>);
-// Arc so it can be cloned into async tasks and the watcher thread
 pub struct DbState(pub Arc<Mutex<rusqlite::Connection>>);
 
 // ── Watcher ───────────────────────────────────────────────────────────────────
@@ -79,58 +78,68 @@ async fn import_all_files(
 
 #[tauri::command]
 fn get_sessions(db_state: State<'_, DbState>) -> Result<Vec<db::SessionSummary>, String> {
-    db::get_sessions(&db_state.0.lock().map_err(|e| e.to_string())?)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::get_sessions(&conn)
 }
 
 #[tauri::command]
 fn get_session_detail(id: String, db_state: State<'_, DbState>) -> Result<Option<db::SessionDetail>, String> {
-    db::get_session_detail(&db_state.0.lock().map_err(|e| e.to_string())?, &id)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::get_session_detail(&conn, &id)
 }
 
 #[tauri::command]
 fn delete_session(id: String, db_state: State<'_, DbState>) -> Result<(), String> {
-    db::delete_session(&db_state.0.lock().map_err(|e| e.to_string())?, &id)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::delete_session(&conn, &id)
 }
 
 // ── Participants ──────────────────────────────────────────────────────────────
 
 #[tauri::command]
 fn get_participants(session_id: String, db_state: State<'_, DbState>) -> Result<Vec<db::Participant>, String> {
-    db::get_participants(&db_state.0.lock().map_err(|e| e.to_string())?, &session_id)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::get_participants(&conn, &session_id)
 }
 
 #[tauri::command]
 fn get_participant_laps(participant_id: String, db_state: State<'_, DbState>) -> Result<Vec<db::ParticipantLap>, String> {
-    db::get_participant_laps(&db_state.0.lock().map_err(|e| e.to_string())?, &participant_id)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::get_participant_laps(&conn, &participant_id)
 }
 
 // ── Goals ─────────────────────────────────────────────────────────────────────
 
 #[tauri::command]
 fn get_goals(db_state: State<'_, DbState>) -> Result<Vec<db::Goal>, String> {
-    db::get_goals(&db_state.0.lock().map_err(|e| e.to_string())?)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::get_goals(&conn)
 }
 
 #[tauri::command]
 fn create_goal(input: db::CreateGoalInput, db_state: State<'_, DbState>) -> Result<String, String> {
-    db::create_goal(&db_state.0.lock().map_err(|e| e.to_string())?, &input)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::create_goal(&conn, &input)
 }
 
 #[tauri::command]
 fn delete_goal(id: String, db_state: State<'_, DbState>) -> Result<(), String> {
-    db::delete_goal(&db_state.0.lock().map_err(|e| e.to_string())?, &id)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::delete_goal(&conn, &id)
 }
 
 #[tauri::command]
 fn update_goal_status(id: String, status: String, db_state: State<'_, DbState>) -> Result<(), String> {
-    db::update_goal_status(&db_state.0.lock().map_err(|e| e.to_string())?, &id, &status)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::update_goal_status(&conn, &id, &status)
 }
 
 // ── Notes ─────────────────────────────────────────────────────────────────────
 
 #[tauri::command]
 fn get_notes(session_id: String, db_state: State<'_, DbState>) -> Result<Vec<db::Note>, String> {
-    db::get_notes(&db_state.0.lock().map_err(|e| e.to_string())?, &session_id)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::get_notes(&conn, &session_id)
 }
 
 #[tauri::command]
@@ -141,63 +150,70 @@ fn create_note(
     video_url:  Option<String>,
     db_state:   State<'_, DbState>,
 ) -> Result<String, String> {
-    db::create_note(
-        &db_state.0.lock().map_err(|e| e.to_string())?,
-        &session_id, &content, &tags, video_url.as_deref(),
-    )
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::create_note(&conn, &session_id, &content, &tags, video_url.as_deref())
 }
 
 #[tauri::command]
 fn delete_note(id: String, db_state: State<'_, DbState>) -> Result<(), String> {
-    db::delete_note(&db_state.0.lock().map_err(|e| e.to_string())?, &id)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::delete_note(&conn, &id)
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 #[tauri::command]
 fn get_dashboard_stats(db_state: State<'_, DbState>) -> Result<db::DashboardStats, String> {
-    db::get_dashboard_stats(&db_state.0.lock().map_err(|e| e.to_string())?)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::get_dashboard_stats(&conn)
 }
 
 // ── Achievements ─────────────────────────────────────────────────────────────
 
 #[tauri::command]
 fn get_achievements(db_state: State<'_, DbState>) -> Result<Vec<db::Achievement>, String> {
-    db::get_achievements(&db_state.0.lock().map_err(|e| e.to_string())?)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::get_achievements(&conn)
 }
 
 // ── Setups ────────────────────────────────────────────────────────────────────
 
 #[tauri::command]
 fn get_setups(db_state: State<'_, DbState>) -> Result<Vec<db::Setup>, String> {
-    db::get_setups(&db_state.0.lock().map_err(|e| e.to_string())?)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::get_setups(&conn)
 }
 
 #[tauri::command]
 fn create_setup(input: db::CreateSetupInput, db_state: State<'_, DbState>) -> Result<String, String> {
-    db::create_setup(&db_state.0.lock().map_err(|e| e.to_string())?, &input)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::create_setup(&conn, &input)
 }
 
 #[tauri::command]
 fn toggle_setup_favorite(id: String, db_state: State<'_, DbState>) -> Result<(), String> {
-    db::toggle_setup_favorite(&db_state.0.lock().map_err(|e| e.to_string())?, &id)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::toggle_setup_favorite(&conn, &id)
 }
 
 #[tauri::command]
 fn update_setup_notes(id: String, notes: String, db_state: State<'_, DbState>) -> Result<(), String> {
-    db::update_setup_notes(&db_state.0.lock().map_err(|e| e.to_string())?, &id, &notes)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::update_setup_notes(&conn, &id, &notes)
 }
 
 #[tauri::command]
 fn delete_setup(id: String, db_state: State<'_, DbState>) -> Result<(), String> {
-    db::delete_setup(&db_state.0.lock().map_err(|e| e.to_string())?, &id)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::delete_setup(&conn, &id)
 }
 
 // ── Replay commands ───────────────────────────────────────────────────────────
 
 #[tauri::command]
 fn get_replays(db_state: State<'_, DbState>) -> Result<Vec<db::ReplaySummary>, String> {
-    db::get_replays(&db_state.0.lock().map_err(|e| e.to_string())?)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::get_replays(&conn)
 }
 
 #[tauri::command]
@@ -224,17 +240,18 @@ fn match_replay(
     session_id: String,
     db_state:   State<'_, DbState>,
 ) -> Result<(), String> {
-    db::match_replay_to_session(&db_state.0.lock().map_err(|e| e.to_string())?, &replay_id, &session_id)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::match_replay_to_session(&conn, &replay_id, &session_id)
 }
 
 #[tauri::command]
 fn delete_replay(id: String, db_state: State<'_, DbState>) -> Result<(), String> {
-    db::delete_replay(&db_state.0.lock().map_err(|e| e.to_string())?, &id)
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::delete_replay(&conn, &id)
 }
 
 // ── Core processing ───────────────────────────────────────────────────────────
 
-/// Parse + save locally; optionally sync to server if url/key non-empty.
 pub async fn process_file(
     file_path: &str, api_url: &str, api_key: &str,
     driver_name: Option<&str>,
@@ -246,33 +263,36 @@ pub async fn process_file(
     let content = String::from_utf8_lossy(&bytes);
     let hash    = hex::encode(sha2::Sha256::digest(&bytes));
 
-    // Dedup
-    if db::hash_exists(&conn.lock().map_err(|e| e.to_string())?, &hash) {
-        return Ok("DUPLICATE".to_string());
+    {
+        let c = conn.lock().map_err(|e| e.to_string())?;
+        if db::hash_exists(&c, &hash) {
+            return Ok("DUPLICATE".to_string());
+        }
     }
+
     if !parser::can_parse(&content) {
         return Err("Not an LMU result file".to_string());
     }
 
-    let session  = parser::parse(&content, driver_name)?;
-    let snap     = metrics_snapshot::MetricsSnapshot::from_session(&session);
-    let is_pb    = db::detect_pb(
-        &conn.lock().map_err(|e| e.to_string())?,
-        &session.track_name, &session.car_name, snap.best_lap_ms,
-    );
-    let sess_id = db::insert_session(
-        &conn.lock().map_err(|e| e.to_string())?,
-        &session, &snap, file_path, &hash, is_pb,
-    )?;
+    let session = parser::parse(&content, driver_name)?;
+    let snap    = metrics_snapshot::MetricsSnapshot::from_session(&session);
 
-    // Insert all grid participants + their laps
+    let is_pb = {
+        let c = conn.lock().map_err(|e| e.to_string())?;
+        db::detect_pb(&c, &session.track_name, &session.car_name, snap.best_lap_ms)
+    };
+
+    let sess_id = {
+        let c = conn.lock().map_err(|e| e.to_string())?;
+        db::insert_session(&c, &session, &snap, file_path, &hash, is_pb)?
+    };
+
     if !session.participants.is_empty() {
         if let Ok(c) = conn.lock() {
             let _ = db::insert_participants(&c, &sess_id, &session.participants);
         }
     }
 
-    // Auto-update goal progress
     if let Ok(c) = conn.lock() {
         let _ = db::update_goals_for_session(
             &c, &session.track_name, &session.car_name,
@@ -280,7 +300,6 @@ pub async fn process_file(
         );
     }
 
-    // Evaluate achievements — notify for each newly unlocked
     {
         let ctx = db::SessionContext {
             session_id:        sess_id.clone(),
@@ -289,18 +308,18 @@ pub async fn process_file(
             final_position:    session.final_position,
             dnf:               session.dnf,
             is_new_pb:         is_pb,
+            is_online:         session.is_online,
             track_name:        session.track_name.clone(),
             car_name:          session.car_name.clone(),
             consistency_score: snap.consistency_score,
-            is_online:         session.is_online,
         };
         if let Ok(c) = conn.lock() {
             match db::evaluate_achievements(&c, &ctx) {
                 Ok(unlocked) => {
-                    for slug in unlocked {
+                    for slug in &unlocked {
                         let name = db::get_achievements(&c)
                             .ok()
-                            .and_then(|a| a.into_iter().find(|x| x.slug == slug))
+                            .and_then(|a| a.into_iter().find(|x| &x.slug == slug))
                             .map(|a| a.name)
                             .unwrap_or_else(|| slug.clone());
                         send_notification(app, "Achievement unlocked!", &format!("🏆 {name}"));
@@ -311,10 +330,13 @@ pub async fn process_file(
         }
     }
 
-    // Optional server sync
     if !api_url.is_empty() && !api_key.is_empty() {
         match uploader::upload(file_path, api_url, api_key).await {
-            Ok(_)  => { let _ = db::mark_synced(&conn.lock().map_err(|e| e.to_string())?, &sess_id); }
+            Ok(_) => {
+                if let Ok(c) = conn.lock() {
+                    let _ = db::mark_synced(&c, &sess_id);
+                }
+            }
             Err(e) => log::warn!("Server sync failed (saved locally): {e}"),
         }
     }
