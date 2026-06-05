@@ -17,6 +17,7 @@ import {
   ChevronRight,
   User,
   HardDrive,
+  X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -49,6 +50,7 @@ const navSections = [
 
 interface AppSidebarProps {
   user: { name?: string | null; email?: string | null }
+  onClose?: () => void
 }
 
 function getInitials(name?: string | null, email?: string | null): string {
@@ -60,7 +62,7 @@ function getInitials(name?: string | null, email?: string | null): string {
   return (email ?? "U").slice(0, 2).toUpperCase()
 }
 
-export function AppSidebar({ user }: AppSidebarProps) {
+export function AppSidebar({ user, onClose }: AppSidebarProps) {
   const pathname = usePathname()
   const initials = getInitials(user.name, user.email)
   const displayName = user.name ?? user.email ?? "Driver"
@@ -68,8 +70,8 @@ export function AppSidebar({ user }: AppSidebarProps) {
   return (
     <aside className="relative flex flex-col h-full w-58 bg-zinc-950/90 backdrop-blur-md border-r border-zinc-800/50 z-10">
       {/* Logo */}
-      <div className="px-4 py-4 border-b border-zinc-800/60">
-        <Link href="/dashboard" className="flex items-center gap-2.5 group">
+      <div className="px-4 py-4 border-b border-zinc-800/60 flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2.5 group flex-1" onClick={onClose}>
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 group-hover:shadow-cyan-500/40 transition-shadow">
             <ChevronRight className="w-4 h-4 text-zinc-950 -ml-px" strokeWidth={3} />
           </div>
@@ -78,6 +80,11 @@ export function AppSidebar({ user }: AppSidebarProps) {
             <span className="text-zinc-100">Apex</span>
           </span>
         </Link>
+        {onClose && (
+          <button onClick={onClose} className="lg:hidden text-zinc-600 hover:text-zinc-400 transition-colors p-1">
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Navigation */}
@@ -94,6 +101,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                   <Link
                     key={href}
                     href={href}
+                    onClick={onClose}
                     className={cn(
                       "relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150",
                       active

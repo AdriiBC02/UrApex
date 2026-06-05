@@ -1,17 +1,21 @@
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
-import { Settings, User, Shield, Gamepad2, KeyRound, Download } from "lucide-react"
+import { Settings, User, Shield, Gamepad2, KeyRound, Download, Lock } from "lucide-react"
 import { ProfileForm } from "@/features/auth/ProfileForm"
 import { SimDriverForm } from "@/features/auth/SimDriverForm"
 import { ApiKeyForm } from "@/features/auth/ApiKeyForm"
+import { PrivacyForm } from "@/features/auth/PrivacyForm"
 
 export default async function SettingsPage() {
   const session = await auth()
   if (!session?.user?.id) redirect("/login")
 
   const [profile, user] = await Promise.all([
-    db.driverProfile.findUnique({ where: { userId: session.user.id } }),
+    db.driverProfile.findUnique({
+      where:  { userId: session.user.id },
+      select: { displayName: true, country: true, bio: true, simDriverName: true, onboardingDone: true, isPublic: true },
+    }),
     db.user.findUnique({
       where: { id: session.user.id },
       select: { email: true, name: true, apiKey: true },
@@ -97,6 +101,18 @@ export default async function SettingsPage() {
               Laps CSV
             </a>
           </div>
+        </div>
+      </div>
+
+      {/* Privacy */}
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden">
+        <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-zinc-800/60">
+          <Lock className="w-3.5 h-3.5 text-zinc-500" />
+          <h2 className="text-sm font-semibold text-zinc-300">Privacy</h2>
+          <span className="text-xs text-zinc-600 ml-auto">Control what others can see</span>
+        </div>
+        <div className="p-5">
+          <PrivacyForm initialPublicProfile={profile?.isPublic ?? false} />
         </div>
       </div>
 

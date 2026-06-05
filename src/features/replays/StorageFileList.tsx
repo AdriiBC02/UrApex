@@ -78,9 +78,9 @@ export function StorageFileList({ rows: initial }: StorageFileListProps) {
   }
 
   return (
-    <div className="rounded-xl border border-zinc-800 overflow-hidden">
+    <div className="rounded-xl border border-zinc-800 overflow-hidden overflow-x-auto">
       {/* Table header */}
-      <div className="grid grid-cols-[1fr_140px_130px_100px_80px] gap-4 px-4 py-2.5 bg-zinc-900/60 border-b border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-600">
+      <div className="grid grid-cols-[1fr_140px_130px_100px_80px] gap-4 px-4 py-2.5 bg-zinc-900/60 border-b border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-600 min-w-[580px]">
         <span>File</span>
         <span>Session</span>
         <span>Track</span>
@@ -88,7 +88,7 @@ export function StorageFileList({ rows: initial }: StorageFileListProps) {
         <span />
       </div>
 
-      <div className="divide-y divide-zinc-800/50">
+      <div className="divide-y divide-zinc-800/50 min-w-[580px]">
         {rows.map((r) => (
           <div key={r.id} className="grid grid-cols-[1fr_140px_130px_100px_80px] gap-4 items-center px-4 py-3 hover:bg-zinc-800/30 transition-colors">
             {/* File */}

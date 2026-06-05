@@ -160,8 +160,8 @@ export default async function SessionsPage({
         />
       ) : (
         <>
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden overflow-x-auto">
+            <table className="w-full text-sm min-w-[680px]">
               <thead>
                 <tr className="border-b border-zinc-800 bg-zinc-900/60">
                   {[

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { LapTimeChart } from "@/components/charts/LapTimeChart"
 import { ScoreBadge } from "@/components/shared/ScoreBadge"
 import { SessionNotes } from "@/features/sessions/SessionNotes"
+import { SessionPrivacyToggle } from "@/features/sessions/SessionPrivacyToggle"
 import { ReplaySection } from "@/features/replays/ReplaySection"
 import {
   Flag, Clock, Map, Car, Trophy, AlertTriangle,
@@ -71,13 +72,16 @@ export default async function SessionDetailPage({
           <ArrowLeft className="w-3.5 h-3.5" />
           Sessions
         </Link>
-        <Link
-          href={`/sessions/compare?a=${s.id}`}
-          className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-cyan-400 transition-colors border border-zinc-800 hover:border-zinc-700 rounded-lg px-3 py-1.5"
-        >
-          <GitCompare className="w-3.5 h-3.5" />
-          Compare
-        </Link>
+        <div className="flex items-center gap-2">
+          <SessionPrivacyToggle sessionId={s.id} initialIsPublic={s.isPublic} />
+          <Link
+            href={`/sessions/compare?a=${s.id}`}
+            className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-cyan-400 transition-colors border border-zinc-800 hover:border-zinc-700 rounded-lg px-3 py-1.5"
+          >
+            <GitCompare className="w-3.5 h-3.5" />
+            Compare
+          </Link>
+        </div>
       </div>
 
       {/* Hero header */}

@@ -4,11 +4,12 @@ import { db } from "@/lib/db"
 import { z } from "zod"
 
 const schema = z.object({
-  displayName: z.string().max(64).optional(),
-  country: z.string().max(2).optional(),
-  bio: z.string().max(300).optional(),
-  simDriverName: z.string().max(128).optional().nullable(),
+  displayName:    z.string().max(64).optional(),
+  country:        z.string().max(2).optional(),
+  bio:            z.string().max(300).optional(),
+  simDriverName:  z.string().max(128).optional().nullable(),
   onboardingDone: z.boolean().optional(),
+  isPublic:       z.boolean().optional(),
 })
 
 export async function PATCH(req: NextRequest) {
@@ -19,7 +20,7 @@ export async function PATCH(req: NextRequest) {
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 422 })
 
-  const { displayName, country, bio, simDriverName, onboardingDone } = parsed.data
+  const { displayName, country, bio, simDriverName, onboardingDone, isPublic } = parsed.data
 
   await db.driverProfile.update({
     where: { userId: session.user.id },
@@ -29,6 +30,7 @@ export async function PATCH(req: NextRequest) {
       bio: bio || null,
       ...(simDriverName !== undefined ? { simDriverName: simDriverName || null } : {}),
       ...(onboardingDone !== undefined ? { onboardingDone } : {}),
+      ...(isPublic !== undefined ? { isPublic } : {}),
     },
   })
 
