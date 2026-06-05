@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ChevronRight, BarChart2, Target, Zap, Shield, Trophy, TrendingUp, ArrowRight, Flag, Clock } from "lucide-react"
+import { ChevronRight, BarChart2, Target, Zap, Shield, Trophy, TrendingUp, ArrowRight,  Clock } from "lucide-react"
 
 export default function LandingPage() {
   return (

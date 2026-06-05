@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
-import { Settings, User, Shield, Gamepad2, KeyRound, Download, Lock } from "lucide-react"
+import { User, Shield, Gamepad2, KeyRound, Download, Lock } from "lucide-react"
 import { ProfileForm } from "@/features/auth/ProfileForm"
 import { SimDriverForm } from "@/features/auth/SimDriverForm"
 import { ApiKeyForm } from "@/features/auth/ApiKeyForm"

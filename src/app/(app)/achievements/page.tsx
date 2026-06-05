@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
-import { Lock, Trophy, Clock, Zap, Star, Flame } from "lucide-react"
+import { Lock, Trophy, Clock } from "lucide-react"
 import type { AchievementRarity } from "@prisma/client"
 
 const RARITY_CONFIG: Record<AchievementRarity, {

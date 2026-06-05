@@ -4,8 +4,8 @@ import { db } from "@/lib/db"
 import { formatLapTime } from "@/lib/time"
 import { formatDistanceToNow } from "date-fns"
 import {
-  Wrench, ChevronLeft, Star, Map, Car, Calendar,
-  Clock, Flag, FileText, Plus, GitBranch, ArrowRight,
+  Wrench, ChevronLeft, Star, Map, Car,
+  Flag, FileText, GitBranch, ArrowRight,
 } from "lucide-react"
 import Link from "next/link"
 import { SetupActions } from "@/features/setups/SetupActions"

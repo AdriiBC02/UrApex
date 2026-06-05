@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { EmptyState } from "@/components/shared/EmptyState"
-import { Wrench, Plus, Star, Flag, Map, ArrowRight } from "lucide-react"
+import { Wrench, Plus, Star, Map, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { SetupActions } from "@/features/setups/SetupActions"
 
@@ -12,32 +12,17 @@ export default async function SetupsPage() {
 
   const userId = session.user.id
 
-  const [setups, tracks, cars, simulators] = await Promise.all([
-    db.setup.findMany({
-      where: { userId, isObsolete: false },
-      orderBy: [{ isFavorite: "desc" }, { updatedAt: "desc" }],
-      include: {
-        car:       { select: { name: true, slug: true } },
-        track:     { select: { name: true, slug: true } },
-        simulator: { select: { name: true, slug: true } },
-        versions:  { orderBy: { version: "desc" }, take: 1 },
-        _count:    { select: { sessions: true } },
-      },
-    }),
-    db.session.groupBy({
-      by: ["trackId"], where: { userId, deletedAt: null },
-    }).then(async (rows) => {
-      const ids = rows.map(r => r.trackId)
-      return db.track.findMany({ where: { id: { in: ids } }, orderBy: { name: "asc" } })
-    }),
-    db.session.groupBy({
-      by: ["carId"], where: { userId, deletedAt: null },
-    }).then(async (rows) => {
-      const ids = rows.map(r => r.carId)
-      return db.car.findMany({ where: { id: { in: ids } }, orderBy: { name: "asc" } })
-    }),
-    db.simulator.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-  ])
+  const setups = await db.setup.findMany({
+    where: { userId, isObsolete: false },
+    orderBy: [{ isFavorite: "desc" }, { updatedAt: "desc" }],
+    include: {
+      car:       { select: { name: true, slug: true } },
+      track:     { select: { name: true, slug: true } },
+      simulator: { select: { name: true, slug: true } },
+      versions:  { orderBy: { version: "desc" }, take: 1 },
+      _count:    { select: { sessions: true } },
+    },
+  })
 
   return (
     <div className="space-y-6">

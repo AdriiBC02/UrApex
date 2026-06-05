@@ -4,9 +4,9 @@ import { db } from "@/lib/db"
 import { formatLapTime, formatDriveTime } from "@/lib/time"
 import { formatDistanceToNow } from "date-fns"
 import {
-  User, Map, Car, Flag, Clock, TrendingUp,
-  Trophy, Target, Star, Settings, ArrowRight,
-  CheckCircle2, Shield,
+  Map, Car, Flag, Clock, TrendingUp,
+  Trophy, Settings, ArrowRight,
+
 } from "lucide-react"
 import Link from "next/link"
 

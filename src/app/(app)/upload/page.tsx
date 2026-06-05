@@ -51,7 +51,7 @@ export default async function UploadPage() {
       ) : (
         <div className="max-w-2xl flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-900/40 bg-amber-950/20 text-sm">
           <span className="text-amber-400 font-medium">Driver not configured</span>
-          <span className="text-zinc-500">— you'll be asked to select your name when importing.</span>
+          <span className="text-zinc-500">— you&apos;ll be asked to select your name when importing.</span>
           <Link href="/settings#simulator" className="ml-auto flex items-center gap-1.5 text-xs text-zinc-500 hover:text-cyan-400 transition-colors">
             <Settings className="w-3.5 h-3.5" />Set now
           </Link>

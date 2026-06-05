@@ -49,7 +49,6 @@ export function PostSessionModal({ sessionId, onClose }: PostSessionModalProps) 
 
   useEffect(() => {
     if (!sessionId) return
-    setLoading(true)
     fetch(`/api/sessions/${sessionId}/summary`)
       .then((r) => r.json())
       .then((data) => { setSummary(data); setLoading(false) })

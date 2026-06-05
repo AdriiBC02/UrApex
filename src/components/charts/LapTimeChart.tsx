@@ -8,7 +8,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceDot,
 } from "recharts"
 import { formatLapTime } from "@/lib/time"
 

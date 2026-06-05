@@ -6,7 +6,7 @@ import { SESSION_TYPE_LABELS } from "@/lib/constants"
 import { ScoreBadge } from "@/components/shared/ScoreBadge"
 import { PBEvolutionChart } from "@/components/charts/PBEvolutionChart"
 import { TrendChart } from "@/components/charts/TrendChart"
-import { ArrowLeft, Flag, TrendingDown, TrendingUp, Trophy, Map } from "lucide-react"
+import { ArrowLeft, Flag, TrendingDown, TrendingUp, Trophy } from "lucide-react"
 import Link from "next/link"
 
 const SESSION_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
@@ -54,12 +54,8 @@ export default async function CarDetailPage({ params }: { params: Promise<{ slug
   const totalDriveSec  = sessions.reduce((n, s) => n + (s.durationSec ?? 0), 0)
 
   const consistentSessions = sessions.filter(s => s.consistencyScore != null)
-  const safetySessions     = sessions.filter(s => s.safetyScore != null)
   const avgConsistency = consistentSessions.length
     ? consistentSessions.reduce((n, s) => n + s.consistencyScore!, 0) / consistentSessions.length
-    : null
-  const avgSafety = safetySessions.length
-    ? safetySessions.reduce((n, s) => n + s.safetyScore!, 0) / safetySessions.length
     : null
 
   // Improvement
@@ -84,16 +80,20 @@ export default async function CarDetailPage({ params }: { params: Promise<{ slug
   }, {})
 
   // Running PB evolution
-  let runningBest = Infinity
   const pbHistory = sessions
     .filter(s => s.bestLapMs)
-    .reduce<{ date: string; bestLapMs: number }[]>((acc, s) => {
-      if (s.bestLapMs! < runningBest) {
-        runningBest = s.bestLapMs!
-        acc.push({ date: s.sessionDate.toISOString().split("T")[0], bestLapMs: s.bestLapMs! })
-      }
-      return acc
-    }, [])
+    .reduce<{ data: { date: string; bestLapMs: number }[]; best: number }>(
+      (acc, s) => {
+        if (s.bestLapMs! < acc.best) {
+          return {
+            data: [...acc.data, { date: s.sessionDate.toISOString().split("T")[0], bestLapMs: s.bestLapMs! }],
+            best: s.bestLapMs!,
+          }
+        }
+        return acc
+      },
+      { data: [], best: Infinity },
+    ).data
 
   // Consistency trend
   const consistencyTrend = consistentSessions

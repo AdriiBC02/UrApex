@@ -179,7 +179,7 @@ export function UploadZone({ onImported }: UploadZoneProps = {}) {
       existingSessionId?: string; sessionId?: string; importFileId?: string;
       error?: string; errorMessage?: string
     }>,
-    queued: FileEntry[]
+    _queued: FileEntry[]
   ) {
     const resultMap = new Map(imports.map((r) => [r.originalName, r]))
     const pendingPolls: Array<{ importFileId: string; entryId: string }> = []

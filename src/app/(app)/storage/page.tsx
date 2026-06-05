@@ -2,7 +2,6 @@ import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { HardDrive } from "lucide-react"
-import { SESSION_TYPE_LABELS } from "@/lib/constants"
 import { StorageFileList } from "@/features/replays/StorageFileList"
 
 function formatBytes(bytes: bigint): string {

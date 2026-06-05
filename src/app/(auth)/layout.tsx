@@ -46,7 +46,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               <span className="text-cyan-400">fast you really are.</span>
             </h2>
             <p className="text-sm text-zinc-500 leading-relaxed mb-8 max-w-xs">
-              Import your sessions, track your progress, and understand what's holding you back.
+              Import your sessions, track your progress, and understand what&apos;s holding you back.
             </p>
 
             <div className="space-y-3">

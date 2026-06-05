@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { formatLapTime } from "@/lib/time"
 import { EmptyState } from "@/components/shared/EmptyState"
-import { Map as MapIcon, Upload, Timer, Flag } from "lucide-react"
+import { Upload, Flag } from "lucide-react"
 import Link from "next/link"
 
 export default async function TracksPage() {

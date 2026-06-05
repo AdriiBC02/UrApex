@@ -6,7 +6,7 @@ import { Command } from "cmdk"
 import {
   LayoutDashboard, Upload, Clock, Map, Car, Target, Trophy,
   Wrench, User, Settings, HardDrive, Search, ArrowRight,
-  RefreshCw, Film, ChevronRight,
+  RefreshCw, Film,
 } from "lucide-react"
 
 interface RecentSession {
@@ -96,7 +96,7 @@ export function CommandPalette({ recentSessions }: CommandPaletteProps) {
 
           <Command.List className="max-h-80 overflow-y-auto p-2">
             <Command.Empty className="py-8 text-center text-sm text-zinc-600">
-              No results for "{query}"
+              No results for &ldquo;{query}&rdquo;
             </Command.Empty>
 
             {/* Navigation */}

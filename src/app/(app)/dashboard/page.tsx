@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { formatDriveTime, formatLapTime } from "@/lib/time"
-import { SESSION_TYPE_LABELS, SIMULATOR_LABELS } from "@/lib/constants"
+import { SESSION_TYPE_LABELS } from "@/lib/constants"
 import {
   Upload, Clock, Flag, Map, Car, TrendingUp,
   Trophy, Target, ArrowRight, Timer, Activity,

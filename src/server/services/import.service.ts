@@ -1,7 +1,7 @@
 import { db } from "@/lib/db"
 import { sha256 } from "@/lib/hash"
 import { getStorageService, rawFileKey } from "./storage.service"
-import { parseFile, extractDriverNames } from "@/server/parsers/registry"
+import { parseFile } from "@/server/parsers/registry"
 import { findOrCreateTrack } from "@/server/normalizers/track.normalizer"
 import { findOrCreateCar, findOrCreateCarClass } from "@/server/normalizers/car.normalizer"
 import {

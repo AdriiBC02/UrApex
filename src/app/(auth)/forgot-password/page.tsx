@@ -37,7 +37,7 @@ export default function ForgotPasswordPage() {
         <CheckCircle2 className="w-10 h-10 text-green-400 mx-auto" />
         <h1 className="text-xl font-bold text-zinc-100">Check your inbox</h1>
         <p className="text-sm text-zinc-500">
-          If that email is registered, you'll receive a reset link shortly.
+          If that email is registered, you&apos;ll receive a reset link shortly.
           The link expires in 1 hour.
         </p>
         <Link href="/login" className="block text-sm text-cyan-400 hover:text-cyan-300 transition-colors font-medium">
@@ -51,7 +51,7 @@ export default function ForgotPasswordPage() {
     <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 backdrop-blur-sm p-8">
       <div className="mb-7">
         <h1 className="text-2xl font-black tracking-tight text-zinc-100">Forgot your password?</h1>
-        <p className="text-sm text-zinc-500 mt-1">Enter your email and we'll send you a reset link.</p>
+        <p className="text-sm text-zinc-500 mt-1">Enter your email and we&apos;ll send you a reset link.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

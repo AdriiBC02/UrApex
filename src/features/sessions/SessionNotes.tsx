@@ -2,9 +2,8 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { StickyNote, X, Plus, Link as LinkIcon, Tag, Trash2, Loader2 } from "lucide-react"
+import { X, Plus, Link as LinkIcon, Tag, Trash2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
 import { formatDistanceToNow } from "date-fns"
 
 interface Note {
