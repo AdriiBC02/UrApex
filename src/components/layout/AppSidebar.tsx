@@ -16,6 +16,7 @@ import {
   Wrench,
   ChevronRight,
   User,
+  HardDrive,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -38,9 +39,10 @@ const navSections = [
   {
     label: "Progress",
     items: [
-      { href: "/goals", icon: Target, label: "Goals" },
-      { href: "/achievements", icon: Trophy, label: "Achievements" },
-      { href: "/setups", icon: Wrench, label: "Setups" },
+      { href: "/goals",        icon: Target,     label: "Goals" },
+      { href: "/achievements", icon: Trophy,     label: "Achievements" },
+      { href: "/setups",       icon: Wrench,     label: "Setups" },
+      { href: "/storage",      icon: HardDrive,  label: "Storage" },
     ],
   },
 ]

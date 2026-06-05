@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { LapTimeChart } from "@/components/charts/LapTimeChart"
 import { ScoreBadge } from "@/components/shared/ScoreBadge"
 import { SessionNotes } from "@/features/sessions/SessionNotes"
+import { ReplaySection } from "@/features/replays/ReplaySection"
 import {
   Flag, Clock, Map, Car, Trophy, AlertTriangle,
   ArrowLeft, TrendingUp, Gauge, Timer, Activity, StickyNote,
@@ -36,6 +37,7 @@ export default async function SessionDetailPage({
       pitStops: { orderBy: { lapNumber: "asc" } },
       notes:    { orderBy: { createdAt: "desc" } },
       insights: { orderBy: { createdAt: "asc" } },
+      replays:  { orderBy: { createdAt: "desc" } },
     },
   })
 
@@ -428,6 +430,17 @@ export default async function SessionDetailPage({
           }))}
         />
       </Section>
+
+      {/* Replays */}
+      <ReplaySection
+        sessionId={s.id}
+        initial={s.replays.map((r) => ({
+          id:            r.id,
+          originalName:  r.originalName,
+          fileSizeBytes: r.fileSizeBytes.toString(),
+          createdAt:     r.createdAt.toISOString(),
+        }))}
+      />
     </div>
   )
 }

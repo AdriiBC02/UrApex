@@ -29,6 +29,7 @@ model User {
   goals         Goal[]
   achievements  UserAchievement[]
   setups        Setup[]
+  replays       Replay[]
 
   @@index([email])
   @@index([apiKey])
@@ -232,6 +233,7 @@ model Session {
   notes        SessionNote[]
   insights     SessionInsight[]
   setups       SessionSetup[]
+  replays      Replay[]
 
   @@index([userId])
   @@index([trackId])
@@ -589,4 +591,23 @@ model UserAchievement {
 
   @@unique([userId, achievementId])
   @@index([userId])
+}
+
+// ─── REPLAYS ─────────────────────────────────────────────────────────────────
+
+model Replay {
+  id            String   @id @default(cuid())
+  userId        String
+  sessionId     String
+  storagePath   String
+  originalName  String
+  fileSizeBytes BigInt
+  fileHash      String   @unique
+  createdAt     DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionId])
 }
