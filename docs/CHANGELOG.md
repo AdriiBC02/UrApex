@@ -8,7 +8,35 @@
 
 ## [Unreleased]
 
-> Next up: deploy en Vercel, ideas U-001/002/003 (heatmap, DNA radar, streaks), test Windows (CA-016), CSV export Race Grid (AN-018).
+> Next up: deploy en Vercel, test Windows build (CA-016), CSV export Race Grid (AN-018), ideas U-001/002/003 (heatmap, DNA radar, streaks).
+
+---
+
+## [0.29.0] — 2026-06-05
+
+> Achievements — 31 total (was 10), full parity web + companion.
+
+### Added
+- **31 achievements** — 21 new achievements across 6 categories: Volume, Pace, Consistency, Endurance, Race Craft, Exploration
+- **Companion achievements system** — SQLite v5 migration + seed, evaluate_achievements() Rust engine, Windows notification per unlock, Achievements tab with category filter chips, rarity color coding (LEGENDARY=gold, EPIC=purple, RARE=blue), progress bars
+- **New web app condition types** — `session_count`, `hours_driven`, `consistency_sessions_count`, `race_position_lte`, `race_wins_count`, `races_no_dnf_count`, `unique_tracks_count`, `unique_cars_count`, `triple_threat`
+- **New achievements**: Lap Apprentice (10 laps), Committed (50 sessions), Sim Pro (200 sessions), Night Owl (10h), Time Lord (50h), Speed Chaser (5 PBs), Speed Demon (10 PBs), Rock Solid (consistency > 95), On Rails (5× consistency > 85), Marathon Man (50+ laps/session), Endurance Legend (100+ laps/session), Podium (top 3), Race Winner (P1), Hat Trick (3 wins), Iron Will (10 races no DNF), Track Explorer/Collector/World Traveler, Car Collector/Fleet Owner, Triple Threat
+
+### Changed
+- Rarity corrections: Century Driver COMMON→RARE, Road Warrior UNCOMMON→EPIC, Elite Driver RARE→LEGENDARY, Setting The Bar COMMON→UNCOMMON, Consistency King UNCOMMON→RARE, Sector Hunter RARE→EPIC
+- `ImportContext` extended with `finalPosition`, `dnf`, `isOnline`, `trackId`, `durationSec`
+
+---
+
+## [0.28.0] — 2026-06-05
+
+> Companion full offline parity — Compare, Setups, full Achievement groundwork.
+
+### Added
+- **Compare sessions** — ⇄ button in SessionDetail opens session picker; CompareView shows metrics side-by-side, lap-by-lap delta table (color-coded), best sector comparison
+- **Setups manager** — CRUD setups with car/track/conditions/type filters, inline notes editor, favorite pin (★), sorted favorites first
+- SQLite v4 migration: setups table
+- 5 new Tauri commands: get_setups, create_setup, toggle_setup_favorite, update_setup_notes, delete_setup
 
 ---
 

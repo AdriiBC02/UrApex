@@ -274,17 +274,13 @@
 | Achievement categories | P2 | 2 | 🔲 |
 | Achievement sharing | P3 | 7 | 💡 |
 
-**Achievements implemented (10):**
-- First Import (COMMON)
-- Setting The Bar — first PB (UNCOMMON)
-- Glass Clean — clean race 0 incidents (UNCOMMON)
-- Century Driver — 100 laps (RARE)
-- Road Warrior — 500 laps (EPIC)
-- Elite Driver — 1000 laps (LEGENDARY)
-- Consistency King — score > 90 in a session (RARE)
-- Endurance Pilot — 20+ laps in one session (RARE)
-- Dedicated — 10 sessions in a month (UNCOMMON)
-- Sector Hunter — beat all sector PBs in one session (EPIC)
+**Achievements implemented (31):**
+- Volume (10): First Session, Lap Apprentice, Century Driver, Road Warrior, Elite Driver, Dedicated, Committed, Sim Pro, Night Owl, Time Lord
+- Pace (4): Setting The Bar, Speed Chaser, Speed Demon, Sector Hunter
+- Consistency (3): Consistency King, Rock Solid, On Rails
+- Endurance (3): Endurance Pilot, Marathon Man, Endurance Legend
+- Race Craft (5): Glass Clean, Podium, Race Winner, Hat Trick, Iron Will
+- Exploration (6): Track Explorer, Track Collector, World Traveler, Car Collector, Fleet Owner, Triple Threat
 
 ---
 
