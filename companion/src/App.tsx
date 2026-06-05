@@ -5,7 +5,6 @@ import { open } from "@tauri-apps/plugin-dialog"
 import { load, Store } from "@tauri-apps/plugin-store"
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart"
 import { check, type Update } from "@tauri-apps/plugin-updater"
-import { relaunch } from "@tauri-apps/plugin-process"
 import {
   LayoutGrid, RadioTower, List, Target, Trophy,
   SlidersHorizontal, Film, Settings, Minus, X,
@@ -175,7 +174,7 @@ export default function App() {
         else if (event.event === "Progress") { downloaded += event.data.chunkLength; if (total > 0) setUpdateProgress(Math.round(downloaded / total * 100)) }
         else if (event.event === "Finished") { setUpdateProgress(100) }
       })
-      await relaunch()
+      // NSIS installer handles closing + restart automatically on Windows
     } catch (err) { setUpdateStatus(`Install failed: ${String(err)}`); setInstalling(false) }
   }
 
