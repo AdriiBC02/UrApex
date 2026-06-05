@@ -29,7 +29,8 @@ model User {
   goals         Goal[]
   achievements  UserAchievement[]
   setups        Setup[]
-  replays       Replay[]
+  replays             Replay[]
+  passwordResetTokens PasswordResetToken[]
 
   @@index([email])
   @@index([apiKey])
@@ -590,6 +591,21 @@ model UserAchievement {
   achievement Achievement @relation(fields: [achievementId], references: [id])
 
   @@unique([userId, achievementId])
+  @@index([userId])
+}
+
+// ─── AUTH TOKENS ─────────────────────────────────────────────────────────────
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }
 

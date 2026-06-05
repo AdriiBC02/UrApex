@@ -22,9 +22,23 @@ interface ImportHistoryProps {
 }
 
 export function ImportHistory({ imports: initial }: ImportHistoryProps) {
-  const [imports, setImports] = useState(initial)
-  const [deleting, setDeleting] = useState<Set<string>>(new Set())
-  const [retrying, setRetrying] = useState<Set<string>>(new Set())
+  const [imports, setImports]       = useState(initial)
+  const [deleting, setDeleting]     = useState<Set<string>>(new Set())
+  const [retrying, setRetrying]     = useState<Set<string>>(new Set())
+  const [recalculating, setRecalc]  = useState(false)
+
+  async function handleRecalculate() {
+    setRecalc(true)
+    try {
+      const res = await fetch("/api/import/recalculate", { method: "POST" })
+      if (!res.ok) { toast.error("Could not queue recalculation"); return }
+      toast.success("Metric recalculation queued — scores will update in the background")
+    } catch {
+      toast.error("Network error")
+    } finally {
+      setRecalc(false)
+    }
+  }
 
   async function handleDelete(id: string) {
     setDeleting((prev) => new Set(prev).add(id))
@@ -72,7 +86,18 @@ export function ImportHistory({ imports: initial }: ImportHistoryProps) {
 
   return (
     <div className="max-w-2xl space-y-3">
-      <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Import history</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Import history</h2>
+        <button
+          onClick={handleRecalculate}
+          disabled={recalculating}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 transition-all disabled:opacity-40"
+          title="Recalculate metrics for all sessions using the current parser"
+        >
+          {recalculating ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+          Recalculate metrics
+        </button>
+      </div>
       <div className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden divide-y divide-zinc-800/60">
         {imports.map((imp) => (
           <div
