@@ -376,10 +376,15 @@
 | System tray icon | P1 | 5 | ✅ |
 | Windows notifications on upload | P1 | 5 | ✅ |
 | Minimize to tray on close | P1 | 5 | ✅ |
-| Upload queue with retry | P1 | 5 | 🔲 |
-| Sync historical files ("import all") | P2 | 5 | 🔲 |
-| Sync logs (persistent across restarts) | P2 | 5 | 🔲 |
-| Auto-start with Windows | P2 | 5 | 🔲 |
+| Upload queue with retry (3x backoff) | P1 | 5 | ✅ |
+| Sync historical files ("import all") | P2 | 5 | ✅ |
+| Sync logs (persistent across restarts) | P2 | 5 | ✅ |
+| Auto-start with Windows | P2 | 5 | ✅ |
+| **Standalone mode (no server required)** | P1 | 5 | ✅ |
+| LMU XML parser in Rust | P1 | 5 | ✅ |
+| Local SQLite session storage | P1 | 5 | ✅ |
+| Sessions tab (list + detail + laps) | P1 | 5 | ✅ |
+| Optional cloud sync when server configured | P1 | 5 | ✅ |
 | In-game overlay window | P2 | 5 | 🔲 |
 | UDP telemetry listener (LMU port 4444) | P2 | 5 | 🔲 |
 | macOS support | P3 | 6+ | 🔲 |

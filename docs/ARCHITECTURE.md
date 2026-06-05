@@ -331,28 +331,67 @@ NEXT_PUBLIC_APP_URL=""
 
 ## Companion App Architecture
 
+The companion is a **fully standalone** Windows desktop app. It works without a server — sessions are always saved locally first. Server sync is optional.
+
 ```
 companion/
 ├── src/
-│   ├── App.tsx              # Sync tab + Settings tab + driver modal
+│   ├── App.tsx                  # 3 tabs: Sync, Sessions, Settings
+│   ├── lib/time.ts              # formatLapTime, formatDelta
 │   └── components/
 │       ├── StatusDot.tsx
-│       └── SyncLog.tsx
-├── src-tauri/
-│   ├── tauri.conf.json
-│   ├── capabilities/default.json
-│   └── src/
-│       ├── lib.rs           # Tauri setup: tray, window events, plugin registration
-│       ├── watcher.rs       # notify crate — file watcher thread, 500ms debounce
-│       └── uploader.rs      # reqwest — multipart POST /api/upload
-└── icon.png                 # 1254x1254 source icon
+│       ├── SyncLog.tsx          # Upload activity log
+│       ├── SessionList.tsx      # Sidebar list of imported sessions
+│       └── SessionDetail.tsx    # Lap table + stats for selected session
+└── src-tauri/
+    ├── tauri.conf.json
+    ├── capabilities/default.json
+    └── src/
+        ├── lib.rs               # Tauri setup, all commands, core process_file()
+        ├── date.rs              # ISO 8601 date formatter (Hinnant algorithm, no chrono)
+        ├── parser.rs            # LMU XML parser (roxmltree) — port of TypeScript parser
+        ├── metrics.rs           # best/avg/ideal lap, std dev, consistency score
+        ├── metrics_snapshot.rs  # computes MetricsSnapshot from ParsedSession
+        ├── db.rs                # SQLite via rusqlite (bundled); sessions + laps tables
+        ├── watcher.rs           # notify crate watcher; emits file-detected + file-result
+        └── uploader.rs          # reqwest multipart upload with hash dedup + 3x retry
 ```
 
-**Auth:** Bearer token generated in Settings → Companion app.
+### Data flow (standalone mode)
 
-**Build:** CI runs on every push via `.github/workflows/companion-build.yml` → produces `.exe` (NSIS) and `.msi` attached to the `companion-latest` pre-release on GitHub.
+```
+LMU saves XML
+    ↓ notify crate detects new file
+watcher.rs emits 'file-detected' → React shows "uploading" in sync log
+    ↓
+lib.rs: process_file()
+    ├── SHA-256 hash → check SQLite for duplicate
+    ├── parser.rs: parse XML → ParsedSession
+    ├── metrics.rs: calculate best/avg/ideal/consistency
+    ├── db.rs: insert session + laps, detect PB
+    ├── [if api_url set] uploader.rs: POST /api/upload → mark synced
+    └── emit 'file-result' → React updates log, refreshes Sessions tab
+```
 
-**Planned:** transparent always-on-top overlay window fed by LMU UDP telemetry on port 4444.
+### SQLite schema (local)
+
+```sql
+sessions  — id, track_name, car_name, car_class, session_type, session_date,
+            total_laps, valid_laps, best_lap_ms, avg_lap_ms, ideal_lap_ms,
+            consistency_score, is_new_pb, final_position, duration_sec,
+            is_online, dnf, file_path, file_hash (UNIQUE), synced_to_server,
+            imported_at
+laps      — session_id (FK cascade), lap_number, lap_time_ms, is_valid,
+            sector1_ms, sector2_ms, sector3_ms
+```
+
+**Dedup:** SHA-256 checked against `file_hash` in SQLite (always) and `%LOCALAPPDATA%/UrApex/uploaded_hashes.txt` (server upload fast-path).
+
+**Auth:** Bearer token from Settings → Cloud sync → API key. Required only for server sync; unused in standalone mode.
+
+**Build:** CI runs on every push via `.github/workflows/companion-build.yml` → `.exe` (NSIS) + `.msi` attached to `companion-latest` pre-release on GitHub.
+
+**Planned:** in-game overlay window fed by LMU UDP telemetry on port 4444.
 
 ---
 

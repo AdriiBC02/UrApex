@@ -159,7 +159,7 @@
 | CA-006 | System tray + minimize-to-tray | P1 | ✅ | Shows/hides on tray icon click |
 | CA-007 | Windows notifications | P1 | ✅ | `tauri-plugin-notification` on upload result |
 | CA-008 | GitHub Actions companion build CI | P1 | ✅ | Node 24 compat, schema URL fix, npx cli binary, artifact listing |
-| CA-016 | Compile and test on Windows | P0 | 🔲 | Requires `rustup` install on Windows PC; CI build now automated |
+| CA-016 | Compile and test on Windows | P0 | 🔲 | CI build automated; needs real Windows test with LMU (standalone + optional sync) |
 | CA-009 | Local hash dedup before upload | P1 | ✅ | SHA-256 cache in %LOCALAPPDATA%/UrApex/uploaded_hashes.txt (dirs-next crate) |
 | CA-010 | Upload queue with retry | P1 | ✅ | 3 attempts, linear backoff 2/4/6s, 60s reqwest timeout |
 | CA-011 | Persistent sync history | P2 | ✅ | plugin-store key syncLogs; max 100 entries; clear button |

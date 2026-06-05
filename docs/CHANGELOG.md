@@ -8,7 +8,32 @@
 
 ## [Unreleased]
 
-> Next up: deploy en Vercel, ideas U-001/002/003 (heatmap, DNA radar, streaks).
+> Next up: deploy en Vercel, ideas U-001/002/003 (heatmap, DNA radar, streaks), test Windows (CA-016).
+
+---
+
+## [0.26.0] — 2026-06-05
+
+> Companion app standalone — funciona sin servidor.
+
+### Added
+- **LMU parser en Rust** (`parser.rs`) — port del TypeScript; maneja `rFactorXML/RaceResults`, identificación de conductor, extracción de vueltas y sectores
+- **Métricas en Rust** (`metrics.rs`) — best/avg/ideal lap, std dev, consistency score
+- **SQLite local** (`db.rs`) — `rusqlite` bundled; tablas `sessions` + `laps`; dedup por hash, detección de PB, `mark_synced`; WAL mode
+- **date.rs** — formateador ISO 8601 con algoritmo de Howard Hinnant (sin `chrono`)
+- **Tab Sessions** en la companion UI — lista con track/coche/tipo/mejor vuelta + detalle completo con tabla de vueltas y sectores
+- **Settings reestructurado** — campo `Driver name`; URL + API key bajo sección "Cloud sync (optional)"
+- **`file-result` Tauri event** — emitido tras cada procesamiento para actualizar el sync log (success/duplicate/error)
+
+### Changed
+- El watcher siempre guarda en SQLite local primero; sube al servidor solo si hay URL + API key configurados
+- `import_all_files` usa el mismo flujo local + sync opcional
+- `--orange` CSS variable añadida a `styles.css`
+
+### Fixed
+- `now_iso()` producía fechas incorrectas (algoritmo aproximado)
+- `parse_date()` fallback devolvía `1970-01-01` hardcodeado
+- Sync log se quedaba en "uploading" para siempre (faltaba el evento de resultado)
 
 ---
 
