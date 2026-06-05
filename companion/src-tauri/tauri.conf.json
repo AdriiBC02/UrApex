@@ -39,7 +39,7 @@
       "nsis": {
         "displayLanguageSelector": false,
         "installMode": "currentUser",
-        "webviewInstallMode": { "type": "downloadBootstrapper" }
+        "webviewInstallMode": { "type": "embedBootstrapper" }
       }
     }
   },
