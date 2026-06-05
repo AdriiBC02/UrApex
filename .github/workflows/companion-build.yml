@@ -46,6 +46,9 @@ jobs:
 
       - name: Build Tauri app (x86)
         working-directory: companion
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npx @tauri-apps/cli build --target i686-pc-windows-msvc
 
       - name: List build output
@@ -55,12 +58,48 @@ jobs:
           dir src-tauri\target\i686-pc-windows-msvc\release\bundle\nsis\ 2>nul || echo "(empty)"
         shell: cmd
 
+      - name: Generate latest.json for auto-updater
+        working-directory: companion
+        shell: pwsh
+        run: |
+          $bundleDir = "src-tauri\target\i686-pc-windows-msvc\release\bundle\nsis"
+          $conf      = Get-Content "src-tauri\tauri.conf.json" | ConvertFrom-Json
+          $version   = $conf.version
+
+          # Find the installer and its signature file
+          $exeFile = Get-ChildItem $bundleDir -Filter "*.exe" | Select-Object -First 1
+          $sigFile = Get-ChildItem $bundleDir -Filter "*.sig"  | Select-Object -First 1
+
+          if (-not $sigFile) {
+            Write-Warning "No .sig file found — TAURI_SIGNING_PRIVATE_KEY may not be set. Skipping latest.json."
+            exit 0
+          }
+
+          $signature   = (Get-Content $sigFile.FullName -Raw).Trim()
+          $date        = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+          $downloadUrl = "https://github.com/AdriiBC02/UrApex/releases/download/companion-latest/$($exeFile.Name)"
+
+          $manifest = [ordered]@{
+            version  = $version
+            notes    = "See https://github.com/AdriiBC02/UrApex/releases/tag/companion-latest for details."
+            pub_date = $date
+            platforms = [ordered]@{
+              "windows-i686" = [ordered]@{
+                signature = $signature
+                url       = $downloadUrl
+              }
+            }
+          } | ConvertTo-Json -Depth 5
+
+          $manifest | Out-File -FilePath "latest.json" -Encoding UTF8NoBOM
+          Write-Host "Generated latest.json for v$version -> $downloadUrl"
+
       - name: Delete existing release (clean up old assets)
         run: gh release delete companion-latest --yes --cleanup-tag || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update companion-latest release
+      - name: Upload to companion-latest release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: companion-latest
@@ -84,3 +123,4 @@ jobs:
             `C:\Users\<usuario>\Documents\Le Mans Ultimate\UserData\player\Results\`
           files: |
             companion/src-tauri/target/i686-pc-windows-msvc/release/bundle/nsis/*.exe
+            companion/latest.json

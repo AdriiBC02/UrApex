@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react"
 import { invoke } from "@tauri-apps/api/core"
+import { getVersion } from "@tauri-apps/api/app"
 import { open } from "@tauri-apps/plugin-dialog"
 import { load, Store } from "@tauri-apps/plugin-store"
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart"
+import { check, type Update } from "@tauri-apps/plugin-updater"
+import { relaunch } from "@tauri-apps/plugin-process"
 import {
   LayoutGrid, RadioTower, List, Target, Trophy,
   SlidersHorizontal, Film, Settings, Minus, X,
   FolderOpen, CloudUpload, RotateCcw, Trash2,
+  ArrowUpCircle, RefreshCw, Loader2, Download,
   type LucideIcon,
 } from "lucide-react"
 import { SyncLog } from "./components/SyncLog"
@@ -74,6 +78,12 @@ export default function App() {
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [replays, setReplays]             = useState<ReplaySummary[]>([])
   const [compareDetail, setCompareDetail] = useState<SessionDetail | null>(null)
+  const [appVersion, setAppVersion]       = useState("")
+  const [pendingUpdate, setPendingUpdate] = useState<Update | null>(null)
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
+  const [installing, setInstalling]       = useState(false)
+  const [updateProgress, setUpdateProgress] = useState(0)
+  const [updateStatus, setUpdateStatus]   = useState("Up to date")
 
   useEffect(() => {
     load("companion-settings.json", { autoSave: true, defaults: {} }).then(async (s) => {
@@ -106,8 +116,18 @@ export default function App() {
       }
     })
     isEnabled().then(setAutostart).catch(() => {})
+    getVersion().then(setAppVersion).catch(() => {})
     loadSessions()
     loadReplays()
+
+    // Background update check after 8s — non-blocking
+    const updateTimer = setTimeout(() => {
+      check().then((u) => {
+        if (u) { setPendingUpdate(u); setUpdateStatus(`v${u.version} available`) }
+      }).catch(() => {}) // Silently ignore if pubkey not set or no network
+    }, 8000)
+
+    return () => { clearTimeout(updateTimer); unlisteners.forEach((fn) => fn()) }
 
     const unlisteners: Array<() => void> = []
     import("@tauri-apps/api/event").then(({ listen }) => {
@@ -126,7 +146,7 @@ export default function App() {
       }).then((fn) => unlisteners.push(fn))
     }).catch(console.error)
 
-    return () => { unlisteners.forEach((fn) => fn()) }
+    return () => { clearTimeout(updateTimer); unlisteners.forEach((fn) => fn()) }
   }, [])
 
   useEffect(() => {
@@ -134,6 +154,30 @@ export default function App() {
     store.set("syncLogs", logs.slice(0, 100))
     store.save()
   }, [logs])
+
+  async function checkForUpdates() {
+    setCheckingUpdate(true); setUpdateStatus("Checking…")
+    try {
+      const u = await check()
+      if (u) { setPendingUpdate(u); setUpdateStatus(`v${u.version} available`) }
+      else   { setUpdateStatus("Up to date") }
+    } catch { setUpdateStatus("Check failed — no network or key not configured") }
+    finally { setCheckingUpdate(false) }
+  }
+
+  async function installUpdate() {
+    if (!pendingUpdate) return
+    setInstalling(true); setUpdateProgress(0)
+    let total = 0, downloaded = 0
+    try {
+      await pendingUpdate.downloadAndInstall((event) => {
+        if      (event.event === "Started")  { total = event.data.contentLength ?? 0 }
+        else if (event.event === "Progress") { downloaded += event.data.chunkLength; if (total > 0) setUpdateProgress(Math.round(downloaded / total * 100)) }
+        else if (event.event === "Finished") { setUpdateProgress(100) }
+      })
+      await relaunch()
+    } catch (err) { setUpdateStatus(`Install failed: ${String(err)}`); setInstalling(false) }
+  }
 
   async function loadSessions() {
     try { setSessions(await invoke<SessionSummary[]>("get_sessions")) } catch { /* ignore */ }
@@ -219,7 +263,7 @@ export default function App() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: "var(--bg)" }}>
       {/* ── Title bar ── */}
-      <TitleBar watching={watching} />
+      <TitleBar watching={watching} pendingUpdate={!!pendingUpdate} onUpdateClick={() => setTab("settings")} />
 
       {/* ── Body: sidebar + content ── */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
@@ -463,6 +507,49 @@ export default function App() {
                   Save settings
                 </button>
               </form>
+
+              {/* ── Updates ── */}
+              <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
+                <div className="card-header" style={{ marginBottom: 0, paddingBottom: 10 }}>
+                  <RefreshCw size={13} strokeWidth={2} style={{ color: "var(--text-dim)" }} />
+                  <span style={{ fontWeight: 600, fontSize: 12 }}>About & updates</span>
+                  {appVersion && <span style={{ fontSize: 10, color: "var(--text-dim)", marginLeft: "auto" }}>v{appVersion}</span>}
+                </div>
+
+                {pendingUpdate ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <ArrowUpCircle size={14} strokeWidth={2} style={{ color: "var(--amber)", flexShrink: 0 }} />
+                      <div>
+                        <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>v{pendingUpdate.version} available</p>
+                        {pendingUpdate.body && <p style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 1 }}>{pendingUpdate.body}</p>}
+                      </div>
+                    </div>
+                    {installing ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ height: 4, background: "var(--border)", borderRadius: 99, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${updateProgress}%`, background: "var(--cyan)", borderRadius: 99, transition: "width 0.2s" }} />
+                        </div>
+                        <p style={{ fontSize: 10, color: "var(--text-dim)" }}>
+                          {updateProgress < 100 ? `Downloading… ${updateProgress}%` : "Installing — the app will restart"}
+                        </p>
+                      </div>
+                    ) : (
+                      <button onClick={installUpdate} className="btn btn-primary" style={{ alignSelf: "flex-start", gap: 6 }}>
+                        <Download size={13} strokeWidth={2} /> Download and install
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <p style={{ flex: 1, fontSize: 11, color: "var(--text-dim)" }}>{updateStatus}</p>
+                    <button onClick={checkForUpdates} disabled={checkingUpdate} className="btn btn-ghost" style={{ padding: "5px 10px", gap: 5, flexShrink: 0 }}>
+                      {checkingUpdate ? <Loader2 size={12} strokeWidth={2} className="spin" /> : <RefreshCw size={12} strokeWidth={2} />}
+                      Check
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -475,7 +562,7 @@ export default function App() {
 
 /* ── Sub-components ─────────────────────────────────────────────── */
 
-function TitleBar({ watching }: { watching: boolean }) {
+function TitleBar({ watching, pendingUpdate, onUpdateClick }: { watching: boolean; pendingUpdate: boolean; onUpdateClick: () => void }) {
   async function minimize() {
     const { getCurrentWindow } = await import("@tauri-apps/api/window")
     await getCurrentWindow().minimize()
@@ -509,6 +596,24 @@ function TitleBar({ watching }: { watching: boolean }) {
           <span className="pulse" style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--green)", display: "block" }} />
           <span style={{ fontSize: 9, fontWeight: 700, color: "var(--green)", letterSpacing: "0.07em", textTransform: "uppercase" }}>Watching</span>
         </div>
+      )}
+
+      {pendingUpdate && (
+        <button
+          onClick={onUpdateClick}
+          data-tauri-drag-region="false"
+          style={{
+            display: "flex", alignItems: "center", gap: 5,
+            marginLeft: 10, padding: "2px 9px",
+            background: "rgba(251,191,36,0.08)",
+            border: "1px solid rgba(251,191,36,0.25)",
+            borderRadius: 20, cursor: "pointer",
+          }}
+          title="Update available — click to install"
+        >
+          <ArrowUpCircle size={10} strokeWidth={2.5} style={{ color: "var(--amber)" }} />
+          <span style={{ fontSize: 9, fontWeight: 700, color: "var(--amber)", letterSpacing: "0.05em" }}>Update</span>
+        </button>
       )}
 
       <div style={{ marginLeft: "auto", display: "flex", gap: 2 }}>
