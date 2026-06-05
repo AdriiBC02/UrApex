@@ -44,12 +44,9 @@
     }
   },
   "plugins": {
-    "store": {},
-    "dialog": {},
     "fs": {
       "scope": ["$DOCUMENT/*", "$DOWNLOAD/*", "*"]
     },
-    "notification": {},
     "shell": {
       "open": true
     }
