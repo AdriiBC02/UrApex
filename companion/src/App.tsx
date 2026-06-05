@@ -252,19 +252,40 @@ export default function App() {
             })}
           </div>
 
-          <div style={{ borderTop: "1px solid var(--border-soft)", paddingTop: 6 }}>
+          <div style={{ borderTop: "1px solid var(--border-soft)", paddingTop: 6, display: "flex", flexDirection: "column", gap: 1 }}>
             <button onClick={() => setTab("settings")} className={`nav-item ${tab === "settings" ? "active" : ""}`}>
               <Settings size={14} strokeWidth={1.75} className="nav-icon" />
               <span>Settings</span>
             </button>
+
+            {/* Live status */}
+            <div style={{ padding: "6px 10px 2px", display: "flex", alignItems: "center", gap: 6 }}>
+              <span className={watching ? "pulse" : undefined} style={{
+                width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
+                background: watching ? "var(--green)" : "var(--border)",
+              }} />
+              <span style={{ fontSize: 10, color: watching ? "var(--green)" : "var(--text-dim)", fontWeight: watching ? 600 : 400 }}>
+                {watching ? "Live" : "Idle"}
+              </span>
+            </div>
+            {watching && settings.watchFolder && (
+              <p style={{ fontSize: 9, color: "var(--text-dim)", padding: "0 10px 6px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {settings.watchFolder.split(/[\\/]/).pop() || settings.watchFolder}
+              </p>
+            )}
           </div>
         </aside>
 
         {/* ── Content ── */}
         <main style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+         <div key={tab} className="tab-content">
 
           {tab === "dashboard" && (
-            <DashboardView onOpenSession={(id) => { setTab("sessions"); openSession(id) }} />
+            <DashboardView
+              onOpenSession={(id) => { setTab("sessions"); openSession(id) }}
+              hasFolder={Boolean(settings.watchFolder)}
+              watching={watching}
+            />
           )}
 
           {tab === "goals"        && <GoalsView />}
@@ -274,7 +295,12 @@ export default function App() {
           {tab === "sync" && (
             <div style={{ flex: 1, overflow: "auto", padding: "20px 18px", display: "flex", flexDirection: "column", gap: 16 }}>
               {/* Watch control */}
-              <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="card" style={{
+                display: "flex", flexDirection: "column", gap: 10,
+                transition: "border-color 0.4s, box-shadow 0.4s",
+                borderColor: watching ? "rgba(74,222,128,0.3)" : undefined,
+                boxShadow:   watching ? "0 0 0 1px rgba(74,222,128,0.06), inset 0 0 24px rgba(74,222,128,0.03)" : undefined,
+              }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", marginBottom: 2 }}>
@@ -440,6 +466,7 @@ export default function App() {
             </div>
           )}
 
+         </div>{/* .tab-content */}
         </main>
       </div>
     </div>

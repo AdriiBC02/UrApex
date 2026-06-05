@@ -158,8 +158,31 @@ select:focus { border-color: var(--cyan-dim); }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .spin { animation: spin 0.8s linear infinite; }
 
+/* Tab content fade-in — triggered by key change (remount) */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.tab-content {
+  flex: 1; overflow: hidden;
+  display: flex; flex-direction: column;
+  animation: fade-in 0.15s ease-out;
+}
+
 /* Session list row */
 .session-row:hover { background: rgba(255,255,255,0.025) !important; }
+
+/* Quickstart steps */
+.step { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; }
+.step + .step { border-top: 1px solid var(--border-soft); }
+.step-num {
+  width: 22px; height: 22px; border-radius: 6px;
+  background: var(--surface-3); color: var(--cyan);
+  font-size: 11px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 1px;
+}
+.step-done .step-num { background: rgba(74,222,128,0.12); color: var(--green); }
 
 /* Stat tile */
 .stat-tile {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { invoke } from "@tauri-apps/api/core"
 import { formatLapTime } from "../lib/time"
-import { Timer, LayoutGrid, Map, Car, Trophy, Clock, TrendingUp, ArrowRight, type LucideIcon } from "lucide-react"
+import { Timer, LayoutGrid, Map, Car, Trophy, Clock, TrendingUp, ArrowRight, type LucideIcon, CheckCircle2, FolderOpen, RadioTower, Gamepad2 } from "lucide-react"
 
 interface RecentPb {
   sessionId:   string
@@ -22,7 +22,11 @@ interface DashboardStats {
   recentPb:       RecentPb | null
 }
 
-interface Props { onOpenSession: (id: string) => void }
+interface Props {
+  onOpenSession: (id: string) => void
+  hasFolder:     boolean
+  watching:      boolean
+}
 
 const TILES: { key: keyof DashboardStats; label: string; icon: LucideIcon; accent?: boolean; fmt?: (v: number) => string }[] = [
   { key: "totalSessions",  label: "Sessions",   icon: LayoutGrid, fmt: String },
@@ -33,7 +37,7 @@ const TILES: { key: keyof DashboardStats; label: string; icon: LucideIcon; accen
   { key: "pbCount",        label: "PBs",         icon: Trophy,     fmt: String, accent: true },
 ]
 
-export function DashboardView({ onOpenSession }: Props) {
+export function DashboardView({ onOpenSession, hasFolder, watching }: Props) {
   const [stats, setStats]     = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -47,22 +51,82 @@ export function DashboardView({ onOpenSession }: Props) {
     return <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 12 }}>Loading…</div>
   }
 
+  // ── Empty / quickstart ──────────────────────────────────────────────────────
   if (!stats || stats.totalSessions === 0) {
+    const folderDone   = hasFolder
+    const watchDone    = watching
+
     return (
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: 24 }}>
-        <LayoutGrid size={36} strokeWidth={1.25} style={{ color: "var(--text-dim)" }} />
-        <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text-muted)" }}>No sessions yet</p>
-        <p style={{ fontSize: 12, color: "var(--text-dim)", textAlign: "center", maxWidth: 260 }}>
-          Import your first LMU session via Sync to see your stats here.
-        </p>
+      <div style={{ flex: 1, overflow: "auto", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div>
+          <p style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>Get started</p>
+          <p style={{ fontSize: 12, color: "var(--text-dim)" }}>Three steps to your first auto-imported session.</p>
+        </div>
+
+        <div className="card" style={{ padding: "4px 16px 12px" }}>
+
+          {/* Step 1 */}
+          <div className={`step ${folderDone ? "step-done" : ""}`}>
+            <div className="step-num">{folderDone ? <CheckCircle2 size={12} strokeWidth={2.5} /> : "1"}</div>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontWeight: 600, fontSize: 12, color: folderDone ? "var(--text-muted)" : "var(--text)", marginBottom: 2 }}>
+                Set your LMU Results folder
+              </p>
+              <p style={{ fontSize: 11, color: "var(--text-dim)", lineHeight: 1.5 }}>
+                Go to <strong style={{ color: "var(--text-muted)" }}>Settings</strong> and paste or browse to:
+              </p>
+              <code style={{ fontSize: 10, color: "var(--text-dim)", display: "block", marginTop: 4, background: "var(--surface-3)", padding: "3px 7px", borderRadius: 5, fontFamily: "monospace" }}>
+                …\Le Mans Ultimate\UserData\player\Results\
+              </code>
+            </div>
+            <FolderOpen size={15} strokeWidth={1.75} style={{ color: folderDone ? "var(--green)" : "var(--text-dim)", flexShrink: 0, marginTop: 3 }} />
+          </div>
+
+          {/* Step 2 */}
+          <div className={`step ${watchDone ? "step-done" : ""}`}>
+            <div className="step-num">{watchDone ? <CheckCircle2 size={12} strokeWidth={2.5} /> : "2"}</div>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontWeight: 600, fontSize: 12, color: watchDone ? "var(--text-muted)" : "var(--text)", marginBottom: 2 }}>
+                Start watching
+              </p>
+              <p style={{ fontSize: 11, color: "var(--text-dim)" }}>
+                Go to <strong style={{ color: "var(--text-muted)" }}>Sync</strong> and press <strong style={{ color: "var(--cyan)" }}>Start watching</strong>.
+              </p>
+            </div>
+            <RadioTower size={15} strokeWidth={1.75} style={{ color: watchDone ? "var(--green)" : "var(--text-dim)", flexShrink: 0, marginTop: 3 }} />
+          </div>
+
+          {/* Step 3 */}
+          <div className="step" style={{ paddingBottom: 4 }}>
+            <div className="step-num">3</div>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontWeight: 600, fontSize: 12, color: "var(--text)", marginBottom: 2 }}>
+                Play a session in LMU
+              </p>
+              <p style={{ fontSize: 11, color: "var(--text-dim)" }}>
+                When you finish, the result file is picked up and imported automatically.
+              </p>
+            </div>
+            <Gamepad2 size={15} strokeWidth={1.75} style={{ color: "var(--text-dim)", flexShrink: 0, marginTop: 3 }} />
+          </div>
+        </div>
+
+        {!watching && folderDone && (
+          <div style={{ background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.15)", borderRadius: 10, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+            <RadioTower size={14} strokeWidth={1.75} style={{ color: "var(--cyan)", flexShrink: 0 }} />
+            <p style={{ fontSize: 11, color: "var(--text-muted)" }}>
+              Folder configured — go to <strong style={{ color: "var(--cyan)" }}>Sync</strong> and start watching to begin auto-importing.
+            </p>
+          </div>
+        )}
       </div>
     )
   }
 
+  // ── Stats ───────────────────────────────────────────────────────────────────
   return (
     <div style={{ flex: 1, overflow: "auto", padding: "20px 18px", display: "flex", flexDirection: "column", gap: 14 }}>
 
-      {/* Stats grid */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
         {TILES.map(({ key, label, icon: Icon, accent, fmt }) => {
           const raw = stats[key]
@@ -81,7 +145,6 @@ export function DashboardView({ onOpenSession }: Props) {
         })}
       </div>
 
-      {/* Consistency */}
       {stats.avgConsistency != null && (
         <div className="card">
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
@@ -102,7 +165,6 @@ export function DashboardView({ onOpenSession }: Props) {
         </div>
       )}
 
-      {/* Latest PB */}
       {stats.recentPb && (
         <div style={{ background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.15)", borderRadius: 10, padding: "14px 16px" }}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>

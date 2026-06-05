@@ -92,7 +92,15 @@ export function SessionList({ sessions, selectedId, onSelect, onDelete }: Props)
             {/* Car + laps + best */}
             <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "var(--text-muted)" }}>
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>{s.carName}</span>
-              <span style={{ flexShrink: 0, color: "var(--text-dim)" }}>{s.totalLaps}L</span>
+              <span style={{ flexShrink: 0, color: "var(--text-dim)" }}>{s.validLaps}/{s.totalLaps}L</span>
+              {s.consistencyScore != null && (
+                <span style={{
+                  flexShrink: 0, fontSize: 9, fontWeight: 700,
+                  color: s.consistencyScore >= 80 ? "var(--green)" : s.consistencyScore >= 60 ? "var(--amber)" : "var(--red)",
+                }}>
+                  {s.consistencyScore.toFixed(0)}%
+                </span>
+              )}
               {s.bestLapMs && (
                 <span style={{ fontFamily: "monospace", fontWeight: 600, color: active ? "var(--cyan)" : "var(--text-muted)", flexShrink: 0 }}>
                   {formatLapTime(s.bestLapMs)}
