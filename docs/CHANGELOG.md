@@ -8,7 +8,48 @@
 
 ## [Unreleased]
 
-> Next up: deploy en Vercel, test Windows build (CA-016), CSV export Race Grid (AN-018), ideas U-001/002/003 (heatmap, DNA radar, streaks).
+> Next up: deploy en Vercel, real LMU test on Windows (CA-016), CSV export Race Grid (AN-018), diag log cleanup, auto-update (CA-023), in-game overlay (CA-014).
+
+---
+
+## [0.30.0] — 2026-06-06
+
+> Companion app — Windows runtime fixes + full visual redesign.
+
+### Fixed
+- **WebView2 x86 compatibility** — app crashed silently (no logs) because the installed WebView2 was 32-bit only (WOW6432Node registry); switched CI build target to `i686-pc-windows-msvc` so the binary finds and uses the x86 runtime
+- **`plugins.store/dialog/notification: {}`** — `tauri-plugin-store` expects unit config, not an empty object; PluginInitialization panic on every launch; removed all empty plugin entries from `tauri.conf.json`
+- **`plugins.fs.scope` / `plugins.shell.open`** — Tauri v1 syntax; in v2 these live in capabilities; removed stale config keys
+- **`webviewInstallMode` in wrong schema level** — was inside `bundle.windows.nsis` (NsisConfig rejects unknown keys); moved to `bundle.windows`
+- **Duplicate VERSION resource** — `winresource` + `tauri-build` both emitted a VERSION resource causing LNK1123; replaced with `tauri_build::WindowsAttributes::app_manifest()`; then removed the custom manifest entirely (Tauri's default already has asInvoker + Common Controls v6 + DPI)
+- **TypeScript build errors** — `React.ComponentType<{size?: number}>` incompatible with `LucideProps.size: string | number`; replaced with `LucideIcon` type from lucide-react in App.tsx, Dashboard, SessionDetail, SyncLog
+- **TaskDialogIndirect crash** — custom manifest had replaced Tauri's default and was missing the `Microsoft.Windows.Common-Controls v6` dependency; fixed by reverting to Tauri's default manifest
+- Removed dead code: `extract_driver_names()` and `ParsedSession::all_driver_names` (compiler warnings)
+- Removed stale `installer-hooks.nsh` (`$PROGRAMFILES32` is not a valid NSIS variable)
+- NSIS `installMode` corrected to `perMachine` for Program Files installation
+
+### Added
+- **Tray right-click menu** — "Open UrApex" + separator + "Quit"; `app.exit(0)` on Quit; before this there was no way to close the app without Task Manager
+- **Watcher auto-restart** — `watchActive` flag persisted to the plugin-store; on launch, if it was true and folder is configured, the watcher restarts automatically without user interaction
+- **Watch error feedback** — inline red banner in the Sync card shows the Rust error string when `start_watching` fails (bad path, permissions, etc.)
+- **Session detail error state** — when detail load fails silently, shows "Failed to load session" instead of empty panel
+
+### Changed
+- **Companion app full visual redesign** — sidebar navigation with lucide-react icons replaces 8 cramped header tabs; custom frameless titlebar with ⚡ wordmark, live WATCHING pill (animated), minimize/close window controls; window 760×580
+- **Dashboard** — icon-per-stat grid using `.stat-tile`, consistency bar with color threshold, PB card with 22px lap time
+- **Goals** — cards with progress %, section headers with count badges, icons for status (CheckCircle2, XCircle, CalendarDays), empty state
+- **Setups** — colored tag chips (conditions/type), star pin button with fill, inline notes editor, Pinned / All sections
+- **Achievements** — rarity glow/border system (Epic/Legendary box-shadow), lock overlay on locked icons, progress bars by rarity color, category filter pills, % unlocked badge
+- **SyncLog** — Loader2 spinner (CSS animation) for uploading, lucide icons replace text symbols, CloudUpload empty state
+- **SessionList** — session type badge (colored), cyan left border on selected row, lap time right-aligned
+- **SessionDetail** — hero header with condition icons (Thermometer, Wind, Droplets, MapPin), pill sub-tabs with icon, best lap highlighted with left border, race grid with expandable per-driver laps
+- **CompareView** — session A/B cards with colored left borders, metrics table with thead background, alternating lap rows
+- **StatusDot** — simplified to CSS `.pulse` class, hidden when not watching
+- **Settings** — grouped into LMU paths / Cloud sync / System cards, BrowseBtn component, Toggle component
+- CSS design system: `--surface-2/3`, `--border-soft`, `.card`, `.btn`, `.badge`, `.stat-tile`, `.nav-item`, `.pulse`, `.spin`, select chevron, thin scrollbar
+- Reduced `tauri-plugin-log` level from `Debug` to `Warn` (less noise in production log files)
+- Build target changed to `i686-pc-windows-msvc`; MSI target removed (WiX doesn't support i686)
+- `productName` renamed to "UrApex" throughout (was "UrApex Companion")
 
 ---
 

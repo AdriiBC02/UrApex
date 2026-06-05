@@ -383,7 +383,7 @@ pub fn run() {
                 .target(tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
                     file_name: Some("urapex".to_string()),
                 }))
-                .level(log::LevelFilter::Debug)
+                .level(log::LevelFilter::Warn)
                 .build(),
         )
         .plugin(tauri_plugin_store::Builder::new().build())

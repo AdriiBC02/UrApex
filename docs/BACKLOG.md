@@ -161,7 +161,7 @@
 | CA-006 | System tray + minimize-to-tray | P1 | ✅ | Shows/hides on tray icon click |
 | CA-007 | Windows notifications | P1 | ✅ | `tauri-plugin-notification` on upload result |
 | CA-008 | GitHub Actions companion build CI | P1 | ✅ | Node 24 compat, schema URL fix, npx cli binary, artifact listing |
-| CA-016 | Compile and test on Windows | P0 | 🔲 | CI build automated; needs real Windows test with LMU (standalone + optional sync) |
+| CA-016 | Compile and test on Windows | P0 | 🟡 | App abre en Windows (x86 WebView2 fix); falta test real con LMU en pista |
 | CA-009 | Local hash dedup before upload | P1 | ✅ | SHA-256 cache in %LOCALAPPDATA%/UrApex/uploaded_hashes.txt (dirs-next crate) |
 | CA-010 | Upload queue with retry | P1 | ✅ | 3 attempts, linear backoff 2/4/6s, 60s reqwest timeout |
 | CA-011 | Persistent sync history | P2 | ✅ | plugin-store key syncLogs; max 100 entries; clear button |
@@ -171,6 +171,11 @@
 | CA-015 | UDP telemetry listener (LMU port 4444) | P2 | 🔲 | Feed data to overlay in real time |
 | CA-017 | VCR replay file tracking | P2 | ✅ | Watcher detecta .vcr en replay_folder; db::insert_replay; evento replay-detected; tabla replays en SQLite |
 | CA-018 | Companion Replays tab | P2 | ✅ | Tab Replays en companion UI; lista .vcr rastreados; botón delete; refresh automático en evento replay-detected |
+| CA-019 | Fix Windows runtime crashes | P0 | ✅ | x86 WebView2 (i686 build), plugin config v1→v2, manifest conflict, NSIS schema |
+| CA-020 | Companion UI full visual redesign | P2 | ✅ | Sidebar nav, custom titlebar, window controls, lucide icons, design system (cards/badges/btns), all 10 components redesigned |
+| CA-021 | Tray right-click menu with Quit | P1 | ✅ | MenuItem + PredefinedMenuItem::separator; app.exit(0); previously no way to close without Task Manager |
+| CA-022 | Watcher auto-restart on launch | P2 | ✅ | `watchActive` persisted to plugin-store; auto-restores previous watching state on app open |
+| CA-023 | Auto-update (Tauri updater plugin) | P3 | 🔲 | Users currently have no way to receive new versions automatically |
 
 ---
 

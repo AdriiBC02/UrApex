@@ -76,16 +76,34 @@ export default function App() {
   const [compareDetail, setCompareDetail] = useState<SessionDetail | null>(null)
 
   useEffect(() => {
-    load("companion-settings.json", { autoSave: true, defaults: {} }).then((s) => {
+    load("companion-settings.json", { autoSave: true, defaults: {} }).then(async (s) => {
       store = s
-      s.get<Settings>("settings").then((saved) => { if (saved) setSettings(saved) })
-      s.get<Array<LogEntry & { timestamp: string }>>("syncLogs").then((saved) => {
-        if (saved?.length) {
-          const r = saved.map((l) => ({ ...l, timestamp: new Date(l.timestamp) }))
-          logId = Math.max(...r.map((l) => l.id)) + 1
-          setLogs(r)
-        }
-      })
+      const [savedSettings, savedLogs, wasWatching] = await Promise.all([
+        s.get<Settings>("settings"),
+        s.get<Array<LogEntry & { timestamp: string }>>("syncLogs"),
+        s.get<boolean>("watchActive"),
+      ])
+
+      if (savedSettings) setSettings(savedSettings)
+
+      if (savedLogs?.length) {
+        const r = savedLogs.map((l) => ({ ...l, timestamp: new Date(l.timestamp) }))
+        logId = Math.max(...r.map((l) => l.id)) + 1
+        setLogs(r)
+      }
+
+      if (wasWatching && savedSettings?.watchFolder) {
+        try {
+          await invoke("start_watching", {
+            folder:       savedSettings.watchFolder,
+            apiUrl:       savedSettings.apiUrl       || "",
+            apiKey:       savedSettings.apiKey       || "",
+            driverName:   savedSettings.driverName   || null,
+            replayFolder: savedSettings.replayFolder || null,
+          })
+          setWatching(true)
+        } catch { /* settings may be stale — ignore */ }
+      }
     })
     isEnabled().then(setAutostart).catch(() => {})
     loadSessions()
@@ -151,7 +169,9 @@ export default function App() {
   }
   async function toggleWatch() {
     if (watching) {
-      await invoke("stop_watching"); setWatching(false); setWatchError(null)
+      await invoke("stop_watching")
+      setWatching(false); setWatchError(null)
+      store?.set("watchActive", false); store?.save()
     } else {
       await saveSettings(); setWatchError(null)
       try {
@@ -161,6 +181,7 @@ export default function App() {
           replayFolder: settings.replayFolder || null,
         })
         setWatching(true)
+        store?.set("watchActive", true); store?.save()
       } catch (err) {
         setWatchError(String(err))
         addLog("", "error")
