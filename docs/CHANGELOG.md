@@ -8,7 +8,35 @@
 
 ## [Unreleased]
 
-> Next up: deploy en Vercel, real LMU test on Windows (CA-016), CSV export Race Grid (AN-018), diag log cleanup, auto-update (CA-023), in-game overlay (CA-014).
+> Next up: diag log cleanup, real LMU test (CA-016), AN-018 CSV export Race Grid, deploy Vercel, in-game overlay (CA-014).
+
+---
+
+## [0.31.0] — 2026-06-06
+
+> Companion v0.2.0 — auto-update, UI polish pass, watcher persistence.
+
+### Added
+- **Auto-update (CA-023)** — `tauri-plugin-updater` + `tauri-plugin-process`; silent background check 8s after launch; amber "Update" pill in titlebar navigates to Settings; Settings card shows version, manual "Check" button, download progress bar, "Download and install" + auto-relaunch
+- **Signing infrastructure** — CI signs `.exe` with minisign key (`TAURI_SIGNING_PRIVATE_KEY` secret); PowerShell step generates `latest.json` and uploads it to the release alongside the installer
+- **Watcher auto-restart** — `watchActive` persisted to plugin-store; watcher restores on launch
+- **Tray right-click menu** — Open UrApex / Quit (app.exit)
+- **Dashboard quickstart** — 3-step onboarding guide (Set folder → Start watching → Play) with auto-check of completion state
+- **Tab fade-in transitions** — 150ms ease-out with subtle upward translate on tab switch
+- **Sidebar Live/Idle status** — persistent dot + folder name below Settings nav item
+- **Sync card watching glow** — green border + inward glow when watcher is active
+- **Session list density** — valid/total laps, consistency score badge (green/amber/red)
+- **Watch error feedback** — inline red banner in Sync card when start_watching fails
+
+### Changed
+- Companion version bumped to **0.2.0** (tauri.conf.json, Cargo.toml, package.json)
+- All 10 companion UI components fully redesigned (sidebar nav, custom titlebar, lucide icons, design system)
+- `tauri-plugin-log` level Debug → Warn
+
+### Fixed
+- TypeScript build errors (`React.ComponentType` → `LucideIcon` from lucide-react)
+- Dead code: `extract_driver_names()` + `ParsedSession::all_driver_names` removed
+- Stale `installer-hooks.nsh` removed
 
 ---
 

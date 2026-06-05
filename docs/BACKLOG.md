@@ -175,7 +175,7 @@
 | CA-020 | Companion UI full visual redesign | P2 | ✅ | Sidebar nav, custom titlebar, window controls, lucide icons, design system (cards/badges/btns), all 10 components redesigned |
 | CA-021 | Tray right-click menu with Quit | P1 | ✅ | MenuItem + PredefinedMenuItem::separator; app.exit(0); previously no way to close without Task Manager |
 | CA-022 | Watcher auto-restart on launch | P2 | ✅ | `watchActive` persisted to plugin-store; auto-restores previous watching state on app open |
-| CA-023 | Auto-update (Tauri updater plugin) | P3 | 🔲 | Users currently have no way to receive new versions automatically |
+| CA-023 | Auto-update (Tauri updater plugin) | P3 | ✅ | tauri-plugin-updater; CI signing; latest.json; Settings check button + progress bar |
 
 ---
 
