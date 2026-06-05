@@ -9,10 +9,21 @@ import { SessionList, type SessionSummary } from "./components/SessionList"
 import { SessionDetailView, type SessionDetail } from "./components/SessionDetail"
 
 interface Settings {
-  watchFolder: string
-  apiUrl: string
-  apiKey: string
-  driverName: string
+  watchFolder:   string
+  replayFolder:  string
+  apiUrl:        string
+  apiKey:        string
+  driverName:    string
+}
+
+interface ReplaySummary {
+  id:          string
+  sessionId:   string | null
+  filePath:    string
+  filename:    string
+  fileSize:    number | null
+  matchedAt:   string | null
+  importedAt:  string
 }
 
 interface LogEntry {
@@ -27,16 +38,17 @@ let store: Store | null = null
 let logId = 0
 
 export default function App() {
-  const [settings, setSettings]             = useState<Settings>({ watchFolder: "", apiUrl: "", apiKey: "", driverName: "" })
+  const [settings, setSettings]             = useState<Settings>({ watchFolder: "", replayFolder: "", apiUrl: "", apiKey: "", driverName: "" })
   const [watching, setWatching]             = useState(false)
   const [logs, setLogs]                     = useState<LogEntry[]>([])
-  const [tab, setTab]                       = useState<"sync" | "sessions" | "settings">("sync")
+  const [tab, setTab]                       = useState<"sync" | "sessions" | "replays" | "settings">("sync")
   const [autostart, setAutostart]           = useState(false)
   const [importing, setImporting]           = useState(false)
   const [sessions, setSessions]             = useState<SessionSummary[]>([])
   const [selectedId, setSelectedId]         = useState<string | null>(null)
   const [sessionDetail, setSessionDetail]   = useState<SessionDetail | null>(null)
   const [loadingDetail, setLoadingDetail]   = useState(false)
+  const [replays, setReplays]               = useState<ReplaySummary[]>([])
 
   useEffect(() => {
     load("companion-settings.json", { autoSave: true, defaults: {} }).then((s) => {
@@ -52,11 +64,17 @@ export default function App() {
     })
     isEnabled().then(setAutostart).catch(() => {})
     loadSessions()
+    loadReplays()
 
     const unlisteners: Array<() => void> = []
     import("@tauri-apps/api/event").then(({ listen }) => {
       listen<{ file: string }>("file-detected", (e) => addLog(e.payload.file, "uploading"))
         .then((fn) => unlisteners.push(fn))
+
+      listen<{ file: string }>("replay-detected", (e) => {
+        addLog(e.payload.file, "success")
+        loadReplays()
+      }).then((fn) => unlisteners.push(fn))
 
       listen<{ file: string; status: string; message?: string }>("file-result", (e) => {
         const { file, status, message } = e.payload
@@ -88,6 +106,18 @@ export default function App() {
     } catch (e) { console.error(e) }
   }
 
+  async function loadReplays() {
+    try {
+      const list = await invoke<ReplaySummary[]>("get_replays")
+      setReplays(list)
+    } catch (e) { console.error(e) }
+  }
+
+  async function handleDeleteReplay(id: string) {
+    await invoke("delete_replay", { id })
+    setReplays((prev) => prev.filter((r) => r.id !== id))
+  }
+
   async function openSession(id: string) {
     setSelectedId(id)
     setLoadingDetail(true)
@@ -114,9 +144,9 @@ export default function App() {
     await store?.save()
   }
 
-  async function browseFolder() {
-    const sel = await open({ directory: true, title: "Select LMU Results folder" })
-    if (sel && typeof sel === "string") setSettings((s) => ({ ...s, watchFolder: sel }))
+  async function browseFolder(key: "watchFolder" | "replayFolder", title: string) {
+    const sel = await open({ directory: true, title })
+    if (sel && typeof sel === "string") setSettings((s) => ({ ...s, [key]: sel }))
   }
 
   async function toggleWatch() {
@@ -129,6 +159,7 @@ export default function App() {
         await invoke("start_watching", {
           folder: settings.watchFolder, apiUrl: settings.apiUrl,
           apiKey: settings.apiKey, driverName: settings.driverName || null,
+          replayFolder: settings.replayFolder || null,
         })
         setWatching(true)
       } catch (err) { addLog("", "error"); console.error(err) }
@@ -158,7 +189,7 @@ export default function App() {
   }
 
   const canWatch = Boolean(settings.watchFolder)
-  const tabs = ["sync", "sessions", "settings"] as const
+  const tabs = ["sync", "sessions", "replays", "settings"] as const
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
@@ -175,7 +206,9 @@ export default function App() {
               color: tab === t ? "var(--text)" : "var(--text-muted)",
               position: "relative",
             }}>
-              {t === "sessions" ? `Sessions${sessions.length ? ` (${sessions.length})` : ""}` : t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === "sessions" ? `Sessions${sessions.length ? ` (${sessions.length})` : ""}` :
+               t === "replays"  ? `Replays${replays.length   ? ` (${replays.length})` : ""}` :
+               t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
@@ -215,6 +248,41 @@ export default function App() {
           </div>
         )}
 
+        {/* ── REPLAYS TAB ── */}
+        {tab === "replays" && (
+          <div style={{ flex: 1, overflow: "auto", padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+                {replays.length} replay{replays.length !== 1 ? "s" : ""} tracked
+              </span>
+              <button onClick={loadReplays} style={{ fontSize: 10, color: "var(--text-dim)", background: "none", padding: "2px 6px" }}>↻</button>
+            </div>
+            {replays.length === 0 ? (
+              <div style={{ color: "var(--text-dim)", fontSize: 12, paddingTop: 12 }}>
+                No replays tracked yet. Set a Replays folder in Settings to auto-detect .vcr files.
+              </div>
+            ) : replays.map((r) => (
+              <div key={r.id} style={{ padding: "8px 10px", borderRadius: 6, background: "var(--border-light)", border: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {r.filename}
+                  </div>
+                  <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 2 }}>
+                    {r.sessionId ? "Linked to session" : "Not linked"} &nbsp;·&nbsp;
+                    {r.fileSize != null ? `${(r.fileSize / 1024 / 1024).toFixed(1)} MB` : ""}
+                    &nbsp;·&nbsp; {new Date(r.importedAt).toLocaleDateString()}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleDeleteReplay(r.id)}
+                  style={{ fontSize: 10, color: "var(--text-dim)", background: "none", padding: "2px 6px", flexShrink: 0 }}
+                  title="Remove from list"
+                >✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* ── SESSIONS TAB ── */}
         {tab === "sessions" && (
           <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
@@ -249,7 +317,14 @@ export default function App() {
               <Field label="LMU Results folder" hint="e.g. C:\Users\You\Documents\Le Mans Ultimate\UserData\player\Results">
                 <div style={{ display: "flex", gap: 6 }}>
                   <input value={settings.watchFolder} onChange={(e) => setSettings((s) => ({ ...s, watchFolder: e.target.value }))} placeholder="Click Browse or paste path" style={{ flex: 1 }} />
-                  <button type="button" onClick={browseFolder} style={{ padding: "6px 10px", borderRadius: 6, background: "var(--border-light)", color: "var(--text)", fontWeight: 600, fontSize: 11, whiteSpace: "nowrap" }}>Browse</button>
+                  <button type="button" onClick={() => browseFolder("watchFolder", "Select LMU Results folder")} style={{ padding: "6px 10px", borderRadius: 6, background: "var(--border-light)", color: "var(--text)", fontWeight: 600, fontSize: 11, whiteSpace: "nowrap" }}>Browse</button>
+                </div>
+              </Field>
+
+              <Field label="LMU Replays folder" hint="Optional — watches for new .vcr replay files (e.g. …\Le Mans Ultimate\UserData\player\Replays)">
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input value={settings.replayFolder} onChange={(e) => setSettings((s) => ({ ...s, replayFolder: e.target.value }))} placeholder="Optional — Click Browse or paste path" style={{ flex: 1 }} />
+                  <button type="button" onClick={() => browseFolder("replayFolder", "Select LMU Replays folder")} style={{ padding: "6px 10px", borderRadius: 6, background: "var(--border-light)", color: "var(--text)", fontWeight: 600, fontSize: 11, whiteSpace: "nowrap" }}>Browse</button>
                 </div>
               </Field>
 

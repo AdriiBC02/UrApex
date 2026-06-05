@@ -57,6 +57,16 @@ pub fn open(db_path: &PathBuf) -> Result<Connection, String> {
 
 fn migrate(conn: &Connection) -> Result<(), String> {
     conn.execute_batch("
+        CREATE TABLE IF NOT EXISTS replays (
+            id          TEXT PRIMARY KEY,
+            session_id  TEXT REFERENCES sessions(id) ON DELETE SET NULL,
+            file_path   TEXT NOT NULL UNIQUE,
+            filename    TEXT NOT NULL,
+            file_size   INTEGER,
+            matched_at  TEXT,
+            imported_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_replays_session ON replays(session_id);
         CREATE TABLE IF NOT EXISTS sessions (
             id                TEXT PRIMARY KEY,
             track_name        TEXT NOT NULL,
@@ -246,6 +256,78 @@ pub fn get_session_detail(conn: &Connection, id: &str) -> Result<Option<SessionD
 
 pub fn delete_session(conn: &Connection, id: &str) -> Result<(), String> {
     conn.execute("DELETE FROM sessions WHERE id=?1", params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// ── Replays ───────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplaySummary {
+    pub id:          String,
+    pub session_id:  Option<String>,
+    pub file_path:   String,
+    pub filename:    String,
+    pub file_size:   Option<i64>,
+    pub matched_at:  Option<String>,
+    pub imported_at: String,
+}
+
+pub fn replay_path_exists(conn: &Connection, file_path: &str) -> bool {
+    conn.query_row(
+        "SELECT 1 FROM replays WHERE file_path = ?1",
+        params![file_path],
+        |_| Ok(()),
+    ).is_ok()
+}
+
+pub fn insert_replay(
+    conn:       &Connection,
+    file_path:  &str,
+    filename:   &str,
+    file_size:  Option<i64>,
+    session_id: Option<&str>,
+) -> Result<String, String> {
+    let id  = uuid::Uuid::new_v4().to_string();
+    let now = now_iso();
+    let matched_at: Option<String> = session_id.map(|_| now.clone());
+    conn.execute(
+        "INSERT INTO replays (id, session_id, file_path, filename, file_size, matched_at, imported_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?7)",
+        params![id, session_id, file_path, filename, file_size, matched_at, now],
+    ).map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+pub fn get_replays(conn: &Connection) -> Result<Vec<ReplaySummary>, String> {
+    let mut stmt = conn.prepare(
+        "SELECT id, session_id, file_path, filename, file_size, matched_at, imported_at
+         FROM replays ORDER BY imported_at DESC"
+    ).map_err(|e| e.to_string())?;
+    let rows = stmt.query_map([], |row| Ok(ReplaySummary {
+        id:          row.get(0)?,
+        session_id:  row.get(1)?,
+        file_path:   row.get(2)?,
+        filename:    row.get(3)?,
+        file_size:   row.get(4)?,
+        matched_at:  row.get(5)?,
+        imported_at: row.get(6)?,
+    })).map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+pub fn match_replay_to_session(conn: &Connection, replay_id: &str, session_id: &str) -> Result<(), String> {
+    let now = now_iso();
+    conn.execute(
+        "UPDATE replays SET session_id=?1, matched_at=?2 WHERE id=?3",
+        params![session_id, now, replay_id],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn delete_replay(conn: &Connection, id: &str) -> Result<(), String> {
+    conn.execute("DELETE FROM replays WHERE id=?1", params![id])
         .map_err(|e| e.to_string())?;
     Ok(())
 }

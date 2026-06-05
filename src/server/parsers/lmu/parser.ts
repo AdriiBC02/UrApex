@@ -107,6 +107,7 @@ export class LMUParser implements IParser {
     const sessionType = this.parseSessionType(sessionKey)
     const trackRawName  = this.s(root, "TrackVenue") ?? this.s(root, "TrackCourse") ?? "Unknown Track"
     const trackLayout   = this.s(root, "TrackCourse")
+    const trackLengthM  = this.n(root, "TrackLength")
     const carRawName    = this.s(player, "CarType") ?? this.s(player, "VehName") ?? "Unknown Car"
     const carClass      = this.s(player, "CarClass")
 
@@ -124,8 +125,13 @@ export class LMUParser implements IParser {
     // Server name
     const serverName = this.s(root, "ServerName") || null
 
-    // Weather (not typically in rF2 result XML, but check)
-    const weather = this.s(sessionData, "SkyType") ?? this.s(root, "SkyType") ?? null
+    // Conditions (rF2/LMU fields)
+    const weather     = this.s(sessionData, "SkyType")    ?? this.s(root, "SkyType")    ?? null
+    const tempAmbient = this.n(sessionData, "AmbientTemp") ?? this.n(sessionData, "Ambient") ?? this.n(root, "AmbientTemp") ?? undefined
+    const tempTrack   = this.n(sessionData, "TrackTemp")   ?? this.n(sessionData, "RoadTemp") ?? this.n(root, "TrackTemp") ?? undefined
+    const humidity    = this.n(sessionData, "Humidity")    ?? this.n(root, "Humidity")   ?? undefined
+
+    const { participants, pitStops: allPitStops } = this.parseParticipants(allDrivers, player, sessionData)
 
     return {
       simulatorSlug: this.simulatorSlug,
@@ -138,6 +144,7 @@ export class LMUParser implements IParser {
       durationSec: durationSec ?? undefined,
       trackRawName,
       trackLayoutRawName: trackLayout ?? undefined,
+      trackLengthM,
       carRawName,
       carClassRawName: carClass ?? undefined,
       finalPosition: finalPosition ?? undefined,
@@ -145,13 +152,14 @@ export class LMUParser implements IParser {
       dnf,
       dq: false,
       weather: weather ?? undefined,
-      tempAmbient: undefined,
-      tempTrack: undefined,
+      tempAmbient,
+      tempTrack,
+      humidity,
       laps,
-      participants: this.parseParticipants(allDrivers, player),
+      participants,
       incidents: [],
       penalties: this.parsePenalties(sessionData, player, warnings),
-      pitStops: [],
+      pitStops: allPitStops,
       parseWarnings: warnings,
     }
   }
@@ -256,28 +264,88 @@ export class LMUParser implements IParser {
   private parseParticipants(
     allDrivers: Record<string, unknown>[],
     player: Record<string, unknown>,
-  ): ParsedParticipant[] {
-    return allDrivers.map((d) => {
-      const bestStr = this.s(d, "BestLapTime") ?? ""
-      const bestSec = parseFloat(bestStr)
-      const bestMs = !isNaN(bestSec) && bestSec > 0 ? Math.round(bestSec * 1000) : undefined
+    sessionData: Record<string, unknown>,
+  ): { participants: ParsedParticipant[]; pitStops: ParsedPitStop[] } {
+    // Extract all pit stop events from <Stream> once, keyed by driver name
+    const streamPitStops = this.parseStreamPitStops(sessionData)
 
+    const participants: ParsedParticipant[] = allDrivers.map((d) => {
+      const bestStr    = this.s(d, "BestLapTime") ?? ""
+      const bestSec    = parseFloat(bestStr)
+      const bestMs     = !isNaN(bestSec) && bestSec > 0 ? Math.round(bestSec * 1000) : undefined
       const finishStatus = this.s(d, "FinishStatus") ?? ""
-      const dnf = finishStatus !== "" && finishStatus !== "Finished Normally" && finishStatus !== "None"
+      const dnf        = finishStatus !== "" && finishStatus !== "Finished Normally" && finishStatus !== "None"
+      const driverName = this.s(d, "Name") ?? "Unknown"
+
+      const laps       = this.parseLaps(d, [])
+      const pitStopCount = this.n(d, "Pitstops") ?? 0
+      const driverPits = streamPitStops.filter((ps) => ps.driverName === driverName)
+
+      // Per-driver penalties from Stream
+      const driverPenalties = this.parsePenaltiesForDriver(sessionData, d)
 
       return {
-        driverName:    this.s(d, "Name") ?? "Unknown",
+        driverName,
         teamName:        this.s(d, "TeamName") ?? undefined,
         carRawName:      this.s(d, "CarType") ?? this.s(d, "VehName") ?? undefined,
         carClassRawName: this.s(d, "CarClass") ?? undefined,
-        position:      this.n(d, "Position"),
-        lapsCompleted: this.n(d, "Laps"),
-        bestLapMs:     bestMs,
-        totalTimeMs:   undefined,
+        position:        this.n(d, "Position"),
+        lapsCompleted:   this.n(d, "Laps"),
+        bestLapMs:       bestMs,
+        totalTimeMs:     undefined,
         dnf,
         dq: false,
+        finishStatus:    finishStatus || undefined,
+        pitStopsCount:   pitStopCount,
+        laps,
+        pitStops:        driverPits,
+        penalties:       driverPenalties.length > 0 ? driverPenalties : undefined,
       }
     })
+
+    // Flat list of all pit stops (for the session-level pitStops field)
+    const allPitStops: ParsedPitStop[] = participants.flatMap((p) => p.pitStops ?? [])
+
+    return { participants, pitStops: allPitStops }
+  }
+
+  private parseStreamPitStops(sessionData: Record<string, unknown>): ParsedPitStop[] {
+    const stream = sessionData["Stream"]
+    if (!stream || typeof stream !== "object") return []
+    const rawPits = (stream as Record<string, unknown>)["PitStop"]
+    if (!rawPits) return []
+    const arr = (Array.isArray(rawPits) ? rawPits : [rawPits]) as Record<string, unknown>[]
+    return arr.map((p) => ({
+      driverName:  this.attrStr(p, "Driver") ?? undefined,
+      lapNumber:   this.attrNum(p, "Lap")    ?? undefined,
+      durationMs:  this.attrFloat(p, "Time") != null ? Math.round((this.attrFloat(p, "Time") as number) * 1000) : undefined,
+      fuelAdded:   this.attrFloat(p, "FuelFilled") ?? undefined,
+      tyreChange:  this.attrStr(p, "TyreChange") === "1" || this.attrStr(p, "TyreChange") === "true",
+      tyreCompound: this.attrStr(p, "FrontCompound") ?? this.attrStr(p, "Compound") ?? undefined,
+    }))
+  }
+
+  private parsePenaltiesForDriver(
+    sessionData: Record<string, unknown>,
+    driver: Record<string, unknown>,
+  ): ParsedPenalty[] {
+    const stream = sessionData["Stream"]
+    if (!stream || typeof stream !== "object") return []
+    const penalties = (stream as Record<string, unknown>)["Penalty"]
+    if (!penalties) return []
+    const driverName = this.s(driver, "Name")
+    const arr = (Array.isArray(penalties) ? penalties : [penalties]) as Record<string, unknown>[]
+    return arr
+      .filter((p) => {
+        const pen = this.attrStr(p, "Driver")
+        return pen === driverName
+      })
+      .map((p) => ({
+        lapNumber:   this.attrNum(p, "Laps")    ?? undefined,
+        type:        this.attrStr(p, "Penalty") ?? undefined,
+        description: this.attrStr(p, "Reason")  ?? undefined,
+        timeSec:     this.attrFloat(p, "Time")  ?? undefined,
+      }))
   }
 
   private parsePenalties(

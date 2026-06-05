@@ -196,6 +196,8 @@ model Session {
   weather      String?
   tempAmbient  Float?
   tempTrack    Float?
+  humidity     Float?
+  trackLengthM Float?
   tyreCompound String?
 
   // Cached metrics (ms = milliseconds)
@@ -384,10 +386,33 @@ model SessionParticipant {
   gapToLeaderMs BigInt?
   dnf           Boolean @default(false)
   dq            Boolean @default(false)
+  finishStatus  String?
+  pitStopsCount Int?
 
-  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session  Session          @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  laps     ParticipantLap[]
+  pitStops PitStop[]
 
   @@index([sessionId])
+}
+
+model ParticipantLap {
+  id            String  @id @default(cuid())
+  participantId String
+
+  lapNumber    Int
+  lapTimeMs    Int?
+  isValid      Boolean @default(true)
+  sector1Ms    Int?
+  sector2Ms    Int?
+  sector3Ms    Int?
+  fuelLoad     Float?
+  tyreCompound String?
+
+  participant SessionParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, lapNumber])
+  @@index([participantId])
 }
 
 model Incident {
@@ -417,17 +442,21 @@ model Penalty {
 }
 
 model PitStop {
-  id           String  @id @default(cuid())
-  sessionId    String
-  lapNumber    Int?
-  durationMs   Int?
-  fuelAdded    Float?
-  tyreChange   Boolean @default(false)
-  tyreCompound String?
+  id            String  @id @default(cuid())
+  sessionId     String
+  participantId String?
+  lapNumber     Int?
+  durationMs    Int?
+  fuelAdded     Float?
+  tyreChange    Boolean @default(false)
+  tyreCompound  String?
+  driverName    String?
 
-  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session     Session             @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participant SessionParticipant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
 
   @@index([sessionId])
+  @@index([participantId])
 }
 
 model SessionNote {

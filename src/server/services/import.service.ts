@@ -187,9 +187,11 @@ async function runImport(importFileId: string): Promise<void> {
         invalidLaps: parsed.laps.filter((l) => !l.isValid).length,
         dnf: parsed.dnf,
         dq: parsed.dq,
-        weather: parsed.weather,
-        tempAmbient: parsed.tempAmbient,
-        tempTrack: parsed.tempTrack,
+        weather:      parsed.weather,
+        tempAmbient:  parsed.tempAmbient,
+        tempTrack:    parsed.tempTrack,
+        humidity:     parsed.humidity,
+        trackLengthM: parsed.trackLengthM,
         ...metrics,
         isNewPB: isPB,
       },
@@ -213,23 +215,44 @@ async function runImport(importFileId: string): Promise<void> {
       })
     }
 
-    if (parsed.participants.length > 0) {
-      await tx.sessionParticipant.createMany({
-        data: parsed.participants.map((p) => ({
-          sessionId: session.id,
-          driverName: p.driverName,
-          teamName: p.teamName,
-          carName: p.carRawName,
-          carClass: p.carClassRawName,
-          position: p.position,
+    // Participants: create individually so we can get IDs for nested laps + pit stops
+    const participantIdByName = new Map<string, string>()
+    for (const p of parsed.participants) {
+      const participant = await tx.sessionParticipant.create({
+        data: {
+          sessionId:     session.id,
+          driverName:    p.driverName,
+          teamName:      p.teamName,
+          carName:       p.carRawName,
+          carClass:      p.carClassRawName,
+          position:      p.position,
           lapsCompleted: p.lapsCompleted,
-          bestLapMs: p.bestLapMs,
-          totalTimeMs: p.totalTimeMs !== undefined ? BigInt(Math.round(p.totalTimeMs)) : null,
+          bestLapMs:     p.bestLapMs,
+          totalTimeMs:   p.totalTimeMs !== undefined ? BigInt(Math.round(p.totalTimeMs)) : null,
           gapToLeaderMs: p.gapToLeaderMs !== undefined ? BigInt(Math.round(p.gapToLeaderMs)) : null,
-          dnf: p.dnf ?? false,
-          dq: p.dq ?? false,
-        })),
+          dnf:           p.dnf ?? false,
+          dq:            p.dq ?? false,
+          finishStatus:  p.finishStatus,
+          pitStopsCount: p.pitStopsCount,
+        },
       })
+      participantIdByName.set(p.driverName, participant.id)
+
+      if (p.laps && p.laps.length > 0) {
+        await tx.participantLap.createMany({
+          data: p.laps.map((lap) => ({
+            participantId: participant.id,
+            lapNumber:     lap.lapNumber,
+            lapTimeMs:     lap.lapTimeMs,
+            isValid:       lap.isValid,
+            sector1Ms:     lap.sector1Ms,
+            sector2Ms:     lap.sector2Ms,
+            sector3Ms:     lap.sector3Ms,
+            fuelLoad:      lap.fuelLoad,
+            tyreCompound:  lap.tyreCompound,
+          })),
+        })
+      }
     }
 
     if (parsed.incidents.length > 0) {
@@ -259,12 +282,14 @@ async function runImport(importFileId: string): Promise<void> {
     if (parsed.pitStops.length > 0) {
       await tx.pitStop.createMany({
         data: parsed.pitStops.map((p) => ({
-          sessionId: session.id,
-          lapNumber: p.lapNumber,
-          durationMs: p.durationMs,
-          fuelAdded: p.fuelAdded,
-          tyreChange: p.tyreChange ?? false,
-          tyreCompound: p.tyreCompound,
+          sessionId:     session.id,
+          participantId: p.driverName ? (participantIdByName.get(p.driverName) ?? null) : null,
+          driverName:    p.driverName,
+          lapNumber:     p.lapNumber,
+          durationMs:    p.durationMs,
+          fuelAdded:     p.fuelAdded,
+          tyreChange:    p.tyreChange ?? false,
+          tyreCompound:  p.tyreCompound,
         })),
       })
     }

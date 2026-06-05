@@ -19,11 +19,12 @@ pub struct DbState(pub Arc<Mutex<rusqlite::Connection>>);
 async fn start_watching(
     folder: String, api_url: String, api_key: String,
     driver_name: Option<String>,
+    replay_folder: Option<String>,
     app: AppHandle, state: State<'_, WatcherState>,
 ) -> Result<(), String> {
     let mut g = state.0.lock().map_err(|e| e.to_string())?;
     if let Some(h) = g.take() { h.stop(); }
-    *g = Some(watcher::start(folder, api_url, api_key, driver_name, app).map_err(|e| e.to_string())?);
+    *g = Some(watcher::start(folder, api_url, api_key, driver_name, replay_folder, app).map_err(|e| e.to_string())?);
     Ok(())
 }
 
@@ -89,6 +90,45 @@ fn get_session_detail(id: String, db_state: State<'_, DbState>) -> Result<Option
 #[tauri::command]
 fn delete_session(id: String, db_state: State<'_, DbState>) -> Result<(), String> {
     db::delete_session(&db_state.0.lock().map_err(|e| e.to_string())?, &id)
+}
+
+// ── Replay commands ───────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn get_replays(db_state: State<'_, DbState>) -> Result<Vec<db::ReplaySummary>, String> {
+    db::get_replays(&db_state.0.lock().map_err(|e| e.to_string())?)
+}
+
+#[tauri::command]
+fn add_replay(
+    file_path:  String,
+    session_id: Option<String>,
+    db_state:   State<'_, DbState>,
+) -> Result<String, String> {
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    if db::replay_path_exists(&conn, &file_path) {
+        return Ok("DUPLICATE".to_string());
+    }
+    let filename = std::path::Path::new(&file_path)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| file_path.clone());
+    let file_size = std::fs::metadata(&file_path).ok().map(|m| m.len() as i64);
+    db::insert_replay(&conn, &file_path, &filename, file_size, session_id.as_deref())
+}
+
+#[tauri::command]
+fn match_replay(
+    replay_id:  String,
+    session_id: String,
+    db_state:   State<'_, DbState>,
+) -> Result<(), String> {
+    db::match_replay_to_session(&db_state.0.lock().map_err(|e| e.to_string())?, &replay_id, &session_id)
+}
+
+#[tauri::command]
+fn delete_replay(id: String, db_state: State<'_, DbState>) -> Result<(), String> {
+    db::delete_replay(&db_state.0.lock().map_err(|e| e.to_string())?, &id)
 }
 
 // ── Core processing ───────────────────────────────────────────────────────────
@@ -180,6 +220,7 @@ pub fn run() {
             start_watching, stop_watching,
             import_file, import_all_files,
             get_sessions, get_session_detail, delete_session,
+            get_replays, add_replay, match_replay, delete_replay,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

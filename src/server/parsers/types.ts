@@ -23,6 +23,11 @@ export interface ParsedParticipant {
   gapToLeaderMs?: number
   dnf?: boolean
   dq?: boolean
+  finishStatus?: string
+  pitStopsCount?: number
+  laps?: ParsedLap[]
+  pitStops?: ParsedPitStop[]
+  penalties?: ParsedPenalty[]
 }
 
 export interface ParsedIncident {
@@ -45,6 +50,7 @@ export interface ParsedPitStop {
   fuelAdded?: number
   tyreChange?: boolean
   tyreCompound?: string
+  driverName?: string
 }
 
 // ─── Normalized output (simulator-agnostic) ───────────────────────────────────
@@ -88,6 +94,8 @@ export interface NormalizedSession {
   weather?: string
   tempAmbient?: number
   tempTrack?: number
+  humidity?: number
+  trackLengthM?: number
 
   // Data
   laps: ParsedLap[]

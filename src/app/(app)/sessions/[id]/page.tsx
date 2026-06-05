@@ -32,7 +32,13 @@ export default async function SessionDetailPage({
       carClass: true,
       simulator: true,
       laps: { orderBy: { lapNumber: "asc" } },
-      participants: { orderBy: { position: "asc" }, take: 30 },
+      participants: {
+        orderBy: { position: "asc" },
+        include: {
+          laps:     { orderBy: { lapNumber: "asc" } },
+          pitStops: { orderBy: { lapNumber: "asc" } },
+        },
+      },
       incidents: { orderBy: { lapNumber: "asc" } },
       penalties: { orderBy: { lapNumber: "asc" } },
       pitStops: { orderBy: { lapNumber: "asc" } },
@@ -141,6 +147,18 @@ export default async function SessionDetailPage({
                   <>
                     <span className="text-zinc-700">·</span>
                     <span className="text-zinc-600 text-xs">{s.serverName}</span>
+                  </>
+                )}
+                {(s.weather || s.tempAmbient != null || s.tempTrack != null || s.trackLengthM != null) && (
+                  <>
+                    <span className="text-zinc-700">·</span>
+                    <span className="flex items-center gap-2 text-zinc-500 text-xs">
+                      {s.weather && <span>{s.weather}</span>}
+                      {s.tempAmbient != null && <span>{s.tempAmbient.toFixed(0)}°C air</span>}
+                      {s.tempTrack   != null && <span>{s.tempTrack.toFixed(0)}°C track</span>}
+                      {s.humidity    != null && <span>{s.humidity.toFixed(0)}% humidity</span>}
+                      {s.trackLengthM != null && <span className="flex items-center gap-1"><Map className="w-3 h-3 text-zinc-600" />{(s.trackLengthM / 1000).toFixed(3)} km</span>}
+                    </span>
                   </>
                 )}
               </div>
@@ -325,39 +343,74 @@ export default async function SessionDetailPage({
         </Section>
       )}
 
-      {/* Participants / Results */}
+      {/* Participants / Race Grid */}
       {s.participants.length > 0 && (
-        <Section title={`Results (${s.participants.length} drivers)`}>
+        <Section title={`Race grid (${s.participants.length} drivers)`}>
           <div className="overflow-x-auto -mx-5 px-5">
-            <table className="w-full text-sm min-w-[480px]">
+            <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr className="border-b border-zinc-800">
-                  {["Pos", "Driver", "Car", "Class", "Laps", "Best lap"].map((h) => (
+                  {["Pos", "Driver", "Car / Class", "Laps", "Best lap", "Pits", "Strategy"].map((h) => (
                     <th key={h} className="text-left px-3 py-2.5 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {s.participants.map((p, i) => (
-                  <tr
-                    key={i}
-                    className={`border-b border-zinc-800/30 hover:bg-zinc-800/30 transition-colors ${i === s.participants.length - 1 ? "border-b-0" : ""}`}
-                  >
-                    <td className="px-3 py-2.5 font-mono text-sm font-semibold text-zinc-300">
-                      {p.dnf ? <span className="text-red-400 text-xs">DNF</span>
-                       : p.dq ? <span className="text-red-400 text-xs">DQ</span>
-                       : p.position != null ? `P${p.position}`
-                       : "—"}
-                    </td>
-                    <td className="px-3 py-2.5 text-zinc-200 font-medium">{p.driverName}</td>
-                    <td className="px-3 py-2.5 text-zinc-500 text-xs max-w-32 truncate">{p.carName ?? "—"}</td>
-                    <td className="px-3 py-2.5 text-zinc-600 text-xs">{p.carClass ?? "—"}</td>
-                    <td className="px-3 py-2.5 font-mono text-xs text-zinc-400">{p.lapsCompleted ?? "—"}</td>
-                    <td className="px-3 py-2.5 font-mono text-zinc-300 tabular-nums text-sm">{formatLapTime(p.bestLapMs)}</td>
-                  </tr>
-                ))}
+                {s.participants.map((p, i) => {
+                  const stints = computeStints(p.laps, p.pitStops)
+                  return (
+                    <tr
+                      key={i}
+                      className={`border-b border-zinc-800/30 hover:bg-zinc-800/30 transition-colors ${i === s.participants.length - 1 ? "border-b-0" : ""}`}
+                    >
+                      <td className="px-3 py-2.5 font-mono text-sm font-semibold text-zinc-300">
+                        {p.dnf ? <span className="text-red-400 text-xs">DNF</span>
+                         : p.dq ? <span className="text-red-400 text-xs">DQ</span>
+                         : p.position != null ? `P${p.position}`
+                         : "—"}
+                      </td>
+                      <td className="px-3 py-2.5 text-zinc-200 font-medium">{p.driverName}</td>
+                      <td className="px-3 py-2.5 text-xs">
+                        <span className="text-zinc-400">{p.carName ?? "—"}</span>
+                        {p.carClass && <span className="text-zinc-600 ml-1.5">{p.carClass}</span>}
+                      </td>
+                      <td className="px-3 py-2.5 font-mono text-xs text-zinc-400">{p.lapsCompleted ?? "—"}</td>
+                      <td className="px-3 py-2.5 font-mono text-zinc-300 tabular-nums text-sm">{formatLapTime(p.bestLapMs)}</td>
+                      <td className="px-3 py-2.5 font-mono text-xs text-zinc-500">{p.pitStopsCount ?? 0}</td>
+                      <td className="px-3 py-2.5">
+                        <StintBadges stints={stints} />
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
+          </div>
+        </Section>
+      )}
+
+      {/* Per-driver strategy detail — only for RACE sessions with strategy data */}
+      {s.sessionType === "RACE" && s.participants.some((p) => p.laps.length > 0) && (
+        <Section title="Strategy detail">
+          <div className="space-y-1">
+            {s.participants.filter((p) => p.laps.length > 0).map((p) => {
+              const stints = computeStints(p.laps, p.pitStops)
+              return (
+                <div key={p.id} className="grid grid-cols-[120px_1fr] gap-3 items-start py-1.5 border-b border-zinc-800/40 last:border-0">
+                  <div className="text-xs text-zinc-400 font-medium truncate pt-0.5">{p.driverName}</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {stints.map((stint, si) => (
+                      <div key={si} className="flex items-center gap-1">
+                        {si > 0 && <span className="text-zinc-700 text-xs">·pit·</span>}
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded ${compoundColor(stint.compound)}`}>
+                          {stint.compound ?? "?"} {stint.lapCount}L
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </Section>
       )}
@@ -445,6 +498,68 @@ export default async function SessionDetailPage({
           createdAt:     r.createdAt.toISOString(),
         }))}
       />
+    </div>
+  )
+}
+
+// ── Strategy helpers ─────────────────────────────────────────────────────────
+
+interface Stint {
+  compound:  string | null
+  lapCount:  number
+  startLap:  number
+  pitLapAfter: number | null
+}
+
+function computeStints(
+  laps: Array<{ lapNumber: number; tyreCompound?: string | null }>,
+  pitStops: Array<{ lapNumber?: number | null }>,
+): Stint[] {
+  if (laps.length === 0) return []
+
+  const pitLaps = new Set(pitStops.map((p) => p.lapNumber).filter((l): l is number => l != null))
+  const stints: Stint[] = []
+  let stintStart    = laps[0].lapNumber
+  let stintCompound = laps[0].tyreCompound ?? null
+  let stintCount    = 0
+
+  for (const lap of laps) {
+    const compound = lap.tyreCompound ?? null
+    if (stintCount > 0 && (compound !== stintCompound || pitLaps.has(lap.lapNumber - 1))) {
+      stints.push({ compound: stintCompound, lapCount: stintCount, startLap: stintStart, pitLapAfter: lap.lapNumber - 1 })
+      stintStart    = lap.lapNumber
+      stintCompound = compound
+      stintCount    = 0
+    }
+    stintCompound = compound
+    stintCount++
+  }
+  if (stintCount > 0) {
+    stints.push({ compound: stintCompound, lapCount: stintCount, startLap: stintStart, pitLapAfter: null })
+  }
+  return stints
+}
+
+function compoundColor(compound: string | null): string {
+  if (!compound) return "bg-zinc-800 text-zinc-400"
+  const c = compound.toUpperCase()
+  if (c.includes("SOFT")   || c === "S") return "bg-red-500/15 text-red-400"
+  if (c.includes("MEDIUM") || c === "M") return "bg-yellow-500/15 text-yellow-400"
+  if (c.includes("HARD")   || c === "H") return "bg-zinc-600/30 text-zinc-300"
+  if (c.includes("INTER")  || c === "I") return "bg-green-500/15 text-green-400"
+  if (c.includes("WET")    || c === "W") return "bg-blue-500/15 text-blue-400"
+  return "bg-zinc-800 text-zinc-400"
+}
+
+function StintBadges({ stints }: { stints: Stint[] }) {
+  if (stints.length === 0) return <span className="text-zinc-700 text-xs">—</span>
+  return (
+    <div className="flex flex-wrap gap-1">
+      {stints.map((stint, i) => (
+        <span key={i} className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded ${compoundColor(stint.compound)}`}>
+          {stint.compound ?? "?"} ×{stint.lapCount}
+        </span>
+      ))}
     </div>
   )
 }
