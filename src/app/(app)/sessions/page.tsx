@@ -5,7 +5,7 @@ import { formatLapTime } from "@/lib/time"
 import { SESSION_TYPE_LABELS } from "@/lib/constants"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { SessionFilters } from "@/features/sessions/SessionFilters"
-import { Upload, Flag, GitCompare, ArrowLeft, ArrowRight } from "lucide-react"
+import { Upload, Flag, GitCompare, ArrowLeft, ArrowRight, Film } from "lucide-react"
 import Link from "next/link"
 import type { SessionType, Prisma } from "@prisma/client"
 
@@ -81,6 +81,7 @@ export default async function SessionsPage({
         track: { select: { name: true, slug: true } },
         car:   { select: { name: true, slug: true } },
         simulator: { select: { slug: true, name: true } },
+        _count: { select: { replays: true } },
       },
     }),
     db.session.count({ where }),
@@ -173,6 +174,7 @@ export default async function SessionsPage({
                     { label: "Best lap", w: "w-24" },
                     { label: "Cons.", w: "w-14" },
                     { label: "Safety", w: "w-14" },
+                    { label: "", w: "w-6" },
                     { label: "", w: "w-10" },
                   ].map(({ label, w }) => (
                     <th key={label} className={`text-left px-4 py-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider ${w}`}>
@@ -226,6 +228,13 @@ export default async function SessionsPage({
                       </td>
                       <td className="px-4 py-3"><ScoreCell value={s.consistencyScore} /></td>
                       <td className="px-4 py-3"><ScoreCell value={s.safetyScore} /></td>
+                      <td className="px-4 py-3">
+                        {s._count.replays > 0 && (
+                          <Link href={`/sessions/${s.id}`} title={`${s._count.replays} replay${s._count.replays > 1 ? "s" : ""}`}>
+                            <Film className="w-3.5 h-3.5 text-zinc-500 hover:text-cyan-400 transition-colors" />
+                          </Link>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <Link
                           href={`/sessions/compare?a=${s.id}`}

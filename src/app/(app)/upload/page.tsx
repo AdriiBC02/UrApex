@@ -3,14 +3,15 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { UploadZone } from "@/features/import/UploadZone"
 import { ImportHistory } from "@/features/import/ImportHistory"
-import { Settings } from "lucide-react"
+import { ReplayUploadSection } from "@/features/replays/ReplayUploadSection"
+import { Settings, Film } from "lucide-react"
 import Link from "next/link"
 
 export default async function UploadPage() {
   const session = await auth()
   if (!session?.user?.id) redirect("/login")
 
-  const [imports, profile] = await Promise.all([
+  const [imports, profile, recentSessions] = await Promise.all([
     db.importFile.findMany({
       where: { userId: session.user.id },
       orderBy: { createdAt: "desc" },
@@ -20,6 +21,15 @@ export default async function UploadPage() {
     db.driverProfile.findUnique({
       where: { userId: session.user.id },
       select: { simDriverName: true },
+    }),
+    db.session.findMany({
+      where:   { userId: session.user.id, deletedAt: null },
+      orderBy: { sessionDate: "desc" },
+      take:    50,
+      include: {
+        track: { select: { name: true } },
+        car:   { select: { name: true } },
+      },
     }),
   ])
 
@@ -61,6 +71,24 @@ export default async function UploadPage() {
 
       <div className="max-w-2xl">
         <UploadZone />
+      </div>
+
+      {/* Replay upload */}
+      <div className="max-w-2xl space-y-3">
+        <div className="flex items-center gap-2">
+          <Film className="w-4 h-4 text-zinc-500" />
+          <h2 className="text-base font-semibold text-zinc-200">Upload replay</h2>
+          <span className="text-xs text-zinc-600">.vcr</span>
+        </div>
+        <ReplayUploadSection
+          sessions={recentSessions.map((s) => ({
+            id:          s.id,
+            sessionType: s.sessionType,
+            sessionDate: s.sessionDate.toISOString(),
+            trackName:   s.track.name,
+            carName:     s.car.name,
+          }))}
+        />
       </div>
 
       <ImportHistory imports={imports.map((imp) => ({
