@@ -27,9 +27,13 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Run migrations
-        run: npx prisma migrate deploy
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "⚠️  DATABASE_URL not set — skipping migrations (no DB configured for CI)"
+            exit 0
+          fi
+          npx prisma migrate deploy
         env:
-          # Prefer DIRECT_URL (non-pooled, bypasses PgBouncer) — fall back to DATABASE_URL
           DATABASE_URL: ${{ secrets.DIRECT_URL || secrets.DATABASE_URL }}
 
       - name: Type check
