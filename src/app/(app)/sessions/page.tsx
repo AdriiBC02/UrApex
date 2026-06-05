@@ -165,20 +165,20 @@ export default async function SessionsPage({
               <thead>
                 <tr className="border-b border-zinc-800 bg-zinc-900/60">
                   {[
-                    { label: "Date", w: "" },
-                    { label: "Track", w: "" },
-                    { label: "Car", w: "" },
-                    { label: "Type", w: "w-24" },
-                    { label: "Pos", w: "w-12" },
-                    { label: "Laps", w: "w-12" },
+                    { label: "Date",     w: "" },
+                    { label: "Track",    w: "" },
+                    { label: "Car",      w: "" },
+                    { label: "Type",     w: "w-24" },
+                    { label: "Pos",      w: "w-12" },
+                    { label: "Laps",     w: "w-12" },
                     { label: "Best lap", w: "w-24" },
-                    { label: "Cons.", w: "w-14" },
-                    { label: "Safety", w: "w-14" },
-                    { label: "", w: "w-6" },
-                    { label: "", w: "w-10" },
+                    { label: "Cons.",    w: "w-14" },
+                    { label: "Safety",   w: "w-14" },
+                    { label: "replay",   w: "w-6" },
+                    { label: "compare",  w: "w-10" },
                   ].map(({ label, w }) => (
                     <th key={label} className={`text-left px-4 py-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider ${w}`}>
-                      {label}
+                      {["replay", "compare"].includes(label) ? "" : label}
                     </th>
                   ))}
                 </tr>
