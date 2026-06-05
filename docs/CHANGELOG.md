@@ -8,7 +8,17 @@
 
 ## [Unreleased]
 
-> Next up: PO-008 Cmd+K command palette, PO-009 post-session ritual modal.
+> Next up: conectar servicios en Vercel, features de comunidad y monetización.
+
+---
+
+## [0.24.0] — 2026-06-05
+
+> PO-008 Cmd+K command palette + PO-009 post-session ritual modal.
+
+### Added
+- **Command palette** (PO-008) — `cmdk`; se abre con Cmd+K o Ctrl+K; 3 grupos: Navigation (11 páginas), Actions (importar + recalcular métricas), Recent sessions (últimas 8 con track/coche/tipo); búsqueda en tiempo real; hints de teclado en footer; botón Search en el sidebar para descubribilidad
+- **Post-session modal** (PO-009) — se dispara automáticamente cuando `UploadZone.onImported` resuelve; carga resumen de sesión (track, coche, tipo, mejor vuelta, badge PB, consistencia); feeling picker (5 emojis); quick tags (7 etiquetas predefinidas); nota libre; "Save & view session" guarda un `SessionNote` y navega; "Skip" navega sin guardar; nuevo endpoint `GET /api/sessions/[id]/summary`
 
 ---
 

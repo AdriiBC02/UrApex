@@ -140,8 +140,8 @@
 | PO-005 | Advanced session filters | P2 | ✅ | type chips, PB-only, track/car dropdowns, date range, sort — all via URL searchParams |
 | PO-006 | Data export (CSV) | P2 | ✅ | GET /api/export/sessions + /api/export/laps; download links in Settings |
 | PO-007 | Responsive design audit | P1 | ✅ | AppShell client wrapper; mobile sidebar drawer; hamburger header; table overflow-x-auto |
-| PO-008 | Cmd+K command palette | P2 | 🔲 | |
-| PO-009 | Post-session ritual modal | P2 | 🔲 | |
+| PO-008 | Cmd+K command palette | P2 | ✅ | cmdk; navigation + actions + recent sessions; sidebar search button |
+| PO-009 | Post-session ritual modal | P2 | ✅ | Fires on import; feeling picker + quick tags + note; saves SessionNote |
 | PO-010 | Racecraft Score | P2 | ✅ | position(50%)+safety(30%)+consistency(20%) on RACE sessions; ring on dashboard |
 | PO-011 | Qualifying Score | P2 | ✅ | grid-position(70%)+consistency(30%) on QUALIFYING sessions; ring on dashboard |
 
