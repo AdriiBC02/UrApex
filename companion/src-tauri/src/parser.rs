@@ -236,8 +236,6 @@ fn parse_date(session: Node, root: Node) -> String {
             }
         }
     }
-    // Fallback: current time as ISO
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let secs = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
-    format!("1970-01-01T00:00:00") // minimal fallback; chrono not needed
+    // Fallback: use current time
+    crate::date::now_iso()
 }

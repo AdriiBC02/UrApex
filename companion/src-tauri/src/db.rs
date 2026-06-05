@@ -251,13 +251,5 @@ pub fn delete_session(conn: &Connection, id: &str) -> Result<(), String> {
 }
 
 fn now_iso() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let secs = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
-    // Format as ISO 8601 without chrono dependency
-    let s = secs;
-    let mins  = (s / 60) % 60;
-    let hours = (s / 3600) % 24;
-    let days  = s / 86400;
-    // Approximate date (good enough for sorting; not calendar-accurate)
-    format!("{:05}-01-01T{:02}:{:02}:{:02}", 1970 + days / 365, hours, mins, s % 60)
+    crate::date::now_iso()
 }

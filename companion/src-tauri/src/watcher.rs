@@ -55,14 +55,20 @@ pub fn start(
                             tauri::async_runtime::spawn(async move {
                                 match crate::process_file(&path_c, &au, &ak, dn.as_deref(), &ac, &db_arc).await {
                                     Ok(status) => {
-                                        let msg = match status.as_str() {
-                                            "DUPLICATE" => "Already imported",
-                                            _           => "Session saved ✓",
+                                        let (log_status, notif) = match status.as_str() {
+                                            "DUPLICATE" => ("duplicate", "Already imported"),
+                                            _           => ("success",   "Session saved ✓"),
                                         };
-                                        crate::send_notification(&ac, "UrApex", msg);
+                                        let _ = ac.emit("file-result", serde_json::json!({
+                                            "file": path_c, "status": log_status
+                                        }));
+                                        crate::send_notification(&ac, "UrApex", notif);
                                     }
                                     Err(e) => {
                                         log::error!("Watcher process error: {e}");
+                                        let _ = ac.emit("file-result", serde_json::json!({
+                                            "file": path_c, "status": "error", "message": e.to_string()
+                                        }));
                                         crate::send_notification(&ac, "UrApex", "Import failed — check the app");
                                     }
                                 }

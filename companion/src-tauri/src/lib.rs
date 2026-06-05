@@ -1,3 +1,4 @@
+mod date;
 mod db;
 mod metrics;
 mod metrics_snapshot;

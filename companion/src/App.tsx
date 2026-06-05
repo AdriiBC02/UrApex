@@ -53,13 +53,26 @@ export default function App() {
     isEnabled().then(setAutostart).catch(() => {})
     loadSessions()
 
-    let unlisten: (() => void) | undefined
+    const unlisteners: Array<() => void> = []
     import("@tauri-apps/api/event").then(({ listen }) => {
       listen<{ file: string }>("file-detected", (e) => addLog(e.payload.file, "uploading"))
-        .then((fn) => { unlisten = fn })
+        .then((fn) => unlisteners.push(fn))
+
+      listen<{ file: string; status: string; message?: string }>("file-result", (e) => {
+        const { file, status, message } = e.payload
+        setLogs((prev) => prev.map((l) => {
+          const name = file.split(/[\\/]/).pop() ?? file
+          if (l.file === name && l.status === "uploading") {
+            return { ...l, status: status as LogEntry["status"], message }
+          }
+          return l
+        }))
+        // Refresh sessions list when a new session is saved
+        if (status === "success") loadSessions()
+      }).then((fn) => unlisteners.push(fn))
     }).catch(console.error)
 
-    return () => { unlisten?.() }
+    return () => { unlisteners.forEach((fn) => fn()) }
   }, [])
 
   useEffect(() => {
