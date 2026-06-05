@@ -136,9 +136,9 @@
 | Session privacy toggle | P1 | 3 | 🔲 |
 | Session filters (type) | P1 | 1 | ✅ |
 | Session sorting | P1 | 1 | ✅ |
-| Session filters (date, track, car, PB) | P1 | 3 | 🔲 |
+| Session filters (date, track, car, PB) | P1 | 3 | ✅ |
 | Session search | P2 | 3 | 🔲 |
-| Session export (CSV) | P2 | 3 | 🔲 |
+| Session export (CSV) | P2 | 3 | ✅ |
 | Share session (public link) | P2 | 7 | 🔲 |
 | Session insights (rule-based) | P1 | 2 | ✅ |
 | Session notes & debrief | P1 | 2 | ✅ |
@@ -161,8 +161,8 @@
 | Safety Score (0–100) | P0 | 1 | ✅ |
 | Pace Score (0–100) | P1 | 2 | ✅ |
 | Improvement Score | P2 | 2 | ✅ |
-| Racecraft Score | P2 | 3 | 🔲 |
-| Qualifying Score | P2 | 3 | 🔲 |
+| Racecraft Score | P2 | 3 | ✅ |
+| Qualifying Score | P2 | 3 | ✅ |
 | Endurance Score | P2 | 4 | 🔲 |
 | Focus Score | P2 | 4 | 🔲 |
 | Adaptability Score | P3 | 4+ | 🔲 |
@@ -180,7 +180,7 @@
 | Weekly activity chart | P1 | 1 | ✅ |
 | Driver scores overview (4 rings) | P1 | 2 | ✅ |
 | Active goals widget | P1 | 2 | ✅ |
-| Recent achievements | P1 | 2 | 🔲 |
+| Recent achievements | P1 | 2 | ✅ |
 | Quick insight (rule-based) | P1 | 2 | ✅ |
 | PB highlights | P1 | 2 | ✅ |
 | Streak widget | P2 | 2 | 🔲 |
@@ -301,10 +301,10 @@
 | Delete setup | P1 | 3 | ✅ |
 | Mark setup as favorite | P2 | 3 | ✅ |
 | Mark setup as archived | P2 | 3 | ✅ |
-| Setup versioning | P2 | 3 | 🔲 |
+| Setup versioning | P2 | 3 | ✅ |
 | Upload setup file (attachment) | P2 | 3 | 🔲 |
-| Link setup to session | P1 | 3 | 🔲 |
-| Setup performance stats (sessions using it) | P2 | 3 | 🔲 |
+| Link setup to session | P1 | 3 | ✅ |
+| Setup performance stats (sessions using it) | P2 | 3 | ✅ |
 | Compare two setups | P3 | 3+ | 🔲 |
 | Share setup (public) | P3 | 7 | 🔲 |
 
@@ -383,6 +383,38 @@
 | In-game overlay window | P2 | 5 | 🔲 |
 | UDP telemetry listener (LMU port 4444) | P2 | 5 | 🔲 |
 | macOS support | P3 | 6+ | 🔲 |
+
+---
+
+## Module 21 — Replay & Storage Management
+
+| Feature | Priority | Phase | Status |
+|---|---|---|---|
+| Upload .vcr replay per session | P1 | 3 | ✅ |
+| List replays per session | P1 | 3 | ✅ |
+| Download replay file | P1 | 3 | ✅ |
+| Delete replay file | P1 | 3 | ✅ |
+| SHA-256 dedup on replay upload | P1 | 3 | ✅ |
+| Storage manager page | P1 | 3 | ✅ |
+| Usage bar (free tier reference) | P2 | 3 | ✅ |
+| File list sorted by size | P1 | 3 | ✅ |
+| Replay indicator in sessions list | P1 | 3 | ✅ |
+| Replay upload from import page | P1 | 3 | ✅ |
+| S3-compatible storage (R2) | P1 | 2 | ✅ |
+
+---
+
+## Module 22 — Infrastructure & DevOps
+
+| Feature | Priority | Phase | Status |
+|---|---|---|---|
+| BullMQ + Redis async import queue | P1 | 2 | ✅ |
+| Worker via `instrumentation.ts` | P1 | 2 | ✅ |
+| Vercel Cron fallback for serverless | P1 | 3 | ✅ |
+| GitHub Actions CI (type-check + migrate) | P1 | 3 | ✅ |
+| Companion app CI build (.exe + .msi) | P1 | 5 | ✅ |
+| Vercel free-tier deployment setup | P1 | 3 | ✅ |
+| Metric recalculation job | P1 | 2 | 🔲 |
 
 ---
 

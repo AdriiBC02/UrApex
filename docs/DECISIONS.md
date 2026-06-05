@@ -46,7 +46,7 @@ Need to choose a React framework. Options are Next.js Pages Router, Next.js App 
 4. SvelteKit — smaller ecosystem, different mental model
 
 ### Decision
-Next.js 14 with App Router.
+Next.js 16 with App Router.
 
 ### Reasoning
 - App Router's Server Components eliminate unnecessary client bundles for data-heavy pages
@@ -219,7 +219,7 @@ Calculate metrics during the import job and store them in dedicated columns on t
 ## ADR-007 — Sync Import in MVP (No BullMQ)
 
 **Date:** 2025-06-04
-**Status:** Accepted
+**Status:** Superseded by ADR-017
 
 ### Context
 Import processing can take several seconds. Should we use a job queue (BullMQ + Redis) from day 1?
@@ -521,6 +521,42 @@ Tauri v2.
 - Build requires Rust toolchain (`rustup`) — developer needs to install this
 - Rust learning curve for any backend logic beyond the scaffold
 - macOS support requires `macos-kqueue` feature on `notify` — already included
+
+---
+
+## ADR-017 — BullMQ + Redis for Async Import (Supersedes ADR-007)
+
+**Date:** 2026-06-05
+**Status:** Accepted
+
+### Context
+ADR-007 deferred BullMQ to Phase 2. The import pipeline now needs to be non-blocking: the HTTP request should return immediately while processing happens in the background. Additionally, the production target is Vercel (serverless), which cannot run persistent workers — a fallback mechanism is required.
+
+### Options Considered
+1. **BullMQ + Redis worker** — industry standard, mature library, works on persistent runtimes
+2. **Vercel Background Functions** — proprietary, limited runtime, not portable
+3. **Polling only (no queue)** — routes save PENDING and a cron processes them; simpler but no push notification
+4. **Upstash QStash** — HTTP-based queue, native serverless; but adds a new service dependency and changes the job interface
+
+### Decision
+BullMQ + Redis for all runtimes, with a Vercel Cron route as a serverless fallback.
+
+- `src/server/queue/import.queue.ts` — singleton Queue
+- `src/server/workers/import.worker.ts` — Worker with `concurrency: 2`
+- `src/instrumentation.ts` — starts the worker on Next.js boot (Node.js runtime only)
+- `src/app/api/cron/process-imports/route.ts` — cron that queries PENDING from DB and calls `processImport()` directly, runs every minute via `vercel.json`
+
+### Reasoning
+- `processImport()` is unchanged — the worker just calls it, exactly as the routes did synchronously before
+- On local dev and Railway (persistent process): worker runs, jobs are processed in < 1 second
+- On Vercel (serverless): worker can't stay alive between invocations, cron provides equivalent behaviour with ~1 minute latency — acceptable for a personal tool
+- No separate process needed in development (`instrumentation.ts` runs in the Next.js process)
+- `attempts: 1` — no BullMQ retries; the app already tracks FAILED state in DB and the UI exposes a retry button
+
+### Consequences
+- Redis is now a required service (local: Homebrew; production: Upstash free tier)
+- Import processing is no longer blocking the HTTP request — the client must poll
+- `UploadZone` updated to poll `GET /api/import/:id` every 1.5 s until IMPORTED or FAILED
 
 ---
 

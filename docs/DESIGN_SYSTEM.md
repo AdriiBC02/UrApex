@@ -2,7 +2,7 @@
 
 > This document defines the visual language of UrApex.
 > All UI decisions should be consistent with these guidelines.
-> The implementation uses TailwindCSS + shadcn/ui.
+> The implementation uses TailwindCSS v4 + shadcn/ui.
 
 ---
 

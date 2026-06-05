@@ -62,11 +62,12 @@
 
 ## Phase 2 — Analytics & Progression
 
-**Status:** ✅ Complete (BullMQ pending)
+**Status:** ✅ Complete
 **Goal:** Turn raw data into useful, actionable analytics.
 
 ### Completed
 - [x] All 4 driver scores: Pace, Consistency, Safety, Improvement
+- [x] Racecraft Score (RACE only) + Qualifying Score (QUALIFYING only)
 - [x] Session comparison view (metrics diff, lap overlay, sector delta)
 - [x] Track analytics: PB evolution, improvement badge, session types, consistency trend
 - [x] Car analytics: same structure + best-by-circuit
@@ -75,9 +76,7 @@
 - [x] Session notes: diary with tags, video URL
 - [x] Auto-generated insights (8 rule-based types per session)
 - [x] Weekly activity + consistency trend charts
-
-### Pending
-- [ ] BullMQ + Redis for async jobs (AN-015)
+- [x] BullMQ + Redis async import pipeline (worker via `instrumentation.ts`, Vercel Cron fallback)
 
 ### Completion Criterion met
 > ✅ A user can answer "am I improving?", "which track am I best at?", and "what is my weakest area?"
@@ -90,19 +89,25 @@
 **Estimated duration:** 2–3 weeks
 **Goal:** The app feels like a real product, not a prototype.
 
-### Deliverables
-- [ ] Guided onboarding flow (3 steps)
-- [x] Setup manager (CRUD: create, edit, delete, favorite, archive)
-- [ ] Setup versioning + session linking
-- [ ] Driver profile page (public/private)
+### Completed
+- [x] Guided onboarding flow (3-step wizard)
+- [x] Setup manager (CRUD: create, edit, delete, favorite, archive, version history, session linking)
+- [x] Driver profile page with stats, scores, top circuits/cars, achievements bar
+- [x] Advanced session filters (date range, PB-only, track/car dropdowns, sort)
+- [x] Data export (CSV — sessions and laps via `/api/export/`)
+- [x] Racecraft Score + Qualifying Score
+- [x] Replay upload (.vcr) per session + storage manager
+- [x] S3-compatible storage (Cloudflare R2) for production
+- [x] Async import pipeline (BullMQ + Redis + Vercel Cron fallback)
+- [x] GitHub Actions CI (type-check → lint → test → migrate)
+- [x] Vercel production setup (Neon + Upstash + R2)
+
+### Pending
 - [ ] Privacy controls (session visibility, profile visibility)
-- [ ] Advanced session filters (date range, PB-only, clean-only)
-- [ ] Data export (CSV of sessions and laps)
-- [ ] Responsive design across all pages
-- [ ] Keyboard shortcuts (Cmd+K command palette)
-- [ ] Email notifications for achievements and PBs
-- [ ] Racecraft Score and Qualifying Score added
+- [ ] Responsive design audit
+- [ ] Cmd+K command palette
 - [ ] Post-session ritual modal
+- [ ] Password reset flow
 
 ### Completion Criterion
 > A new user can go from registration to first session imported in under 3 minutes, without needing documentation.
@@ -139,7 +144,7 @@
 
 ## Phase 5 — Desktop Sync Agent
 
-**Status:** 🔄 In progress (scaffold complete, needs build + test on Windows)
+**Status:** 🔄 In progress (core features complete; pending: Windows test, hash dedup, upload queue)
 **Estimated duration:** 3–4 weeks
 **Goal:** Eliminate manual uploads by auto-detecting and syncing sessions.
 
@@ -154,7 +159,9 @@
 - [x] Minimize to tray on close
 - [x] Windows notifications on upload result
 - [x] Sync log in UI (uploading / success / duplicate / error per file)
-- [ ] Compile and test on Windows (requires `rustup` install)
+- [x] GitHub Actions CI build (`.exe` + `.msi` artifacts on every push to `main`)
+- [x] Real app icon (1254×1254 UA logo)
+- [ ] Test on real Windows machine (requires `rustup`)
 - [ ] Duplicate prevention via local hash check (avoid redundant upload)
 - [ ] Upload queue with retry logic
 - [ ] Persistent sync history across restarts
@@ -267,17 +274,17 @@ These are ideas that may become phases after Phase 8, or may be folded into exis
 
 ```
 2025
-├── Phase 0 — Research (1 week)
-├── Phase 1 — MVP (4-6 weeks)
-├── Phase 2 — Analytics (3-4 weeks)
-└── Phase 3 — Polish (2-3 weeks)
+├── Phase 0 — Research         ✅ Complete
+├── Phase 1 — MVP              ✅ Complete
+└── Phase 2 — Analytics        ✅ Complete
 
 2026
-├── Phase 4 — Telemetry (4-6 weeks)
-├── Phase 5 — Sync Agent (3-4 weeks)
-├── Phase 6 — AI Coach (3-4 weeks)
-├── Phase 7 — Community (4-6 weeks)
-└── Phase 8 — Monetization (2-3 weeks)
+├── Phase 3 — Polish           🔄 In progress (most features done)
+├── Phase 5 — Sync Agent       🔄 In progress (parallel with Phase 3)
+├── Phase 4 — Telemetry        🔲 ~4-6 weeks
+├── Phase 6 — AI Coach         🔲 ~3-4 weeks
+├── Phase 7 — Community        🔲 ~4-6 weeks
+└── Phase 8 — Monetization     🔲 ~2-3 weeks
 ```
 
 > Note: These are estimates for a single developer working part-time. Adjust based on actual velocity.

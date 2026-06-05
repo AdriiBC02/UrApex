@@ -24,17 +24,17 @@ It does this by combining session imports, performance metrics, personal goals, 
 
 | Phase | Name | Status |
 |---|---|---|
-| Phase 0 | Research & Validation | 🔲 Not started |
-| Phase 1 | MVP — Core Import & Dashboard | 🔲 Not started |
-| Phase 2 | Analytics & Progression | 🔲 Not started |
-| Phase 3 | Product Polish | 🔲 Not started |
+| Phase 0 | Research & Validation | ✅ Complete |
+| Phase 1 | MVP — Core Import & Dashboard | ✅ Complete |
+| Phase 2 | Analytics & Progression | ✅ Complete |
+| Phase 3 | Product Polish | 🔄 In progress |
 | Phase 4 | Telemetry | 🔲 Not started |
-| Phase 5 | Sync Agent | 🔲 Not started |
+| Phase 5 | Desktop Sync Agent | 🔄 In progress |
 | Phase 6 | AI Coach | 🔲 Not started |
 | Phase 7 | Community | 🔲 Not started |
 | Phase 8 | Monetization | 🔲 Not started |
 
-**Current version:** `0.0.0-pre-alpha`
+**Current version:** `0.21.0`
 
 ---
 
@@ -42,19 +42,21 @@ It does this by combining session imports, performance metrics, personal goals, 
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 14 (App Router) |
-| Language | TypeScript (strict) |
-| Styling | TailwindCSS + shadcn/ui |
-| Database | PostgreSQL |
-| ORM | Prisma |
-| Auth | Auth.js v5 |
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript 5 (strict) |
+| Styling | TailwindCSS v4 + shadcn/ui |
+| Database | PostgreSQL 16 + Prisma 7 |
+| ORM | Prisma 7 (`@prisma/adapter-pg`) |
+| Auth | Auth.js v5 (JWT, Credentials) |
 | Charts | Recharts |
 | Validation | Zod |
-| File upload | local (dev) → S3-compatible (prod) |
-| Background jobs | Inline (MVP) → BullMQ (Phase 2+) |
-| Testing | Vitest + Playwright |
+| File storage | Local filesystem (dev) → Cloudflare R2 (prod) |
+| Background jobs | BullMQ 5 + Redis (worker via `instrumentation.ts`) |
+| Testing | Vitest |
 | Dev environment | Docker Compose |
-| Desktop agent (future) | Tauri |
+| Desktop agent | Tauri v2 + Rust (Phase 5 — in progress) |
+| CI | GitHub Actions |
+| Hosting | Vercel free tier (Neon + Upstash + R2) |
 
 ---
 
@@ -68,12 +70,14 @@ cd urapex
 # 2. Install dependencies
 npm install
 
-# 3. Start PostgreSQL (via Docker)
+# 3. Start PostgreSQL + Redis (via Docker)
 docker compose up -d
+# or via Homebrew on macOS:
+# brew services start postgresql@16 && brew services start redis
 
 # 4. Configure environment
-cp .env.example .env.local
-# Edit .env.local with your values
+cp .env.example .env
+# Edit .env — set DATABASE_URL and AUTH_SECRET at minimum
 
 # 5. Run database migrations
 npx prisma migrate dev

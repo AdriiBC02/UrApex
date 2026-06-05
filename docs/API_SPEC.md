@@ -539,6 +539,109 @@ Returns all data needed for the dashboard in one request.
 
 ---
 
+## Replay Endpoints
+
+### POST /api/sessions/[id]/replays
+Upload a `.vcr` replay file and associate it with a session.
+
+**Content-Type:** `multipart/form-data` — field name: `file`
+
+**Response 201:**
+```json
+{
+  "id": "clxxx",
+  "originalName": "race_sebring_2026.vcr",
+  "fileSizeBytes": "52428800",
+  "createdAt": "2026-06-05T10:30:00Z"
+}
+```
+
+**Errors:** `422` (not a .vcr), `409` (duplicate file hash), `404` (session not found or not owned)
+
+### GET /api/sessions/[id]/replays
+List all replays for a session, newest first.
+
+**Response 200:** array of replay objects (same shape as 201 above)
+
+### DELETE /api/replays/[id]
+Delete a replay. Removes the file from storage and the DB record.
+
+**Response 200:** `{ "deleted": true }`
+
+### GET /api/replays/[id]/download
+Stream the `.vcr` file as a binary attachment.
+
+**Response 200:** binary stream with headers:
+```
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename="<originalName>"
+```
+
+---
+
+## Storage Endpoints
+
+### GET /api/storage
+Returns the current user's total replay storage usage and a full file list ordered by size (largest first).
+
+**Response 200:**
+```json
+{
+  "totalBytes": "157286400",
+  "replayCount": 12,
+  "replays": [
+    {
+      "id": "clxxx",
+      "originalName": "race_sebring.vcr",
+      "fileSizeBytes": "52428800",
+      "createdAt": "2026-06-05T10:30:00Z",
+      "session": {
+        "id": "clyyy",
+        "sessionType": "RACE",
+        "sessionDate": "2026-06-05T08:00:00Z",
+        "trackName": "Sebring International Raceway"
+      }
+    }
+  ]
+}
+```
+
+---
+
+## Export Endpoints
+
+### GET /api/export/sessions
+Download the current user's sessions as a CSV file.
+
+**Response 200:** CSV attachment (`Content-Disposition: attachment; filename="sessions.csv"`)
+
+Columns: `id, date, track, car, type, position, laps, bestLap, consistency, safety, pace, isNewPB`
+
+### GET /api/export/laps
+Download all laps for the current user as a CSV file.
+
+**Response 200:** CSV attachment (`Content-Disposition: attachment; filename="laps.csv"`)
+
+Columns: `sessionId, lapNumber, lapTimeMs, isValid, sector1Ms, sector2Ms, sector3Ms`
+
+---
+
+## Cron Endpoints
+
+### GET /api/cron/process-imports
+Internal endpoint called every minute by Vercel Cron. Processes up to 5 `ImportFile` records with `status = PENDING`.
+
+**Auth:** `Authorization: Bearer <CRON_SECRET>` (if `CRON_SECRET` env var is set)
+
+**Response 200:**
+```json
+{ "processed": 2, "succeeded": 2, "failed": 0 }
+```
+
+> This endpoint is a serverless fallback for the BullMQ worker. On persistent runtimes (local dev, Railway), the worker handles imports immediately and this endpoint is never needed.
+
+---
+
 ## Future Endpoints (Phase 6+)
 
 ```

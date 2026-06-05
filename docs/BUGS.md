@@ -59,13 +59,13 @@ Root cause if known. Related code paths. Potential fix.
 
 ## Open Bugs
 
-> No bugs yet — project not started.
+> No confirmed bugs at this time. Report issues via GitHub Issues.
 
 ---
 
 ## Fixed Bugs
 
-> Empty — no releases yet.
+> See [CHANGELOG.md](CHANGELOG.md) for what was fixed in each release.
 
 ---
 
@@ -75,8 +75,10 @@ These are known issues that are accepted as limitations of the current phase:
 
 | ID | Description | Phase when fixed |
 |---|---|---|
-| L-001 | Import is synchronous — large files may time out | Phase 2 (BullMQ) |
-| L-002 | File storage is local — not suitable for multi-instance deployment | Phase 2 (S3) |
+| L-001 | ~~Import is synchronous — large files may time out~~ | ✅ Fixed in 0.19.0 (BullMQ) |
+| L-002 | ~~File storage is local — not suitable for multi-instance deployment~~ | ✅ Fixed in 0.20.0 (S3/R2) |
 | L-003 | Track/car names may be wrong if not in alias table | Phase 6 (admin panel) |
 | L-004 | No email notifications on import completion | Phase 3 |
 | L-005 | Parser may miss fields if LMU XML format varies between versions | Ongoing |
+| L-006 | Vercel Cron import fallback has ~1 min latency vs instant on persistent runtimes | By design |
+| L-007 | `.vcr` replay files cannot be visualised in-browser (proprietary binary format) | Phase 4+ if format is documented |

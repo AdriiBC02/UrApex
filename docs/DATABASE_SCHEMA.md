@@ -16,12 +16,13 @@ User ─────────────────┐
   ├── Session          │        │                       │
   ├── Goal             │        ├── Lap                 │
   ├── Setup            │        ├── SessionParticipant  │
-  ├── Achievement(via) │        ├── Incident            │
-  └── CoachConvos      │        ├── Penalty             │
-                        │        ├── PitStop             │
-Simulator ─────────────┘        ├── SessionNote         │
-  │                             └── SessionSetup ───── Setup
-  ├── Track ──── TrackAlias
+  ├── Replay           │        ├── Incident            │
+  ├── Achievement(via) │        ├── Penalty             │
+  └── CoachConvos      │        ├── PitStop             │
+                        │        ├── SessionNote         │
+Simulator ─────────────┘        ├── SessionInsight      │
+  │                             ├── Replay              │
+  ├── Track ──── TrackAlias     └── SessionSetup ───── Setup
   │     └── TrackLayout
   ├── Car ──── CarAlias
   │     └── CarClass
@@ -48,7 +49,7 @@ Central auth entity. One User = one account.
 | apiKey | String? unique | `uapx_<64hex>` — companion app bearer token |
 | deletedAt | DateTime? | Soft delete (GDPR) |
 
-**Relations:** one DriverProfile, many ImportFiles, many Sessions, many Goals, many Setups, many UserAchievements.
+**Relations:** one DriverProfile, many ImportFiles, many Sessions, many Goals, many Setups, many Replays, many UserAchievements.
 
 **Why `apiKey`?** The companion app (Tauri) uploads files from the user's PC without a browser session. An API key stored locally by the companion app authenticates these requests via `Authorization: Bearer <key>`. The key is generated on demand in Settings, shown once, and revocable.
 
@@ -283,6 +284,29 @@ UserAchievement tracks per-user progress and unlock.
 
 ---
 
+### Replay
+
+Replay files (`.vcr` format) uploaded by the user and associated with a session.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | cuid | Primary key |
+| userId | String | FK → User |
+| sessionId | String | FK → Session (cascade delete) |
+| storagePath | String | Key in StorageService (local path or S3 key) |
+| originalName | String | Original `.vcr` filename |
+| fileSizeBytes | BigInt | File size in bytes — BigInt to safely handle files up to exabyte scale |
+| fileHash | String unique | SHA-256 hash for deduplication |
+| createdAt | DateTime | Upload timestamp |
+
+**Indexes:** `(userId)`, `(sessionId)`, `fileHash`
+
+**Why BigInt for fileSizeBytes?** Replay files from long endurance races can potentially exceed 2 GB, which overflows a signed 32-bit integer.
+
+**Why cascade delete on sessionId?** If a session is deleted, its replays should be cleaned up automatically to avoid orphaned storage files.
+
+---
+
 ### Setup + SetupVersion
 
 Setup is the parent (name, car, track, conditions).
@@ -306,6 +330,7 @@ Session: (userId, trackId) composite
 Session: (userId, carId) composite
 ImportFile: userId, fileHash, status
 Lap: sessionId, (sessionId, isValid)
+Replay: userId, sessionId, fileHash
 UserAchievement: userId
 Goal: userId, (userId, status)
 TrackAlias: (rawName, simulatorId)
