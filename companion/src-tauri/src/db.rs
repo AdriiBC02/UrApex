@@ -147,6 +147,32 @@ pub struct RecentPb {
 
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct Setup {
+    pub id:          String,
+    pub name:        String,
+    pub car_name:    Option<String>,
+    pub track_name:  Option<String>,
+    pub conditions:  Option<String>,
+    pub setup_type:  Option<String>,
+    pub notes:       Option<String>,
+    pub is_favorite: bool,
+    pub created_at:  String,
+    pub updated_at:  String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateSetupInput {
+    pub name:       String,
+    pub car_name:   Option<String>,
+    pub track_name: Option<String>,
+    pub conditions: Option<String>,
+    pub setup_type: Option<String>,
+    pub notes:      Option<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ReplaySummary {
     pub id:          String,
     pub session_id:  Option<String>,
@@ -315,6 +341,27 @@ fn migrate(conn: &Connection) -> Result<(), String> {
             CREATE INDEX IF NOT EXISTS idx_notes_session ON notes(session_id);
         ").map_err(|e| e.to_string())?;
         set_schema_version(conn, 3);
+    }
+
+    // v4 — setups
+    if v < 4 {
+        conn.execute_batch("
+            CREATE TABLE IF NOT EXISTS setups (
+                id          TEXT PRIMARY KEY,
+                name        TEXT NOT NULL,
+                car_name    TEXT,
+                track_name  TEXT,
+                conditions  TEXT,
+                setup_type  TEXT,
+                notes       TEXT,
+                is_favorite INTEGER NOT NULL DEFAULT 0,
+                created_at  TEXT NOT NULL,
+                updated_at  TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_setups_car   ON setups(car_name);
+            CREATE INDEX IF NOT EXISTS idx_setups_track ON setups(track_name);
+        ").map_err(|e| e.to_string())?;
+        set_schema_version(conn, 4);
     }
 
     Ok(())
@@ -801,6 +848,61 @@ pub fn get_dashboard_stats(conn: &Connection) -> Result<DashboardStats, String> 
         pb_count,
         recent_pb,
     })
+}
+
+// ── Setups ────────────────────────────────────────────────────────────────────
+
+pub fn create_setup(conn: &Connection, input: &CreateSetupInput) -> Result<String, String> {
+    let id  = uuid::Uuid::new_v4().to_string();
+    let now = now_iso();
+    conn.execute(
+        "INSERT INTO setups (id, name, car_name, track_name, conditions, setup_type, notes, is_favorite, created_at, updated_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,0,?8,?9)",
+        params![id, input.name, input.car_name, input.track_name, input.conditions, input.setup_type, input.notes, now, now],
+    ).map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+pub fn get_setups(conn: &Connection) -> Result<Vec<Setup>, String> {
+    let mut stmt = conn.prepare(
+        "SELECT id, name, car_name, track_name, conditions, setup_type, notes, is_favorite, created_at, updated_at
+         FROM setups ORDER BY is_favorite DESC, updated_at DESC"
+    ).map_err(|e| e.to_string())?;
+    let rows = stmt.query_map([], |row| Ok(Setup {
+        id:          row.get(0)?,
+        name:        row.get(1)?,
+        car_name:    row.get(2)?,
+        track_name:  row.get(3)?,
+        conditions:  row.get(4)?,
+        setup_type:  row.get(5)?,
+        notes:       row.get(6)?,
+        is_favorite: row.get::<_, i32>(7)? != 0,
+        created_at:  row.get(8)?,
+        updated_at:  row.get(9)?,
+    })).map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+pub fn toggle_setup_favorite(conn: &Connection, id: &str) -> Result<(), String> {
+    conn.execute(
+        "UPDATE setups SET is_favorite = 1 - is_favorite, updated_at=?1 WHERE id=?2",
+        params![now_iso(), id],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn update_setup_notes(conn: &Connection, id: &str, notes: &str) -> Result<(), String> {
+    conn.execute(
+        "UPDATE setups SET notes=?1, updated_at=?2 WHERE id=?3",
+        params![notes, now_iso(), id],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn delete_setup(conn: &Connection, id: &str) -> Result<(), String> {
+    conn.execute("DELETE FROM setups WHERE id=?1", params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 // ── Replays ───────────────────────────────────────────────────────────────────

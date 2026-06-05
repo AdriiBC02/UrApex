@@ -159,6 +159,33 @@ fn get_dashboard_stats(db_state: State<'_, DbState>) -> Result<db::DashboardStat
     db::get_dashboard_stats(&db_state.0.lock().map_err(|e| e.to_string())?)
 }
 
+// ── Setups ────────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn get_setups(db_state: State<'_, DbState>) -> Result<Vec<db::Setup>, String> {
+    db::get_setups(&db_state.0.lock().map_err(|e| e.to_string())?)
+}
+
+#[tauri::command]
+fn create_setup(input: db::CreateSetupInput, db_state: State<'_, DbState>) -> Result<String, String> {
+    db::create_setup(&db_state.0.lock().map_err(|e| e.to_string())?, &input)
+}
+
+#[tauri::command]
+fn toggle_setup_favorite(id: String, db_state: State<'_, DbState>) -> Result<(), String> {
+    db::toggle_setup_favorite(&db_state.0.lock().map_err(|e| e.to_string())?, &id)
+}
+
+#[tauri::command]
+fn update_setup_notes(id: String, notes: String, db_state: State<'_, DbState>) -> Result<(), String> {
+    db::update_setup_notes(&db_state.0.lock().map_err(|e| e.to_string())?, &id, &notes)
+}
+
+#[tauri::command]
+fn delete_setup(id: String, db_state: State<'_, DbState>) -> Result<(), String> {
+    db::delete_setup(&db_state.0.lock().map_err(|e| e.to_string())?, &id)
+}
+
 // ── Replay commands ───────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -306,6 +333,7 @@ pub fn run() {
             get_goals, create_goal, delete_goal, update_goal_status,
             get_notes, create_note, delete_note,
             get_dashboard_stats,
+            get_setups, create_setup, toggle_setup_favorite, update_setup_notes, delete_setup,
             get_replays, add_replay, match_replay, delete_replay,
         ])
         .on_window_event(|window, event| {

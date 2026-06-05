@@ -105,11 +105,13 @@ function compoundStyle(compound: string | null): React.CSSProperties {
 // ── Main component ────────────────────────────────────────────────────────────
 
 interface Props {
-  session: SessionDetail
-  onBack: () => void
+  session:    SessionDetail
+  allSessions: import("./SessionList").SessionSummary[]
+  onBack:     () => void
+  onCompare:  (secondId: string) => void
 }
 
-export function SessionDetailView({ session: s, onBack }: Props) {
+export function SessionDetailView({ session: s, allSessions, onBack, onCompare }: Props) {
   const [participants, setParticipants]         = useState<Participant[]>([])
   const [expandedDriver, setExpandedDriver]     = useState<string | null>(null)
   const [driverLaps, setDriverLaps]             = useState<Record<string, ParticipantLap[]>>({})
@@ -118,6 +120,7 @@ export function SessionDetailView({ session: s, onBack }: Props) {
   const [noteVideoUrl, setNoteVideoUrl]         = useState("")
   const [savingNote, setSavingNote]             = useState(false)
   const [activeTab, setActiveTab]               = useState<"laps" | "grid" | "notes">("laps")
+  const [showComparePicker, setShowComparePicker] = useState(false)
 
   const best = s.bestLapMs
 
@@ -173,10 +176,43 @@ export function SessionDetailView({ session: s, onBack }: Props) {
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Back */}
-      <button onClick={onBack} style={{ textAlign: "left", padding: "8px 12px", borderBottom: "1px solid var(--border)", fontSize: 11, color: "var(--text-muted)", background: "none" }}>
-        ← Back to sessions
-      </button>
+      {/* Back + Compare */}
+      <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid var(--border)" }}>
+        <button onClick={onBack} style={{ textAlign: "left", padding: "8px 12px", fontSize: 11, color: "var(--text-muted)", background: "none", flex: 1 }}>
+          ← Back
+        </button>
+        <button
+          onClick={() => setShowComparePicker((v) => !v)}
+          style={{ padding: "5px 10px", fontSize: 10, color: showComparePicker ? "var(--cyan)" : "var(--text-muted)", background: "none", fontWeight: 600 }}
+        >
+          ⇄ Compare
+        </button>
+      </div>
+
+      {/* Compare picker */}
+      {showComparePicker && (
+        <div style={{ borderBottom: "1px solid var(--border)", background: "var(--surface)", maxHeight: 160, overflow: "auto" }}>
+          <p style={{ fontSize: 10, color: "var(--text-dim)", padding: "4px 10px 2px", margin: 0, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Pick session B
+          </p>
+          {allSessions.filter((ss) => ss.id !== s.id).map((ss) => (
+            <div
+              key={ss.id}
+              onClick={() => { onCompare(ss.id); setShowComparePicker(false) }}
+              style={{ padding: "6px 10px", cursor: "pointer", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+            >
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text)", margin: 0 }}>{ss.trackName}</p>
+                <p style={{ fontSize: 10, color: "var(--text-muted)", margin: 0 }}>{ss.carName} · {new Date(ss.sessionDate).toLocaleDateString()}</p>
+              </div>
+              {ss.bestLapMs && <span style={{ fontSize: 11, fontFamily: "monospace", color: "var(--text-muted)" }}>{formatLapTime(ss.bestLapMs)}</span>}
+            </div>
+          ))}
+          {allSessions.filter((ss) => ss.id !== s.id).length === 0 && (
+            <p style={{ fontSize: 11, color: "var(--text-dim)", padding: "8px 10px" }}>No other sessions.</p>
+          )}
+        </div>
+      )}
 
       <div style={{ flex: 1, overflow: "auto", padding: "12px" }}>
         {/* Header */}

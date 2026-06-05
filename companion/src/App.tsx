@@ -9,6 +9,8 @@ import { SessionList, type SessionSummary } from "./components/SessionList"
 import { SessionDetailView, type SessionDetail } from "./components/SessionDetail"
 import { GoalsView } from "./components/Goals"
 import { DashboardView } from "./components/Dashboard"
+import { SetupsView } from "./components/Setups"
+import { CompareView } from "./components/CompareView"
 
 interface Settings {
   watchFolder:   string
@@ -43,7 +45,7 @@ export default function App() {
   const [settings, setSettings]             = useState<Settings>({ watchFolder: "", replayFolder: "", apiUrl: "", apiKey: "", driverName: "" })
   const [watching, setWatching]             = useState(false)
   const [logs, setLogs]                     = useState<LogEntry[]>([])
-  const [tab, setTab]                       = useState<"dashboard" | "sync" | "sessions" | "goals" | "replays" | "settings">("dashboard")
+  const [tab, setTab]                       = useState<"dashboard" | "sync" | "sessions" | "goals" | "setups" | "replays" | "settings">("dashboard")
   const [autostart, setAutostart]           = useState(false)
   const [importing, setImporting]           = useState(false)
   const [sessions, setSessions]             = useState<SessionSummary[]>([])
@@ -51,6 +53,7 @@ export default function App() {
   const [sessionDetail, setSessionDetail]   = useState<SessionDetail | null>(null)
   const [loadingDetail, setLoadingDetail]   = useState(false)
   const [replays, setReplays]               = useState<ReplaySummary[]>([])
+  const [compareDetail, setCompareDetail]   = useState<import("./components/SessionDetail").SessionDetail | null>(null)
 
   useEffect(() => {
     load("companion-settings.json", { autoSave: true, defaults: {} }).then((s) => {
@@ -190,8 +193,15 @@ export default function App() {
     } catch (e) { console.error(e) }
   }
 
+  async function handleCompare(secondId: string) {
+    try {
+      const detail = await invoke<import("./components/SessionDetail").SessionDetail>("get_session_detail", { id: secondId })
+      if (detail) setCompareDetail(detail)
+    } catch (e) { console.error(e) }
+  }
+
   const canWatch = Boolean(settings.watchFolder)
-  const tabs = ["dashboard", "sync", "sessions", "goals", "replays", "settings"] as const
+  const tabs = ["dashboard", "sync", "sessions", "goals", "setups", "replays", "settings"] as const
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
@@ -226,6 +236,9 @@ export default function App() {
 
         {/* ── GOALS TAB ── */}
         {tab === "goals" && <GoalsView />}
+
+        {/* ── SETUPS TAB ── */}
+        {tab === "setups" && <SetupsView />}
 
         {/* ── SYNC TAB ── */}
         {tab === "sync" && (
@@ -307,13 +320,24 @@ export default function App() {
               <SessionList sessions={sessions} selectedId={selectedId} onSelect={openSession} onDelete={handleDeleteSession} />
             </div>
 
-            {/* Detail */}
+            {/* Detail / Compare */}
             {selectedId && (
               <div style={{ flex: 1, overflow: "hidden" }}>
                 {loadingDetail ? (
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-dim)", fontSize: 12 }}>Loading…</div>
+                ) : compareDetail && sessionDetail ? (
+                  <CompareView
+                    sessionA={sessionDetail}
+                    sessionB={compareDetail}
+                    onBack={() => setCompareDetail(null)}
+                  />
                 ) : sessionDetail ? (
-                  <SessionDetailView session={sessionDetail} onBack={() => { setSelectedId(null); setSessionDetail(null) }} />
+                  <SessionDetailView
+                    session={sessionDetail}
+                    allSessions={sessions}
+                    onBack={() => { setSelectedId(null); setSessionDetail(null); setCompareDetail(null) }}
+                    onCompare={handleCompare}
+                  />
                 ) : null}
               </div>
             )}
