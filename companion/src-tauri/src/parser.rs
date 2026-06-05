@@ -2,29 +2,53 @@ use roxmltree::Node;
 
 #[derive(Debug, Clone)]
 pub struct ParsedLap {
-    pub lap_number: i32,
+    pub lap_number:  i32,
     pub lap_time_ms: Option<i32>,
-    pub is_valid: bool,
-    pub sector1_ms: Option<i32>,
-    pub sector2_ms: Option<i32>,
-    pub sector3_ms: Option<i32>,
+    pub is_valid:    bool,
+    pub sector1_ms:  Option<i32>,
+    pub sector2_ms:  Option<i32>,
+    pub sector3_ms:  Option<i32>,
+    pub fuel_load:   Option<f64>,
+    pub tyre_compound: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ParsedParticipant {
+    pub driver_name:     String,
+    pub car_name:        String,
+    pub car_class:       Option<String>,
+    pub position:        Option<i32>,
+    pub laps_completed:  i32,
+    pub best_lap_ms:     Option<i32>,
+    pub finish_status:   Option<String>,
+    pub pit_stops_count: i32,
+    pub dnf:             bool,
+    pub laps:            Vec<ParsedLap>,
 }
 
 #[derive(Debug)]
 pub struct ParsedSession {
-    pub track_name: String,
-    pub car_name: String,
-    pub car_class: Option<String>,
-    pub session_type: String, // "PRACTICE" | "QUALIFYING" | "RACE"
-    pub session_date: String, // ISO 8601
-    pub total_laps: i32,
-    pub valid_laps: i32,
+    pub track_name:    String,
+    pub car_name:      String,
+    pub car_class:     Option<String>,
+    pub session_type:  String,
+    pub session_date:  String,
+    pub total_laps:    i32,
+    pub valid_laps:    i32,
     pub final_position: Option<i32>,
-    pub duration_sec: Option<i32>,
-    pub is_online: bool,
-    pub dnf: bool,
-    pub laps: Vec<ParsedLap>,
+    pub duration_sec:  Option<i32>,
+    pub is_online:     bool,
+    pub dnf:           bool,
+    pub laps:          Vec<ParsedLap>,
     pub all_driver_names: Vec<String>,
+    // Conditions
+    pub weather:       Option<String>,
+    pub temp_ambient:  Option<f64>,
+    pub temp_track:    Option<f64>,
+    pub humidity:      Option<f64>,
+    pub track_length_m: Option<f64>,
+    // All grid participants
+    pub participants:  Vec<ParsedParticipant>,
 }
 
 pub fn can_parse(content: &str) -> bool {
@@ -69,10 +93,27 @@ pub fn parse(content: &str, driver_name: Option<&str>) -> Result<ParsedSession, 
         .map(|s| s == "Multiplayer")
         .unwrap_or(false);
 
+    let track_length_m = child_text(race_results, "TrackLength")
+        .and_then(|s| s.parse::<f64>().ok())
+        .filter(|&v| v > 0.0);
+
     let duration_sec = child_text(session_node, "Minutes")
         .and_then(|s| s.parse::<f64>().ok())
         .or_else(|| child_text(race_results, "RaceTime").and_then(|s| s.parse().ok()))
         .map(|m| (m * 60.0) as i32);
+
+    let weather    = child_text(session_node, "SkyType").map(str::to_string);
+    let temp_ambient = child_text(session_node, "AmbientTemp")
+        .or_else(|| child_text(session_node, "Ambient"))
+        .or_else(|| child_text(race_results, "AmbientTemp"))
+        .and_then(|s| s.parse::<f64>().ok());
+    let temp_track = child_text(session_node, "TrackTemp")
+        .or_else(|| child_text(session_node, "RoadTemp"))
+        .or_else(|| child_text(race_results, "TrackTemp"))
+        .and_then(|s| s.parse::<f64>().ok());
+    let humidity   = child_text(session_node, "Humidity")
+        .or_else(|| child_text(race_results, "Humidity"))
+        .and_then(|s| s.parse::<f64>().ok());
 
     let session_date = parse_date(session_node, race_results);
 
@@ -108,6 +149,8 @@ pub fn parse(content: &str, driver_name: Option<&str>) -> Result<ParsedSession, 
     let total_laps = laps.len() as i32;
     let valid_laps = laps.iter().filter(|l| l.is_valid).count() as i32;
 
+    let participants = parse_all_participants(&drivers);
+
     Ok(ParsedSession {
         track_name,
         car_name,
@@ -122,6 +165,12 @@ pub fn parse(content: &str, driver_name: Option<&str>) -> Result<ParsedSession, 
         dnf,
         laps,
         all_driver_names,
+        weather,
+        temp_ambient,
+        temp_track,
+        humidity,
+        track_length_m,
+        participants,
     })
 }
 
@@ -186,8 +235,8 @@ fn child_text<'a>(node: Node<'a, 'a>, tag: &str) -> Option<&'a str> {
         .filter(|s| !s.is_empty())
 }
 
-fn parse_laps(player: Node) -> Vec<ParsedLap> {
-    player.children()
+fn parse_laps(driver: Node) -> Vec<ParsedLap> {
+    driver.children()
         .filter(|n| n.is_element() && n.tag_name().name() == "Lap")
         .map(|lap| {
             let lap_number = lap.attribute("num")
@@ -198,16 +247,51 @@ fn parse_laps(player: Node) -> Vec<ParsedLap> {
             let time_sec = time_str.parse::<f64>().ok();
             let is_valid = time_sec.map(|t| t > 0.0 && !time_str.contains('-')).unwrap_or(false);
 
+            let fuel_load = lap.attribute("fuel")
+                .and_then(|s| s.parse::<f64>().ok())
+                .filter(|&v| v > 0.0);
+            let tyre_compound = lap.attribute("fcompound")
+                .filter(|s| !s.is_empty())
+                .map(str::to_string);
+
             ParsedLap {
                 lap_number,
                 lap_time_ms: if is_valid { time_sec.map(|t| (t * 1000.0) as i32) } else { None },
                 is_valid,
-                sector1_ms: sec_attr_ms(&lap, "s1"),
-                sector2_ms: sec_attr_ms(&lap, "s2"),
-                sector3_ms: sec_attr_ms(&lap, "s3"),
+                sector1_ms:    sec_attr_ms(&lap, "s1"),
+                sector2_ms:    sec_attr_ms(&lap, "s2"),
+                sector3_ms:    sec_attr_ms(&lap, "s3"),
+                fuel_load,
+                tyre_compound,
             }
         })
         .collect()
+}
+
+fn parse_all_participants(drivers: &[Node]) -> Vec<ParsedParticipant> {
+    drivers.iter().map(|d| {
+        let best_str = child_text(*d, "BestLapTime").unwrap_or("0");
+        let best_sec = best_str.parse::<f64>().ok().filter(|&t| t > 0.0);
+        let best_ms  = best_sec.map(|t| (t * 1000.0) as i32);
+
+        let finish_status = child_text(*d, "FinishStatus").unwrap_or("").to_string();
+        let dnf = !finish_status.is_empty()
+            && finish_status != "Finished Normally"
+            && finish_status != "None";
+
+        ParsedParticipant {
+            driver_name:     child_text(*d, "Name").unwrap_or("Unknown").to_string(),
+            car_name:        child_text(*d, "CarType").or_else(|| child_text(*d, "VehName")).unwrap_or("Unknown").to_string(),
+            car_class:       child_text(*d, "CarClass").map(str::to_string),
+            position:        child_text(*d, "Position").and_then(|s| s.parse().ok()),
+            laps_completed:  child_text(*d, "Laps").and_then(|s| s.parse().ok()).unwrap_or(0),
+            best_lap_ms:     best_ms,
+            finish_status:   if finish_status.is_empty() { None } else { Some(finish_status) },
+            pit_stops_count: child_text(*d, "Pitstops").and_then(|s| s.parse().ok()).unwrap_or(0),
+            dnf,
+            laps: parse_laps(*d),
+        }
+    }).collect()
 }
 
 fn sec_attr_ms(node: &Node, attr: &str) -> Option<i32> {

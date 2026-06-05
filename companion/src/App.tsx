@@ -7,6 +7,8 @@ import { SyncLog, SyncStatus } from "./components/SyncLog"
 import { StatusDot } from "./components/StatusDot"
 import { SessionList, type SessionSummary } from "./components/SessionList"
 import { SessionDetailView, type SessionDetail } from "./components/SessionDetail"
+import { GoalsView } from "./components/Goals"
+import { DashboardView } from "./components/Dashboard"
 
 interface Settings {
   watchFolder:   string
@@ -41,7 +43,7 @@ export default function App() {
   const [settings, setSettings]             = useState<Settings>({ watchFolder: "", replayFolder: "", apiUrl: "", apiKey: "", driverName: "" })
   const [watching, setWatching]             = useState(false)
   const [logs, setLogs]                     = useState<LogEntry[]>([])
-  const [tab, setTab]                       = useState<"sync" | "sessions" | "replays" | "settings">("sync")
+  const [tab, setTab]                       = useState<"dashboard" | "sync" | "sessions" | "goals" | "replays" | "settings">("dashboard")
   const [autostart, setAutostart]           = useState(false)
   const [importing, setImporting]           = useState(false)
   const [sessions, setSessions]             = useState<SessionSummary[]>([])
@@ -189,7 +191,7 @@ export default function App() {
   }
 
   const canWatch = Boolean(settings.watchFolder)
-  const tabs = ["sync", "sessions", "replays", "settings"] as const
+  const tabs = ["dashboard", "sync", "sessions", "goals", "replays", "settings"] as const
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
@@ -206,8 +208,8 @@ export default function App() {
               color: tab === t ? "var(--text)" : "var(--text-muted)",
               position: "relative",
             }}>
-              {t === "sessions" ? `Sessions${sessions.length ? ` (${sessions.length})` : ""}` :
-               t === "replays"  ? `Replays${replays.length   ? ` (${replays.length})` : ""}` :
+              {t === "sessions"  ? `Sessions${sessions.length ? ` (${sessions.length})` : ""}` :
+               t === "replays"   ? `Replays${replays.length   ? ` (${replays.length})` : ""}` :
                t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
@@ -216,6 +218,14 @@ export default function App() {
 
       {/* Content */}
       <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+
+        {/* ── DASHBOARD TAB ── */}
+        {tab === "dashboard" && (
+          <DashboardView onOpenSession={(id) => { setTab("sessions"); openSession(id) }} />
+        )}
+
+        {/* ── GOALS TAB ── */}
+        {tab === "goals" && <GoalsView />}
 
         {/* ── SYNC TAB ── */}
         {tab === "sync" && (

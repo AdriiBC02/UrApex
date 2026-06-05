@@ -92,6 +92,73 @@ fn delete_session(id: String, db_state: State<'_, DbState>) -> Result<(), String
     db::delete_session(&db_state.0.lock().map_err(|e| e.to_string())?, &id)
 }
 
+// ── Participants ──────────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn get_participants(session_id: String, db_state: State<'_, DbState>) -> Result<Vec<db::Participant>, String> {
+    db::get_participants(&db_state.0.lock().map_err(|e| e.to_string())?, &session_id)
+}
+
+#[tauri::command]
+fn get_participant_laps(participant_id: String, db_state: State<'_, DbState>) -> Result<Vec<db::ParticipantLap>, String> {
+    db::get_participant_laps(&db_state.0.lock().map_err(|e| e.to_string())?, &participant_id)
+}
+
+// ── Goals ─────────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn get_goals(db_state: State<'_, DbState>) -> Result<Vec<db::Goal>, String> {
+    db::get_goals(&db_state.0.lock().map_err(|e| e.to_string())?)
+}
+
+#[tauri::command]
+fn create_goal(input: db::CreateGoalInput, db_state: State<'_, DbState>) -> Result<String, String> {
+    db::create_goal(&db_state.0.lock().map_err(|e| e.to_string())?, &input)
+}
+
+#[tauri::command]
+fn delete_goal(id: String, db_state: State<'_, DbState>) -> Result<(), String> {
+    db::delete_goal(&db_state.0.lock().map_err(|e| e.to_string())?, &id)
+}
+
+#[tauri::command]
+fn update_goal_status(id: String, status: String, db_state: State<'_, DbState>) -> Result<(), String> {
+    db::update_goal_status(&db_state.0.lock().map_err(|e| e.to_string())?, &id, &status)
+}
+
+// ── Notes ─────────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn get_notes(session_id: String, db_state: State<'_, DbState>) -> Result<Vec<db::Note>, String> {
+    db::get_notes(&db_state.0.lock().map_err(|e| e.to_string())?, &session_id)
+}
+
+#[tauri::command]
+fn create_note(
+    session_id: String,
+    content:    String,
+    tags:       String,
+    video_url:  Option<String>,
+    db_state:   State<'_, DbState>,
+) -> Result<String, String> {
+    db::create_note(
+        &db_state.0.lock().map_err(|e| e.to_string())?,
+        &session_id, &content, &tags, video_url.as_deref(),
+    )
+}
+
+#[tauri::command]
+fn delete_note(id: String, db_state: State<'_, DbState>) -> Result<(), String> {
+    db::delete_note(&db_state.0.lock().map_err(|e| e.to_string())?, &id)
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn get_dashboard_stats(db_state: State<'_, DbState>) -> Result<db::DashboardStats, String> {
+    db::get_dashboard_stats(&db_state.0.lock().map_err(|e| e.to_string())?)
+}
+
 // ── Replay commands ───────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -159,10 +226,25 @@ pub async fn process_file(
         &conn.lock().map_err(|e| e.to_string())?,
         &session.track_name, &session.car_name, snap.best_lap_ms,
     );
-    let sess_id  = db::insert_session(
+    let sess_id = db::insert_session(
         &conn.lock().map_err(|e| e.to_string())?,
         &session, &snap, file_path, &hash, is_pb,
     )?;
+
+    // Insert all grid participants + their laps
+    if !session.participants.is_empty() {
+        if let Ok(c) = conn.lock() {
+            let _ = db::insert_participants(&c, &sess_id, &session.participants);
+        }
+    }
+
+    // Auto-update goal progress
+    if let Ok(c) = conn.lock() {
+        let _ = db::update_goals_for_session(
+            &c, &session.track_name, &session.car_name,
+            snap.best_lap_ms, snap.consistency_score, session.duration_sec,
+        );
+    }
 
     // Optional server sync
     if !api_url.is_empty() && !api_key.is_empty() {
@@ -220,6 +302,10 @@ pub fn run() {
             start_watching, stop_watching,
             import_file, import_all_files,
             get_sessions, get_session_detail, delete_session,
+            get_participants, get_participant_laps,
+            get_goals, create_goal, delete_goal, update_goal_status,
+            get_notes, create_note, delete_note,
+            get_dashboard_stats,
             get_replays, add_replay, match_replay, delete_replay,
         ])
         .on_window_event(|window, event| {
