@@ -6,9 +6,27 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  DATABASE_URL: postgresql://urapex:urapex_ci@localhost:5432/urapex
+
 jobs:
   check:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB:       urapex
+          POSTGRES_USER:     urapex
+          POSTGRES_PASSWORD: urapex_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
@@ -23,28 +41,15 @@ jobs:
 
       - name: Generate Prisma client
         run: npx prisma generate
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Run migrations
-        run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "⚠️  DATABASE_URL not set — skipping migrations (no DB configured for CI)"
-            exit 0
-          fi
-          npx prisma migrate deploy
-        env:
-          DATABASE_URL: ${{ secrets.DIRECT_URL || secrets.DATABASE_URL }}
+        run: npx prisma migrate deploy
 
       - name: Type check
         run: npx tsc --noEmit
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Lint
         run: npm run lint --if-present
 
       - name: Test
         run: npm test --if-present
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
