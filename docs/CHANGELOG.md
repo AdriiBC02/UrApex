@@ -8,7 +8,19 @@
 
 ## [Unreleased]
 
-> Next up: conectar servicios en Vercel dashboard, AN-016 metric recalculation job.
+> Next up: PO-004 privacy controls, PO-007 responsive audit, PO-008 Cmd+K, PO-009 post-session modal.
+
+---
+
+## [0.22.0] — 2026-06-05
+
+> AN-016 metric recalculation + A-007 password reset + CA-009/010 companion dedup + retry.
+
+### Added
+- **Metric recalculation job** (AN-016) — `RecalculateQueue` + `RecalculateWorker` (concurrency 1); re-lee el XML de storage, reparsea con el parser actual y actualiza todos los scores de `Session`; botón "Recalculate metrics" en Import History; `POST /api/import/recalculate`
+- **Password reset** (A-007) — modelo `PasswordResetToken` (token único, TTL 1h, `usedAt`); `POST /api/auth/forgot-password` (siempre 200, evita enumeración); `POST /api/auth/reset-password` (valida, hashea, invalida token); páginas `/forgot-password` y `/reset-password`; enlace "Forgot password?" en login; email via **Resend** (`src/lib/email.ts`)
+- **Companion hash dedup** (CA-009) — SHA-256 calculado antes de cada upload; hashes persistidos en `%LOCALAPPDATA%/UrApex/uploaded_hashes.txt` (`dirs-next` crate); archivos ya subidos devuelven DUPLICATE sin petición HTTP
+- **Companion upload retry** (CA-010) — 3 intentos con backoff lineal (2s/4s/6s); `reqwest::Client` con timeout de 60s; cada fallo logeado individualmente
 
 ---
 
