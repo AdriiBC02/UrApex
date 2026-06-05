@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { invoke } from "@tauri-apps/api/core"
 import { formatLapTime } from "../lib/time"
-import { Timer, LayoutGrid, Map, Car, Trophy, Clock, TrendingUp, ArrowRight } from "lucide-react"
+import { Timer, LayoutGrid, Map, Car, Trophy, Clock, TrendingUp, ArrowRight, type LucideIcon } from "lucide-react"
 
 interface RecentPb {
   sessionId:   string
@@ -24,7 +24,7 @@ interface DashboardStats {
 
 interface Props { onOpenSession: (id: string) => void }
 
-const TILES: { key: keyof DashboardStats; label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }>; accent?: boolean; fmt?: (v: number) => string }[] = [
+const TILES: { key: keyof DashboardStats; label: string; icon: LucideIcon; accent?: boolean; fmt?: (v: number) => string }[] = [
   { key: "totalSessions",  label: "Sessions",   icon: LayoutGrid, fmt: String },
   { key: "totalLaps",      label: "Valid laps",  icon: Timer,      fmt: String },
   { key: "totalHours",     label: "Hours",       icon: Clock,      fmt: (v) => v.toFixed(1) },

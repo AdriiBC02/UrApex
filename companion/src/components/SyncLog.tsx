@@ -1,4 +1,4 @@
-import { CheckCircle2, AlertCircle, CopyMinus, Loader2, CloudUpload } from "lucide-react"
+import { CheckCircle2, AlertCircle, CopyMinus, Loader2, CloudUpload, type LucideIcon } from "lucide-react"
 
 export type SyncStatus = "uploading" | "success" | "duplicate" | "error"
 
@@ -11,7 +11,7 @@ interface LogEntry {
 }
 
 const STATUS: Record<SyncStatus, {
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>
+  icon: LucideIcon
   color: string
   label: string
 }> = {

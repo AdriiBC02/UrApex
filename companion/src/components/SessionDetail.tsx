@@ -5,7 +5,7 @@ import type { SessionSummary } from "./SessionList"
 import {
   ArrowLeft, GitCompare, Timer, TrendingUp, BarChart3,
   List, Users, FileText, Thermometer, Wind, Droplets,
-  MapPin, Plus, Trash2, ExternalLink,
+  MapPin, Plus, Trash2, ExternalLink, type LucideIcon,
 } from "lucide-react"
 
 interface LapRow {
@@ -460,7 +460,7 @@ export function SessionDetailView({ session: s, allSessions, onBack, onCompare }
   )
 }
 
-function MiniStat({ icon: Icon, label, value, accent }: { icon: React.ComponentType<{ size?: number; strokeWidth?: number }>; label: string; value: string; accent?: boolean }) {
+function MiniStat({ icon: Icon, label, value, accent }: { icon: LucideIcon; label: string; value: string; accent?: boolean }) {
   return (
     <div className="stat-tile">
       <div className="stat-label">

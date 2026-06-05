@@ -412,10 +412,34 @@ pub fn run() {
                 include_bytes!("../icons/32x32.png")
             ).map_err(|e| { diag(&format!("icon load failed: {e}")); e })?;
 
+            use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
             use tauri::tray::{TrayIconBuilder, TrayIconEvent};
+
+            let open_i = MenuItem::with_id(app, "open", "Open UrApex", true, None::<&str>)
+                .map_err(|e| { diag(&format!("menu item failed: {e}")); e })?;
+            let sep = PredefinedMenuItem::separator(app)
+                .map_err(|e| { diag(&format!("separator failed: {e}")); e })?;
+            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)
+                .map_err(|e| { diag(&format!("menu item failed: {e}")); e })?;
+            let menu = Menu::with_items(app, &[&open_i, &sep, &quit_i])
+                .map_err(|e| { diag(&format!("menu build failed: {e}")); e })?;
+
             TrayIconBuilder::with_id("main")
                 .icon(icon)
                 .tooltip("UrApex")
+                .menu(&menu)
+                .menu_on_left_click(false)
+                .on_menu_event(|app, event| {
+                    match event.id.as_ref() {
+                        "open" => {
+                            if let Some(w) = app.get_webview_window("main") {
+                                let _ = w.show(); let _ = w.set_focus();
+                            }
+                        }
+                        "quit" => app.exit(0),
+                        _ => {}
+                    }
+                })
                 .on_tray_icon_event(|tray, event| {
                     if let TrayIconEvent::Click { .. } = event {
                         if let Some(w) = tray.app_handle().get_webview_window("main") {

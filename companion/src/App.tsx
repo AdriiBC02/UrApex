@@ -7,6 +7,7 @@ import {
   LayoutGrid, RadioTower, List, Target, Trophy,
   SlidersHorizontal, Film, Settings, Minus, X,
   FolderOpen, CloudUpload, RotateCcw, Trash2,
+  type LucideIcon,
 } from "lucide-react"
 import { SyncLog } from "./components/SyncLog"
 import { StatusDot } from "./components/StatusDot"
@@ -49,7 +50,7 @@ type Tab = "dashboard" | "sync" | "sessions" | "goals" | "setups" | "achievement
 let store: Store | null = null
 let logId = 0
 
-const NAV_MAIN: { tab: Tab; icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; label: string }[] = [
+const NAV_MAIN: { tab: Tab; icon: LucideIcon; label: string }[] = [
   { tab: "dashboard",    icon: LayoutGrid,       label: "Dashboard"    },
   { tab: "sync",         icon: RadioTower,        label: "Sync"         },
   { tab: "sessions",     icon: List,              label: "Sessions"     },
@@ -62,6 +63,7 @@ const NAV_MAIN: { tab: Tab; icon: React.ComponentType<{ size?: number; strokeWid
 export default function App() {
   const [settings, setSettings]           = useState<Settings>({ watchFolder: "", replayFolder: "", apiUrl: "", apiKey: "", driverName: "" })
   const [watching, setWatching]           = useState(false)
+  const [watchError, setWatchError]       = useState<string | null>(null)
   const [logs, setLogs]                   = useState<LogEntry[]>([])
   const [tab, setTab]                     = useState<Tab>("dashboard")
   const [autostart, setAutostart]         = useState(false)
@@ -149,9 +151,9 @@ export default function App() {
   }
   async function toggleWatch() {
     if (watching) {
-      await invoke("stop_watching"); setWatching(false)
+      await invoke("stop_watching"); setWatching(false); setWatchError(null)
     } else {
-      await saveSettings()
+      await saveSettings(); setWatchError(null)
       try {
         await invoke("start_watching", {
           folder: settings.watchFolder, apiUrl: settings.apiUrl,
@@ -159,7 +161,10 @@ export default function App() {
           replayFolder: settings.replayFolder || null,
         })
         setWatching(true)
-      } catch (err) { addLog("", "error"); console.error(err) }
+      } catch (err) {
+        setWatchError(String(err))
+        addLog("", "error")
+      }
     }
   }
   async function importAll() {
@@ -248,24 +253,31 @@ export default function App() {
           {tab === "sync" && (
             <div style={{ flex: 1, overflow: "auto", padding: "20px 18px", display: "flex", flexDirection: "column", gap: 16 }}>
               {/* Watch control */}
-              <div className="card" style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", marginBottom: 2 }}>
-                    {watching ? "Watching for new sessions" : "File watcher"}
-                  </p>
-                  <p style={{ fontSize: 11, color: "var(--text-dim)" }}>
-                    {watching ? (settings.watchFolder || "—") : canWatch ? "Ready to start" : "Configure a folder in Settings first"}
-                  </p>
+              <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", marginBottom: 2 }}>
+                      {watching ? "Watching for new sessions" : "File watcher"}
+                    </p>
+                    <p style={{ fontSize: 11, color: "var(--text-dim)" }}>
+                      {watching ? (settings.watchFolder || "—") : canWatch ? "Ready to start" : "Configure a folder in Settings first"}
+                    </p>
+                  </div>
+                  {watching && <StatusDot watching />}
+                  <button
+                    onClick={toggleWatch}
+                    disabled={!canWatch}
+                    className={`btn ${watching ? "btn-danger" : "btn-primary"}`}
+                    style={{ flexShrink: 0 }}
+                  >
+                    {watching ? "Stop" : "Start watching"}
+                  </button>
                 </div>
-                {watching && <StatusDot watching />}
-                <button
-                  onClick={toggleWatch}
-                  disabled={!canWatch}
-                  className={`btn ${watching ? "btn-danger" : "btn-primary"}`}
-                  style={{ flexShrink: 0 }}
-                >
-                  {watching ? "Stop" : "Start watching"}
-                </button>
+                {watchError && (
+                  <p style={{ fontSize: 11, color: "var(--red)", background: "rgba(248,113,113,0.07)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 6, padding: "6px 10px", margin: 0 }}>
+                    {watchError}
+                  </p>
+                )}
               </div>
 
               {/* Import all */}
@@ -338,7 +350,11 @@ export default function App() {
                     <CompareView sessionA={sessionDetail} sessionB={compareDetail} onBack={() => setCompareDetail(null)} />
                   ) : sessionDetail ? (
                     <SessionDetailView session={sessionDetail} allSessions={sessions} onBack={() => { setSelectedId(null); setSessionDetail(null); setCompareDetail(null) }} onCompare={handleCompare} />
-                  ) : null}
+                  ) : (
+                    <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 12 }}>
+                      Failed to load session
+                    </div>
+                  )}
                 </div>
               )}
             </div>

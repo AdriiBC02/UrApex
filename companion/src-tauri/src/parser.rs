@@ -40,7 +40,6 @@ pub struct ParsedSession {
     pub is_online:     bool,
     pub dnf:           bool,
     pub laps:          Vec<ParsedLap>,
-    pub all_driver_names: Vec<String>,
     // Conditions
     pub weather:       Option<String>,
     pub temp_ambient:  Option<f64>,
@@ -55,24 +54,6 @@ pub fn can_parse(content: &str) -> bool {
     content.contains("<rFactorXML") || content.contains("<RaceResults")
 }
 
-/// Lightweight name extraction — no full DOM needed
-pub fn extract_driver_names(content: &str) -> Vec<String> {
-    let mut names = Vec::new();
-    let mut rest = content;
-    while let Some(start) = rest.find("<Name>") {
-        rest = &rest[start + 6..];
-        if let Some(end) = rest.find("</Name>") {
-            let name = rest[..end].trim().to_string();
-            if !name.is_empty() && !names.contains(&name) {
-                names.push(name);
-            }
-            rest = &rest[end + 7..];
-        } else {
-            break;
-        }
-    }
-    names
-}
 
 pub fn parse(content: &str, driver_name: Option<&str>) -> Result<ParsedSession, String> {
     let doc = roxmltree::Document::parse(content)
@@ -125,10 +106,6 @@ pub fn parse(content: &str, driver_name: Option<&str>) -> Result<ParsedSession, 
         return Err("No driver data found".to_string());
     }
 
-    let all_driver_names: Vec<String> = drivers.iter()
-        .filter_map(|d| child_text(*d, "Name").map(str::to_string))
-        .collect();
-
     let player = find_player(&drivers, driver_name)
         .ok_or_else(|| "Could not identify player driver".to_string())?;
 
@@ -164,7 +141,6 @@ pub fn parse(content: &str, driver_name: Option<&str>) -> Result<ParsedSession, 
         is_online,
         dnf,
         laps,
-        all_driver_names,
         weather,
         temp_ambient,
         temp_track,
