@@ -1,5 +1,5 @@
 {
-  "productName": "UrApex Companion",
+  "productName": "UrApex",
   "identifier": "com.urapex.companion",
   "version": "0.1.0",
   "build": {
@@ -39,7 +39,7 @@
       "webviewInstallMode": { "type": "embedBootstrapper" },
       "nsis": {
         "displayLanguageSelector": false,
-        "installMode": "currentUser"
+        "installMode": "perMachine"
       }
     }
   },

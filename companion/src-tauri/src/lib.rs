@@ -9,6 +9,24 @@ mod watcher;
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager, State};
 
+fn diag(msg: &str) {
+    #[cfg(target_os = "windows")]
+    {
+        use std::io::Write;
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .create(true).append(true)
+            .open("C:\\Users\\Public\\urapex-diag.log")
+        {
+            let ts = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            let _ = writeln!(f, "[{ts}] {msg}");
+        }
+    }
+    log::debug!("{msg}");
+}
+
 pub struct WatcherState(pub Mutex<Option<watcher::WatcherHandle>>);
 pub struct DbState(pub Arc<Mutex<rusqlite::Connection>>);
 
@@ -363,9 +381,9 @@ pub fn run() {
         .plugin(
             tauri_plugin_log::Builder::new()
                 .target(tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
-                    file_name: Some("urapex-companion".to_string()),
+                    file_name: Some("urapex".to_string()),
                 }))
-                .level(log::LevelFilter::Warn)
+                .level(log::LevelFilter::Debug)
                 .build(),
         )
         .plugin(tauri_plugin_store::Builder::new().build())
@@ -376,23 +394,28 @@ pub fn run() {
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec![])))
         .manage(WatcherState(Mutex::new(None)))
         .setup(|app| {
+            diag("setup: started");
+
             let db_path = app.path().app_data_dir()
-                .map_err(|e| { log::error!("app_data_dir failed: {e}"); e })?
+                .map_err(|e| { diag(&format!("app_data_dir failed: {e}")); e })?
                 .join("urapex.db");
 
+            diag(&format!("setup: db_path = {}", db_path.display()));
+
             let conn = db::open(&db_path)
-                .map_err(|e| { log::error!("db::open failed: {e}"); e })?;
+                .map_err(|e| { diag(&format!("db::open failed: {e}")); e })?;
 
             app.manage(DbState(Arc::new(Mutex::new(conn))));
+            diag("setup: db open ok");
 
             let icon = tauri::image::Image::from_bytes(
                 include_bytes!("../icons/32x32.png")
-            ).map_err(|e| { log::error!("icon load failed: {e}"); e })?;
+            ).map_err(|e| { diag(&format!("icon load failed: {e}")); e })?;
 
             use tauri::tray::{TrayIconBuilder, TrayIconEvent};
             TrayIconBuilder::with_id("main")
                 .icon(icon)
-                .tooltip("UrApex Companion")
+                .tooltip("UrApex")
                 .on_tray_icon_event(|tray, event| {
                     if let TrayIconEvent::Click { .. } = event {
                         if let Some(w) = tray.app_handle().get_webview_window("main") {
@@ -401,8 +424,9 @@ pub fn run() {
                     }
                 })
                 .build(app)
-                .map_err(|e| { log::error!("tray build failed: {e}"); e })?;
+                .map_err(|e| { diag(&format!("tray build failed: {e}")); e })?;
 
+            diag("setup: complete");
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
