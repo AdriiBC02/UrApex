@@ -98,6 +98,11 @@
 | Parser versioning | P1 | 1 | ✅ |
 | Parser warnings (non-fatal) | P1 | 1 | ✅ |
 | Driver name extraction from XML | P1 | 1 | ✅ |
+| Full race data — all driver laps + sectors | P1 | 2 | ✅ |
+| Pit stop events per driver from `<Stream>` | P1 | 2 | ✅ |
+| Session conditions (weather, temps, humidity, track length) | P1 | 2 | ✅ |
+| Tire compound + fuel per lap (all drivers) | P1 | 2 | ✅ |
+| Per-driver penalties from `<Stream>` | P2 | 2 | ✅ |
 | Test fixtures for LMU | P0 | 0 | ✅ |
 | Parser unit tests | P0 | 0 | ✅ |
 | ACC parser | P3 | 7+ | 🔲 |
@@ -129,6 +134,10 @@
 | Lap table per session | P0 | 1 | ✅ |
 | Sector breakdown per session | P1 | 1 | ✅ |
 | Participant list (other drivers) | P1 | 1 | ✅ |
+| Full Race Grid with strategy analysis | P1 | 2 | ✅ |
+| Per-driver lap data (sectors, fuel, compound) | P1 | 2 | ✅ |
+| Pit stop strategy — stints + compound visualization | P1 | 2 | ✅ |
+| Session conditions display (weather, temps, track length) | P1 | 2 | ✅ |
 | Incident list | P1 | 1 | ✅ |
 | Penalty list | P1 | 1 | ✅ |
 | Pit stop list | P1 | 1 | ✅ |
@@ -385,6 +394,9 @@
 | Local SQLite session storage | P1 | 5 | ✅ |
 | Sessions tab (list + detail + laps) | P1 | 5 | ✅ |
 | Optional cloud sync when server configured | P1 | 5 | ✅ |
+| VCR replay file tracking (folder watcher) | P2 | 5 | ✅ |
+| Companion Replays tab (list + delete) | P2 | 5 | ✅ |
+| Replay folder selection in Settings | P2 | 5 | ✅ |
 | In-game overlay window | P2 | 5 | 🔲 |
 | UDP telemetry listener (LMU port 4444) | P2 | 5 | 🔲 |
 | macOS support | P3 | 6+ | 🔲 |

@@ -8,7 +8,32 @@
 
 ## [Unreleased]
 
-> Next up: deploy en Vercel, ideas U-001/002/003 (heatmap, DNA radar, streaks), test Windows (CA-016).
+> Next up: deploy en Vercel, ideas U-001/002/003 (heatmap, DNA radar, streaks), test Windows (CA-016), CSV export Race Grid (AN-018).
+
+---
+
+## [0.27.0] — 2026-06-05
+
+> AN-017/CA-017/CA-018 — Full race data, VCR watcher, companion Replays tab.
+
+### Added
+- **Full race data extraction (AN-017)** — LMU parser ahora extrae vueltas, sectores, combustible y compuesto de neumáticos de *todos* los pilotos de la parrilla, no solo del jugador; pit stops vinculados a cada participante desde `<Stream><PitStop>`; penalizaciones por piloto desde `<Stream><Penalty>`; condiciones: `SkyType`, `AmbientTemp`, `TrackTemp`, `Humidity`, `TrackLength`
+- **`ParticipantLap` table** — nueva tabla en Prisma/PostgreSQL; una fila por vuelta por participante; mismo schema que `Lap` del jugador (sectores, combustible, compuesto); FK → `SessionParticipant` con cascade delete
+- **Estrategia rival en session detail** — sección "Race Grid" con columnas Pos/Driver/Car+Class/Laps/Best lap/Pits/Strategy; stints calculados server-side (agrupados por cambio de compuesto o pit stop); badges de compuesto con código de colores (S=rojo, M=amarillo, H=gris, I=verde, W=azul); sección "Strategy detail" expandida para sesiones de carrera
+- **Condiciones de sesión en hero** — weather, temp ambiente, temp pista, humedad, longitud de pista (km) en la cabecera de session detail
+- **VCR file watcher (CA-017)** — companion watcher ahora acepta `replay_folder` opcional; detecta `.vcr` nuevos → `db::insert_replay`; emite evento `replay-detected` a la UI
+- **Companion Replays tab (CA-018)** — nuevo tab en la companion app listando todos los `.vcr` rastreados con filename, tamaño, estado de link y botón de eliminar
+- **Companion Settings: Replay folder** — nuevo campo + Browse button para configurar la carpeta de replays de LMU; se guarda en plugin-store y se pasa al watcher al arrancar
+
+### Changed
+- `SessionParticipant` ahora incluye `finishStatus String?` y `pitStopsCount Int?`
+- `PitStop` ahora tiene `participantId String?` y `driverName String?` — permite vincular cada pit stop al piloto correspondiente
+- `Session` ahora tiene `humidity Float?` y `trackLengthM Float?`
+- `import.service.ts` crea participantes con `create()` individual (en lugar de `createMany`) para poder insertar sus vueltas y vincular pit stops con participantId
+- Companion `start_watching` acepta `replay_folder: Option<String>` — vigila dos carpetas en el mismo hilo
+
+### Migration
+- `20260605130013_full_race_data` — add `ParticipantLap`, update `SessionParticipant`, `PitStop`, `Session`
 
 ---
 

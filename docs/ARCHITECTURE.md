@@ -52,7 +52,9 @@
 
 Windows Companion App (separate process)
   Tauri v2 + React + Rust
-  File watcher (notify crate) → POST /api/upload (Bearer token)
+  ├── XML watcher (notify) → parse locally (Rust LMU parser) → SQLite
+  │   └── optional: POST /api/upload (Bearer token) if server configured
+  └── VCR watcher (separate folder) → track .vcr paths in SQLite replays table
 ```
 
 ---

@@ -126,6 +126,8 @@
 | AN-014 | Weekly evolution charts | P1 | ✅ | ActivityChart (12-week bar) + consistency TrendChart on dashboard |
 | AN-015 | BullMQ + Redis for async jobs | P1 | ✅ | Queue + worker via instrumentation.ts; UploadZone polls status |
 | AN-016 | Metric recalculation job | P1 | ✅ | RecalculateQueue+Worker; POST /api/import/recalculate; button in ImportHistory |
+| AN-017 | Full race data — all drivers | P1 | ✅ | ParticipantLap table; parser extracts laps/pits/conditions for all drivers; session detail Race Grid + Strategy sections |
+| AN-018 | CSV export — Race Grid | P2 | 🔲 | GET /api/sessions/[id]/export — full grid with per-driver laps, stints, conditions |
 
 ---
 
@@ -167,6 +169,8 @@
 | CA-013 | Windows startup on boot | P2 | ✅ | tauri-plugin-autostart; toggle in Settings |
 | CA-014 | In-game overlay window | P2 | 🔲 | Transparent always-on-top Tauri window |
 | CA-015 | UDP telemetry listener (LMU port 4444) | P2 | 🔲 | Feed data to overlay in real time |
+| CA-017 | VCR replay file tracking | P2 | ✅ | Watcher detecta .vcr en replay_folder; db::insert_replay; evento replay-detected; tabla replays en SQLite |
+| CA-018 | Companion Replays tab | P2 | ✅ | Tab Replays en companion UI; lista .vcr rastreados; botón delete; refresh automático en evento replay-detected |
 
 ---
 

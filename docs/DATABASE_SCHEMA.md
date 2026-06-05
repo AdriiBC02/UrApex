@@ -15,15 +15,14 @@ User ─────────────────┐
   ├── ImportFile ──────┼──── Session ─────────────────┐
   ├── Session          │        │                       │
   ├── Goal             │        ├── Lap                 │
-  ├── Setup            │        ├── SessionParticipant  │
-  ├── Replay           │        ├── Incident            │
-  ├── Achievement(via) │        ├── Penalty             │
-  └── CoachConvos      │        ├── PitStop             │
-                        │        ├── SessionNote         │
-Simulator ─────────────┘        ├── SessionInsight      │
-  │                             ├── Replay              │
-  ├── Track ──── TrackAlias     └── SessionSetup ───── Setup
-  │     └── TrackLayout
+  ├── Setup            │        ├── SessionParticipant ─┼─ ParticipantLap
+  ├── Replay           │        │        └── PitStop ───┘
+  └── Achievement(via) │        ├── Incident            │
+                        │        ├── Penalty             │
+Simulator ─────────────┘        ├── SessionNote         │
+  │                             ├── SessionInsight      │
+  ├── Track ──── TrackAlias     ├── Replay              │
+  │     └── TrackLayout         └── SessionSetup ───── Setup
   ├── Car ──── CarAlias
   │     └── CarClass
   └── (ImportFile)
@@ -142,10 +141,12 @@ Core entity. One Session = one sim racing session imported from one file.
 | invalidLaps | Int | |
 | dnf | Boolean | |
 | dq | Boolean | |
-| weather | String? | "clear", "cloudy", "rain" |
-| tempAmbient | Float? | Celsius |
-| tempTrack | Float? | Celsius |
-| tyreCompound | String? | |
+| weather | String? | e.g. "Clear", "Cloudy", "Rain" — from `<SkyType>` |
+| tempAmbient | Float? | Celsius — from `<AmbientTemp>` or `<Ambient>` |
+| tempTrack | Float? | Celsius — from `<TrackTemp>` or `<RoadTemp>` |
+| humidity | Float? | % — from `<Humidity>` |
+| trackLengthM | Float? | Metres — from `<TrackLength>` (per-session, may differ from Track.lengthM) |
+| tyreCompound | String? | Player's compound for the session |
 | bestLapMs | Int? | Cached — best valid lap in ms |
 | avgLapMs | Float? | Cached |
 | medianLapMs | Float? | Cached |
@@ -231,7 +232,7 @@ Same pattern as Track/TrackAlias. Car has a CarClass (LMP2, GT3, Hypercar, etc.)
 ---
 
 ### SessionParticipant
-Other drivers in the session (from the results grid).
+Other drivers in the session (from the results grid). Each participant now has full lap-by-lap data.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -240,12 +241,37 @@ Other drivers in the session (from the results grid).
 | teamName | String? | |
 | carName | String? | Raw car name |
 | carClass | String? | Raw class name |
-| position | Int? | |
+| position | Int? | Final finishing position |
 | lapsCompleted | Int? | |
 | bestLapMs | Int? | |
 | totalTimeMs | BigInt? | Can exceed Int range |
 | gapToLeaderMs | BigInt? | |
 | dnf / dq | Boolean | |
+| finishStatus | String? | Raw finish status from XML (e.g. "Finished Normally", "DNF") |
+| pitStopsCount | Int? | Total pit stops from `<Pitstops>` element |
+
+**Relations:** many `ParticipantLap`, many `PitStop` (linked via `participantId`).
+
+---
+
+### ParticipantLap
+One row per lap per participant. Same structure as `Lap` (player-only) but for all grid drivers.
+
+| Column | Type | Notes |
+|---|---|---|
+| participantId | String | FK → SessionParticipant (cascade delete) |
+| lapNumber | Int | 1-indexed |
+| lapTimeMs | Int? | null if incomplete or invalid |
+| isValid | Boolean | Sim-reported validity |
+| sector1Ms | Int? | |
+| sector2Ms | Int? | |
+| sector3Ms | Int? | |
+| fuelLoad | Float? | From `fuel` lap attribute |
+| tyreCompound | String? | From `fcompound` lap attribute — changes between stints |
+
+**Unique:** `(participantId, lapNumber)`.
+
+**Why a separate table?** Participant laps can easily exceed 1000 rows in a race (e.g., 50 drivers × 30 laps). Keeping them separate from `Lap` (player-only) avoids bloating the primary query path and keeps `Lap` lightweight for metrics calculations.
 
 ---
 
