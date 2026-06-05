@@ -12,10 +12,10 @@
     "windows": [
       {
         "title": "UrApex",
-        "width": 480,
-        "height": 540,
-        "minWidth": 400,
-        "minHeight": 420,
+        "width": 760,
+        "height": 580,
+        "minWidth": 620,
+        "minHeight": 460,
         "resizable": true,
         "decorations": false,
         "transparent": false,
