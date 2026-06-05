@@ -29,8 +29,8 @@ jobs:
       - name: Run migrations
         run: npx prisma migrate deploy
         env:
-          # Use DIRECT_URL (non-pooled) for migrations to bypass PgBouncer
-          DATABASE_URL: ${{ secrets.DIRECT_URL }}
+          # Prefer DIRECT_URL (non-pooled, bypasses PgBouncer) — fall back to DATABASE_URL
+          DATABASE_URL: ${{ secrets.DIRECT_URL || secrets.DATABASE_URL }}
 
       - name: Type check
         run: npx tsc --noEmit
