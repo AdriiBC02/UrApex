@@ -162,9 +162,9 @@
 | CA-016 | Compile and test on Windows | P0 | 🔲 | Requires `rustup` install on Windows PC; CI build now automated |
 | CA-009 | Local hash dedup before upload | P1 | ✅ | SHA-256 cache in %LOCALAPPDATA%/UrApex/uploaded_hashes.txt (dirs-next crate) |
 | CA-010 | Upload queue with retry | P1 | ✅ | 3 attempts, linear backoff 2/4/6s, 60s reqwest timeout |
-| CA-011 | Persistent sync history | P2 | 🔲 | Log file across app restarts |
-| CA-012 | Sync historical files ("import all") | P2 | 🔲 | Button to queue all XMLs in folder |
-| CA-013 | Windows startup on boot | P2 | 🔲 | Registry autostart entry |
+| CA-011 | Persistent sync history | P2 | ✅ | plugin-store key syncLogs; max 100 entries; clear button |
+| CA-012 | Sync historical files ("import all") | P2 | ✅ | Rust command scans folder + uploads with hash dedup; button in sync tab |
+| CA-013 | Windows startup on boot | P2 | ✅ | tauri-plugin-autostart; toggle in Settings |
 | CA-014 | In-game overlay window | P2 | 🔲 | Transparent always-on-top Tauri window |
 | CA-015 | UDP telemetry listener (LMU port 4444) | P2 | 🔲 | Feed data to overlay in real time |
 

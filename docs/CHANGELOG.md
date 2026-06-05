@@ -8,7 +8,18 @@
 
 ## [Unreleased]
 
-> Next up: conectar servicios en Vercel, features de comunidad y monetización.
+> Next up: deploy en Vercel, ideas U-001/002/003 (heatmap, DNA radar, streaks).
+
+---
+
+## [0.25.0] — 2026-06-05
+
+> CA-011/012/013 — Companion app: historial persistente, import all, autostart.
+
+### Added
+- **CA-011 Persistent sync history** — logs guardados en `plugin-store` (`syncLogs`, máx. 100); se restauran al arrancar la app con timestamps correctos; botón "Clear history"
+- **CA-012 Import all** — comando Rust `import_all_files` escanea la carpeta, emite `file-detected` por cada XML y sube con hash dedup (CA-009); botón "Import all" en la pestaña Sync
+- **CA-013 Start with Windows** — `tauri-plugin-autostart` v2; toggle en Settings con estado leído al arranque; permisos añadidos a capabilities
 
 ---
 
