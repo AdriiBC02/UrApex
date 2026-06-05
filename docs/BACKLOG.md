@@ -60,7 +60,7 @@
 | A-004 | Auth proxy (protect app routes) — Next.js 16 | P0 | ✅ | `proxy.ts` replaces `middleware.ts` |
 | A-005 | Create DriverProfile on register | P0 | ✅ | Created in same transaction as User |
 | A-006 | Logout action | P0 | ✅ | In sidebar via signOut() |
-| A-007 | Password reset flow | P1 | 🔲 | Delay to Phase 2 |
+| A-007 | Password reset flow | P1 | ✅ | Resend email; PasswordResetToken model; /forgot-password + /reset-password pages |
 
 ### Storage
 
@@ -125,7 +125,7 @@
 | AN-013 | Auto insight generation (rule-based) | P1 | ✅ | 8 rule types; insights.service.ts + session detail section |
 | AN-014 | Weekly evolution charts | P1 | ✅ | ActivityChart (12-week bar) + consistency TrendChart on dashboard |
 | AN-015 | BullMQ + Redis for async jobs | P1 | ✅ | Queue + worker via instrumentation.ts; UploadZone polls status |
-| AN-016 | Metric recalculation job | P1 | 🔲 | For parser updates |
+| AN-016 | Metric recalculation job | P1 | ✅ | RecalculateQueue+Worker; POST /api/import/recalculate; button in ImportHistory |
 
 ---
 
@@ -160,8 +160,8 @@
 | CA-007 | Windows notifications | P1 | ✅ | `tauri-plugin-notification` on upload result |
 | CA-008 | GitHub Actions companion build CI | P1 | ✅ | Node 24 compat, schema URL fix, npx cli binary, artifact listing |
 | CA-016 | Compile and test on Windows | P0 | 🔲 | Requires `rustup` install on Windows PC; CI build now automated |
-| CA-009 | Local hash dedup before upload | P1 | 🔲 | Avoids uploading already-imported files |
-| CA-010 | Upload queue with retry | P1 | 🔲 | In-memory queue, retry on network error |
+| CA-009 | Local hash dedup before upload | P1 | ✅ | SHA-256 cache in %LOCALAPPDATA%/UrApex/uploaded_hashes.txt (dirs-next crate) |
+| CA-010 | Upload queue with retry | P1 | ✅ | 3 attempts, linear backoff 2/4/6s, 60s reqwest timeout |
 | CA-011 | Persistent sync history | P2 | 🔲 | Log file across app restarts |
 | CA-012 | Sync historical files ("import all") | P2 | 🔲 | Button to queue all XMLs in folder |
 | CA-013 | Windows startup on boot | P2 | 🔲 | Registry autostart entry |
