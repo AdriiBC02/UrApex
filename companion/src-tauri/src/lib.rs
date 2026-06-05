@@ -84,8 +84,18 @@ async fn import_all_files(
             Arc::clone(&db_state.0),
         );
         tauri::async_runtime::spawn(async move {
-            if let Err(e) = process_file(&path, &au, &ak, dn.as_deref(), &ac, &db).await {
-                log::error!("import_all: {e}");
+            match process_file(&path, &au, &ak, dn.as_deref(), &ac, &db).await {
+                Ok(status) => {
+                    let log_status = match status.as_str() {
+                        "DUPLICATE" => "duplicate",
+                        _           => "success",
+                    };
+                    let _ = ac.emit("file-result", serde_json::json!({ "file": path, "status": log_status }));
+                }
+                Err(e) => {
+                    log::error!("import_all: {e}");
+                    let _ = ac.emit("file-result", serde_json::json!({ "file": path, "status": "error", "message": e }));
+                }
             }
         });
     }
