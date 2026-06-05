@@ -1,9 +1,11 @@
 fn main() {
-    #[cfg(target_os = "windows")]
+    let mut attrs = tauri_build::Attributes::new();
+    #[cfg(windows)]
     {
-        let mut res = winresource::WindowsResource::new();
-        res.set_manifest_file("urapex.exe.manifest");
-        res.compile().expect("Failed to compile Windows resources");
+        attrs = attrs.windows_attributes(
+            tauri_build::WindowsAttributes::new()
+                .app_manifest(include_str!("urapex.exe.manifest"))
+        );
     }
-    tauri_build::build()
+    tauri_build::try_build(attrs).expect("failed to run tauri-build");
 }
