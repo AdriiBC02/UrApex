@@ -1,61 +1,58 @@
 # UrApex — Technical Architecture
 
-> This document describes the technical architecture of UrApex.
-> Read DECISIONS.md for the reasoning behind each major choice.
+> System design, data flows, and layer responsibilities.
+> See [DECISIONS.md](DECISIONS.md) for the reasoning behind each major choice.
 
 ---
 
 ## System Overview
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                        BROWSER (Client)                           │
-│                                                                    │
-│   Next.js App Router — Server Components + Client Components      │
-│   TailwindCSS · shadcn/ui · Recharts                              │
-└────────────────────────────┬─────────────────────────────────────┘
-                              │ HTTPS
-┌────────────────────────────▼─────────────────────────────────────┐
-│                      NEXT.JS SERVER                               │
-│                                                                    │
-│  ┌─────────────┐  ┌──────────────┐  ┌────────┐  ┌───────────┐   │
-│  │  API Routes  │  │Server Actions│  │Auth.js │  │Middleware │   │
-│  └──────┬──────┘  └──────┬───────┘  └────────┘  └───────────┘   │
-│         │                │                                         │
-│  ┌──────▼────────────────▼────────────────────────────────────┐  │
-│  │                    SERVICE LAYER                            │  │
-│  │  ImportService · SessionService · MetricsService           │  │
-│  │  StorageService · AchievementService · GoalService         │  │
-│  └──────────────────────────┬─────────────────────────────────┘  │
-│                              │                                     │
-│  ┌───────────────────────────▼────────────────────────────────┐  │
-│  │                   PARSER LAYER                             │  │
-│  │  ParserRegistry → detect → LMUParser → NormalizedSession  │  │
-│  │  (future: ACCParser, iRacingParser, RF2Parser...)         │  │
-│  └───────────────────────────┬────────────────────────────────┘  │
-│                              │                                     │
-│  ┌───────────────────────────▼────────────────────────────────┐  │
-│  │                NORMALIZER LAYER                            │  │
-│  │  TrackNormalizer · CarNormalizer                          │  │
-│  │  rawName → DB entity (find or create + alias)            │  │
-│  └────────────────────────────────────────────────────────────┘  │
-└───────────────┬──────────────────────────────┬───────────────────┘
-                │                              │
-   ┌────────────▼────────────┐   ┌────────────▼─────────────┐
-   │    PostgreSQL + Prisma   │   │   File Storage           │
-   │                          │   │                          │
-   │   Normalized data        │   │  /storage/raw/           │
-   │   Metrics cached         │   │  raw XML files           │
-   │   Raw file paths         │   │  (→ S3 in prod)          │
-   └──────────────────────────┘   └──────────────────────────┘
-                │
-   ┌────────────▼────────────┐
-   │   Job Queue (Phase 2+)   │
-   │   BullMQ + Redis         │
-   │   - import.job           │
-   │   - metrics.job          │
-   │   - achievements.job     │
-   └──────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                          BROWSER (Client)                            │
+│  Next.js App Router — Server Components + selective use client       │
+│  TailwindCSS v4 · shadcn/ui · Recharts                               │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                 │ HTTPS
+┌───────────────────────────────▼─────────────────────────────────────┐
+│                         NEXT.JS SERVER                               │
+│                                                                       │
+│  ┌─────────────┐  ┌──────────────────┐  ┌────────┐  ┌───────────┐  │
+│  │  API Routes  │  │ instrumentation  │  │Auth.js │  │  proxy.ts │  │
+│  └──────┬──────┘  │  (worker boot)   │  └────────┘  └───────────┘  │
+│         │          └────────┬─────────┘                              │
+│  ┌──────▼──────────────────▼──────────────────────────────────────┐ │
+│  │                     SERVICE LAYER                               │ │
+│  │  import · metrics · goals · achievements · insights · storage  │ │
+│  └──────────────────────────┬──────────────────────────────────── ┘ │
+│                              │                                        │
+│  ┌───────────────────────────▼────────────────────────────────────┐ │
+│  │                    PARSER LAYER                                 │ │
+│  │  ParserRegistry → detect → LMUParser → NormalizedSession       │ │
+│  └───────────────────────────┬────────────────────────────────────┘ │
+│                              │                                        │
+│  ┌───────────────────────────▼────────────────────────────────────┐ │
+│  │                  NORMALIZER LAYER                               │ │
+│  │  TrackNormalizer · CarNormalizer                                │ │
+│  │  rawName → DB entity (find or create + alias)                  │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+└──────────────┬───────────────────────────────┬──────────────────────┘
+               │                               │
+  ┌────────────▼──────────────┐  ┌────────────▼──────────────────────┐
+  │   PostgreSQL + Prisma 7   │  │   Storage (local / Cloudflare R2)  │
+  │   Neon in production      │  │   XML session files                │
+  └────────────┬──────────────┘  │   .vcr replay files               │
+               │                  └────────────────────────────────────┘
+  ┌────────────▼──────────────┐
+  │  BullMQ + Redis (Upstash) │
+  │  import queue             │
+  │  worker: concurrency 2    │
+  │  Vercel Cron fallback     │
+  └────────────────────────── ┘
+
+Windows Companion App (separate process)
+  Tauri v2 + React + Rust
+  File watcher (notify crate) → POST /api/upload (Bearer token)
 ```
 
 ---
@@ -66,37 +63,37 @@
 
 | Page | Rendering | Reason |
 |---|---|---|
-| Dashboard | Server Component + `use client` charts | Data fetched server-side, charts need client |
-| Session History | Server Component (table) | Static data, server-rendered |
-| Session Detail | Server Component + `use client` charts | Same |
-| Upload Center | Client Component | Drag & drop, polling, real-time state |
-| Track/Car Detail | Server Component | Static data |
-| Goals/Achievements | Server Component | Static data |
-| Auth pages | Client Component | Form state |
+| Dashboard | Server Component + `use client` charts | Data server-side; charts need browser |
+| Sessions list | Server Component | Static data, server-rendered |
+| Session detail | Server Component + `use client` notes/replays | Static data + interactive sections |
+| Upload Center | Server Component + `use client` UploadZone | Form state + drag and drop |
+| Track / Car | Server Component | Static data |
+| Goals / Achievements | Server Component | Static data |
+| Profile | Server Component | Static data |
+| Storage manager | Server Component + `use client` list | Data server-side; delete is interactive |
+| Auth pages | `use client` | Form state |
 
 **Rule:** Default to Server Components. Use `'use client'` only when:
-- User interaction is needed (click, hover, input)
-- Browser APIs are used (drag & drop, file reader)
-- Real-time updates are needed (import status polling)
-- Third-party chart libraries that don't support SSR
+- User interaction (click, input, drag and drop)
+- Browser APIs (file reader, URL.createObjectURL)
+- Real-time polling (import status, replay upload)
+- Third-party chart libraries requiring a DOM
 
 ### Routing Structure
 
 ```
-app/
-├── (marketing)/              # No auth required
-│   └── page.tsx              # Landing page
-├── (auth)/                   # Auth layout (no sidebar)
+src/app/
+├── (auth)/                       # No sidebar
 │   ├── login/page.tsx
-│   ├── register/page.tsx
-│   └── layout.tsx
-├── (app)/                    # Protected layout (with sidebar)
-│   ├── layout.tsx            # Sidebar + header
+│   └── register/page.tsx
+├── (app)/                        # Protected — sidebar layout
+│   ├── layout.tsx                # AppSidebar + overflow scroll wrapper
 │   ├── dashboard/page.tsx
-│   ├── upload/page.tsx
+│   ├── upload/page.tsx           # XML import + replay upload
 │   ├── sessions/
-│   │   ├── page.tsx
-│   │   └── [id]/page.tsx
+│   │   ├── page.tsx              # Filtered table with pagination
+│   │   ├── compare/page.tsx      # Side-by-side session comparison
+│   │   └── [id]/page.tsx         # Full session detail
 │   ├── tracks/[slug]/page.tsx
 │   ├── cars/[slug]/page.tsx
 │   ├── goals/page.tsx
@@ -104,41 +101,57 @@ app/
 │   ├── setups/
 │   │   ├── page.tsx
 │   │   └── [id]/page.tsx
-│   ├── compare/page.tsx
-│   ├── coach/page.tsx        # Phase 6
-│   └── settings/
-│       ├── page.tsx
-│       ├── profile/page.tsx
-│       └── privacy/page.tsx
+│   ├── profile/page.tsx
+│   ├── storage/page.tsx          # Replay storage manager
+│   └── settings/page.tsx
 └── api/
-    ├── auth/[...nextauth]/route.ts
-    ├── upload/route.ts
-    ├── import/[id]/status/route.ts
-    └── sessions/route.ts
+    ├── auth/[...nextauth]/
+    ├── upload/                   # POST — XML import (browser + companion Bearer)
+    ├── import/
+    │   ├── [id]/                 # GET status · POST retry · DELETE
+    │   └── process/              # POST — complete deferred import after driver selection
+    ├── sessions/[id]/
+    │   └── replays/              # POST upload · GET list
+    ├── replays/[id]/
+    │   ├── route.ts              # DELETE
+    │   └── download/             # GET — stream .vcr as attachment
+    ├── storage/                  # GET — usage stats + file list
+    ├── goals/                    # CRUD
+    ├── setups/[id]/versions/     # POST
+    ├── export/
+    │   ├── sessions/             # GET — CSV export
+    │   └── laps/                 # GET — CSV export
+    └── cron/
+        └── process-imports/      # GET — Vercel Cron fallback (every minute)
 ```
 
 ### Component Architecture
 
 ```
-components/
-├── ui/                    # shadcn/ui primitives (never modify directly)
-├── charts/                # Recharts wrappers with consistent defaults
-│   ├── LapTimeChart.tsx   # Line chart for lap times per session
-│   ├── ConsistencyChart.tsx
-│   ├── SectorChart.tsx    # Bar chart for sector comparison
-│   ├── WeeklyChart.tsx    # Bar chart for sessions per week
-│   └── ProgressChart.tsx  # Area chart for score evolution
-├── layout/
-│   ├── Sidebar.tsx
-│   ├── Header.tsx
-│   └── AppShell.tsx
-└── shared/
-    ├── LapTimeDisplay.tsx  # Formats ms → "1:48.321"
-    ├── ScoreBadge.tsx      # 0-100 score with color
-    ├── SimulatorBadge.tsx
-    ├── SessionTypeBadge.tsx
-    ├── EmptyState.tsx      # Always requires an action prop
-    └── LoadingSkeleton.tsx
+src/
+├── components/
+│   ├── ui/               # shadcn/ui primitives — never modify directly
+│   ├── charts/           # Thin Recharts wrappers with consistent defaults
+│   │   ├── LapTimeChart.tsx
+│   │   ├── ActivityChart.tsx
+│   │   └── TrendChart.tsx
+│   ├── layout/
+│   │   └── AppSidebar.tsx
+│   └── shared/
+│       ├── ScoreBadge.tsx
+│       ├── EmptyState.tsx
+│       └── LoadingSkeleton.tsx
+└── features/             # Co-located UI per domain
+    ├── import/
+    │   ├── UploadZone.tsx       # Drag/drop XML, driver selection modal, status polling
+    │   └── ImportHistory.tsx    # Past imports with retry/delete
+    ├── sessions/
+    │   ├── SessionNotes.tsx     # Notes + tags + video URL
+    │   └── SessionFilters.tsx   # Type chips, date range, PB-only, sort
+    └── replays/
+        ├── ReplaySection.tsx        # Per-session upload/download/delete
+        ├── ReplayUploadSection.tsx  # Upload .vcr from import page + session picker
+        └── StorageFileList.tsx      # Sortable list with delete/download
 ```
 
 ---
@@ -149,154 +162,138 @@ components/
 
 Services are the business logic layer. They know about the database and domain rules. They do not know about HTTP.
 
-```typescript
-// Pattern: each service is a collection of async functions
-// No classes unless state is needed
-
-// server/services/import.service.ts
-export async function createImportJob(userId: string, file: File): Promise<ImportFile>
-export async function processImport(importFileId: string): Promise<Session>
-export async function retryImport(importFileId: string): Promise<void>
-export async function deleteImport(importFileId: string, userId: string): Promise<void>
+```
+src/server/services/
+├── import.service.ts       # handleUpload, processImport, runImport
+├── metrics.service.ts      # Pure functions: bestLap, consistencyScore, paceScore…
+├── goals.service.ts        # updateGoalProgress — called after each import
+├── achievements.service.ts # evaluateAchievements — called after each import
+├── insights.service.ts     # generateInsights — rule-based session analysis
+└── storage.service.ts      # LocalStorageService / S3StorageService — factory pattern
 ```
 
-### Parser Layer
+**Key invariant:** `processImport(importFileId)` is the single entry point for all import processing — called by the BullMQ worker, the Vercel Cron fallback, and the retry endpoint. Never duplicate this logic.
 
-Parsers are sim-specific. They receive raw file content and return a normalized session.
+### Parser Layer
 
 ```typescript
 // server/parsers/types.ts
 interface ParseContext {
-  driverName?: string  // User's in-game name — used to identify their laps in multiplayer files
+  driverName?: string   // Identifies the user in multiplayer files
 }
 
 interface IParser {
   simulatorSlug: string
-  version: string
+  version:       string
   canParse(content: string): boolean
-  extractDriverNames(content: string): string[]  // Lightweight — no full parse, returns unique driver names
-  parse(content: string, context?: ParseContext): Promise<NormalizedSession>
+  extractDriverNames(content: string): string[]
+  parse(content: string, ctx?: ParseContext): Promise<NormalizedSession>
 }
 
 // server/parsers/registry.ts
 const PARSERS: IParser[] = [new LMUParser()]
 export function detectParser(content: string): IParser | null
-export function getParser(slug: string): IParser | null
-export function extractDriverNames(content: string, simulatorSlug?: string): string[]
-export async function parseFile(content: string, slug?: string, context?: ParseContext): Promise<ParseResult>
+export async function parseFile(content, slug?, ctx?): Promise<ParseResult>
 ```
 
-**Driver identification:** LMU multiplayer files set `isPlayer=1` on all drivers. The parser's `findPlayer()` uses `context.driverName` for exact → case-insensitive matching, falling back to the first driver with a valid best lap time when no name is provided.
+**Driver identification in LMU multiplayer files:** every driver has `isPlayer=1`. The parser's `findPlayer()` does exact → case-insensitive match on `context.driverName`, falling back to the first driver with a valid best lap when no name is configured.
 
 ### Normalizer Layer
 
-Normalizers resolve raw names from XML into canonical DB entities.
-
 ```typescript
-// server/normalizers/track.normalizer.ts
-export async function findOrCreateTrack(
-  rawName: string,
-  simulatorId: string
-): Promise<Track>
-
-// Lookup order:
-// 1. TrackAlias (rawName + simulatorId) → exact match
-// 2. Track (by slug) → fuzzy match
-// 3. Create new Track + TrackAlias
+// Lookup order: TrackAlias exact → Track slug fuzzy → create new + alias
+export async function findOrCreateTrack(rawName: string, simulatorId: string): Promise<Track>
+export async function findOrCreateCar(rawName: string, simulatorId: string): Promise<Car>
 ```
 
-### Job Layer (Phase 2+)
+### Queue & Worker Layer
 
-Jobs are async tasks that run outside the request cycle.
-
-```typescript
-// server/jobs/processImport.ts
-// Called by BullMQ worker
-export async function processImportJob(data: { importFileId: string }): Promise<void>
-
-// MVP: called directly from API route (sync)
-// Phase 2: registered as BullMQ job, triggered from API route
 ```
+src/server/
+├── queue/import.queue.ts     # getImportQueue() singleton; attempts:1, auto-cleanup
+└── workers/import.worker.ts  # startImportWorker(); concurrency 2; SIGTERM handler
+src/instrumentation.ts        # register() → startImportWorker() on Next.js boot (Node runtime only)
+src/lib/redis.ts              # ConnectionOptions parsed from REDIS_URL
+```
+
+**Local dev / Railway:** worker is persistent, jobs are processed immediately.
+**Vercel (serverless):** `instrumentation.ts` runs but the worker doesn't survive between invocations. Fallback: `GET /api/cron/process-imports` runs every minute via Vercel Cron, queries `ImportFile WHERE status = PENDING`, and calls `processImport()` directly — up to 5 files per invocation, max 60s.
 
 ---
 
 ## Data Flow: Import Pipeline
 
 ```
-1. User drops XML file on Upload Center
-2. Client: reads file, sends to POST /api/upload
-3. Server:
-   a. Validate file type and size
-   b. Calculate SHA-256 hash
-   c. Check ImportFile table for duplicate hash
-      → If duplicate: return { duplicate: true, existingSessionId }
-   d. Store raw file via StorageService
-   e. Create ImportFile { status: PENDING }
-   f. Return importFileId to client
-4. Client: starts polling GET /api/import/[id]/status
-5. Server (import job):
-   a. ImportFile → PARSING
-   b. Detect simulator (from content or metadata)
-   c. Get parser from registry
-   d. Parse raw content → NormalizedSession
-   e. Normalize track (rawName → Track entity)
-   f. Normalize car (rawName → Car entity)
-   g. Calculate metrics from laps
-   h. Detect PB (compare with user's historical best)
-   i. Save Session + Laps + Participants + Incidents + Penalties + PitStops
-   j. Update DriverProfile cached stats
-   k. Evaluate achievements
-   l. Update goals progress
-   m. ImportFile → IMPORTED
-6. Client: polling detects IMPORTED, shows success + link to session
+1. User drops XML → POST /api/upload
+2. Server: SHA-256 hash → dedup check → save raw file via StorageService
+3. Create ImportFile { status: PENDING }
+4. Enqueue job: importQueue.add('process', { importFileId })
+5. Return PENDING to client immediately
+6. Client polls GET /api/import/[id] every 1.5s
+
+Worker (or Vercel Cron):
+  a. ImportFile → PARSING
+  b. Read raw file from StorageService
+  c. Detect simulator → get parser
+  d. parse() → NormalizedSession
+  e. findOrCreateTrack / findOrCreateCar
+  f. calculateMetrics() — pure functions
+  g. detectPersonalBest() — compare with historical best
+  h. DB transaction: Session + Laps + Participants + Incidents + Penalties + PitStops
+  i. updateProfileStats() — cached counters + rolling averages
+  j. In parallel: updateGoalProgress + evaluateAchievements + generateInsights
+  k. ImportFile → IMPORTED
+
+7. Client poll sees IMPORTED → shows success + link to session
 ```
 
 ---
 
 ## Storage Strategy
 
-| Environment | Provider | Path |
+| Environment | Provider | Config |
 |---|---|---|
-| Development | Local filesystem | `./storage/raw/{userId}/{hash}.xml` |
-| Production (MVP) | Local filesystem | Same (single-instance Vercel not suitable) |
-| Production (Phase 2) | Cloudflare R2 or MinIO | S3-compatible |
+| Local dev | Local filesystem | `STORAGE_PROVIDER=local` |
+| Production | Cloudflare R2 | `STORAGE_PROVIDER=s3` + `S3_*` vars |
 
-StorageService interface:
+Both XML session files (`raw/{userId}/{hash}.xml`) and `.vcr` replay files (`replays/{userId}/{hash}.vcr`) go through the same `StorageService` interface:
+
 ```typescript
 interface StorageService {
-  save(buffer: Buffer, key: string): Promise<string>  // returns storage path
-  get(path: string): Promise<Buffer>
-  delete(path: string): Promise<void>
-  exists(path: string): Promise<boolean>
+  save(buffer: Buffer, key: string): Promise<string>   // returns storagePath
+  read(storagePath: string): Promise<Buffer>
+  delete(storagePath: string): Promise<void>
+  exists(storagePath: string): Promise<boolean>
 }
 ```
 
-Raw files are **never deleted** unless the user explicitly deletes a session.
+`S3StorageService` uses `@aws-sdk/client-s3` with `forcePathStyle: true` for R2 compatibility.
+
+Raw XML files are **never deleted** unless the user explicitly deletes a session. Replay files are deleted on user request via `DELETE /api/replays/[id]`.
 
 ---
 
 ## Database Strategy
 
-- Prisma ORM for all queries
-- Singleton client in `lib/db.ts`
-- Migrations are committed to git
-- No raw SQL unless absolutely necessary
-- Metrics are computed on import and cached in `Session` columns
-- Profile stats (totalSessions, totalLaps) are incremented/decremented in place
-- Soft deletes on Session (deletedAt field)
-- Never expose raw DB errors to the client
+- Prisma 7 + `@prisma/adapter-pg` — driver adapter pattern, no `url` in schema
+- Connection string passed programmatically in `src/lib/db.ts`
+- `prisma.config.ts` configures `directUrl` for migration bypass of PgBouncer (Neon)
+- All migrations committed to git under `prisma/migrations/`
+- Metrics computed on import and cached in `Session` columns — never recomputed at query time
+- Profile stats (totalSessions, totalLaps, etc.) updated after each import
+- Soft deletes on `Session` (`deletedAt`) — hard deletes on `ImportFile` and `Replay`
+- `BigInt` for file sizes (`fileSizeBytes`) — safe for files up to ~9 exabytes
 
 ---
 
 ## Authentication Strategy
 
-- Auth.js v5 with Credentials provider
-- Passwords hashed with bcrypt (cost 12)
-- Sessions use **JWT** (not database sessions) — stored in signed HTTP-only cookie
-- `proxy.ts` (Next.js 16 pattern) protects all `/app/*` routes — replaces `middleware.ts`
-- API routes call `auth()` from Auth.js at the top of every handler
-- **API key auth (companion app):** `POST /api/upload` also accepts `Authorization: Bearer uapx_<key>`. The `resolveUserId()` helper checks for a Bearer token first, then falls back to session cookie. Keys are stored hashed in `User.apiKey` as a random 64-byte hex string prefixed with `uapx_`.
-- User ID is always the source of truth — never trust user-supplied IDs
+- **Browser:** Auth.js v5 Credentials provider, JWT stored in HTTP-only signed cookie
+- **Companion app:** `Authorization: Bearer <apiKey>` header on `POST /api/upload`
+- `resolveUserId()` in upload route checks Bearer first, falls back to session cookie
+- `proxy.ts` (Next.js 16 pattern) guards all `/(app)/*` routes — replaces `middleware.ts`
+- Passwords: bcrypt cost 12
+- API keys: 64-byte random hex, prefixed `uapx_`, stored in `User.apiKey`
 
 ---
 
@@ -304,71 +301,68 @@ Raw files are **never deleted** unless the user explicitly deletes a session.
 
 ```bash
 # Database
-DATABASE_URL="postgresql://..."
+DATABASE_URL=""     # Pooled URL (PgBouncer) — used by the app
+DIRECT_URL=""       # Direct URL — used by prisma migrate deploy in CI
 
 # Auth
-AUTH_SECRET="..."
-AUTH_URL="http://localhost:3000"
+AUTH_SECRET=""      # openssl rand -base64 32
+AUTH_URL=""         # https://your-domain.com in production
 
 # Storage
-STORAGE_PROVIDER="local"          # "local" | "s3"
+STORAGE_PROVIDER="local"   # "local" | "s3"
 STORAGE_LOCAL_PATH="./storage"
-
-# S3 (when STORAGE_PROVIDER=s3)
 S3_BUCKET=""
-S3_REGION=""
+S3_REGION="auto"           # "auto" for Cloudflare R2
+S3_ENDPOINT=""             # https://<account_id>.r2.cloudflarestorage.com
 S3_ACCESS_KEY=""
 S3_SECRET_KEY=""
-S3_ENDPOINT=""                     # For R2 or MinIO
 
-# Redis (Phase 2+)
-REDIS_URL=""
+# Queue
+REDIS_URL=""        # redis://localhost:6379 (local) | rediss://... (Upstash)
 
-# AI (Phase 6+)
-ANTHROPIC_API_KEY=""
+# Cron
+CRON_SECRET=""      # openssl rand -hex 32 — protects /api/cron/process-imports
 
 # App
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
+NEXT_PUBLIC_APP_URL=""
 ```
 
 ---
 
 ## Companion App Architecture
 
-The `/companion/` directory contains a separate Tauri v2 project — a Windows desktop app that watches the LMU results folder and auto-uploads new session files.
-
 ```
 companion/
-├── src/              React + TypeScript UI (Vite)
-│   ├── App.tsx       Settings tab + Sync log tab
-│   └── components/   StatusDot, SyncLog
-└── src-tauri/
-    └── src/
-        ├── lib.rs    Tauri commands + setup (tray, window events)
-        ├── watcher.rs  notify crate — file watcher in its own thread
-        └── uploader.rs reqwest — multipart HTTP upload
+├── src/
+│   ├── App.tsx              # Sync tab + Settings tab + driver modal
+│   └── components/
+│       ├── StatusDot.tsx
+│       └── SyncLog.tsx
+├── src-tauri/
+│   ├── tauri.conf.json
+│   ├── capabilities/default.json
+│   └── src/
+│       ├── lib.rs           # Tauri setup: tray, window events, plugin registration
+│       ├── watcher.rs       # notify crate — file watcher thread, 500ms debounce
+│       └── uploader.rs      # reqwest — multipart POST /api/upload
+└── icon.png                 # 1254x1254 source icon
 ```
 
-**Flow:**
-1. User configures folder path + API URL + API key in Settings tab
-2. Rust thread watches folder for new `.xml` files (using `notify` crate)
-3. On new file: emits `file-detected` event to frontend + spawns async upload task
-4. Upload sends `POST /api/upload` with `Authorization: Bearer <apiKey>`
-5. Windows notification shown with result (imported / duplicate / failed)
-6. Sync log updated in UI
+**Auth:** Bearer token generated in Settings → Companion app.
 
-**Build:** requires Rust (`rustup`). `npm run tauri:build` → `.msi`/`.exe` installer in `src-tauri/target/release/bundle/`.
+**Build:** CI runs on every push via `.github/workflows/companion-build.yml` → produces `.exe` (NSIS) and `.msi` attached to the `companion-latest` pre-release on GitHub.
 
-**Future overlays:** Tauri supports transparent always-on-top windows on Windows. A second window can display real-time sector times via LMU's UDP telemetry (port 4444) without modifying the game.
+**Planned:** transparent always-on-top overlay window fed by LMU UDP telemetry on port 4444.
 
 ---
 
-## Key Technical Constraints
+## Key Invariants
 
-1. **Parser must not crash.** If a field is missing, log a warning and continue. Never throw on missing optional data.
-2. **Dedup before storage.** Calculate hash before saving any file. Never store a duplicate.
-3. **Metrics in DB, not in queries.** Scores and aggregates are in columns, not computed views.
+1. **Parser must not crash.** Missing optional fields → warn and continue. Never throw on missing data.
+2. **Dedup before storage.** SHA-256 hash computed before saving. Duplicate hash = reject, no storage write.
+3. **Metrics in DB, not in queries.** Scores and aggregates live in columns. No computed views.
 4. **Every API route checks auth.** No exceptions. No public write endpoints.
-5. **Raw files are immutable.** Once stored, the raw file path never changes.
-6. **Services are server-only.** Import `server/services/*` only from API routes, Server Actions, and jobs.
-7. **No sim-specific logic outside parsers.** The rest of the app speaks `NormalizedSession`.
+5. **Raw files are immutable.** Once stored, `storagePath` never changes.
+6. **Services are server-only.** Import `server/services/*` only from API routes and workers.
+7. **No sim-specific logic outside parsers.** Everything downstream speaks `NormalizedSession`.
+8. **`processImport` is the single entry point.** Worker, cron, and retry all call the same function.
