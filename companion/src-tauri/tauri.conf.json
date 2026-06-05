@@ -1,7 +1,7 @@
 {
   "productName": "UrApex",
   "identifier": "com.urapex.companion",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -9,19 +9,6 @@
     "beforeBuildCommand": "npm run build"
   },
   "app": {
-    "windows": [
-      {
-        "title": "UrApex",
-        "width": 760,
-        "height": 580,
-        "minWidth": 620,
-        "minHeight": 460,
-        "resizable": true,
-        "decorations": false,
-        "transparent": false,
-        "center": true
-      }
-    ],
     "security": {
       "csp": null
     }

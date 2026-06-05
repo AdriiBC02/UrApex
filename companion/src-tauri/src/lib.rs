@@ -97,7 +97,9 @@ async fn import_all_files(
 #[tauri::command]
 fn get_sessions(db_state: State<'_, DbState>) -> Result<Vec<db::SessionSummary>, String> {
     let conn = db_state.0.lock().map_err(|e| e.to_string())?;
-    db::get_sessions(&conn)
+    let result = db::get_sessions(&conn);
+    if let Err(ref e) = result { diag(&format!("get_sessions error: {e}")); }
+    result
 }
 
 #[tauri::command]
@@ -396,6 +398,26 @@ pub fn run() {
         .manage(WatcherState(Mutex::new(None)))
         .setup(|app| {
             diag("setup: started");
+
+            // Create the main window here (not in tauri.conf.json) so we can
+            // pass WebView2-specific flags to tame its GPU process and memory.
+            tauri::WebviewWindowBuilder::new(
+                app,
+                "main",
+                tauri::WebviewUrl::App("index.html".into()),
+            )
+            .title("UrApex")
+            .inner_size(760.0, 580.0)
+            .min_inner_size(620.0, 460.0)
+            .resizable(true)
+            .decorations(false)
+            .center()
+            .additional_browser_args(
+                "--disable-gpu --disable-gpu-compositing \
+                 --js-flags=--max-old-space-size=128"
+            )
+            .build()
+            .map_err(|e| { diag(&format!("window build failed: {e}")); e })?;
 
             let db_path = app.path().app_data_dir()
                 .map_err(|e| { diag(&format!("app_data_dir failed: {e}")); e })?

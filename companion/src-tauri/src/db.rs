@@ -239,16 +239,6 @@ fn migrate(conn: &Connection) -> Result<(), String> {
     // v1 — initial schema
     if v < 1 {
         conn.execute_batch("
-            CREATE TABLE IF NOT EXISTS replays (
-                id          TEXT PRIMARY KEY,
-                session_id  TEXT REFERENCES sessions(id) ON DELETE SET NULL,
-                file_path   TEXT NOT NULL UNIQUE,
-                filename    TEXT NOT NULL,
-                file_size   INTEGER,
-                matched_at  TEXT,
-                imported_at TEXT NOT NULL
-            );
-            CREATE INDEX IF NOT EXISTS idx_replays_session ON replays(session_id);
             CREATE TABLE IF NOT EXISTS sessions (
                 id                TEXT PRIMARY KEY,
                 track_name        TEXT NOT NULL,
@@ -272,6 +262,7 @@ fn migrate(conn: &Connection) -> Result<(), String> {
                 synced_to_server  INTEGER NOT NULL DEFAULT 0,
                 imported_at       TEXT NOT NULL
             );
+            CREATE INDEX IF NOT EXISTS idx_sessions_date   ON sessions(session_date DESC);
             CREATE TABLE IF NOT EXISTS laps (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 session_id  TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
@@ -283,8 +274,19 @@ fn migrate(conn: &Connection) -> Result<(), String> {
                 sector3_ms  INTEGER
             );
             CREATE INDEX IF NOT EXISTS idx_laps_session    ON laps(session_id);
-            CREATE INDEX IF NOT EXISTS idx_sessions_date   ON sessions(session_date DESC);
+            CREATE TABLE IF NOT EXISTS replays (
+                id          TEXT PRIMARY KEY,
+                session_id  TEXT REFERENCES sessions(id) ON DELETE SET NULL,
+                file_path   TEXT NOT NULL UNIQUE,
+                filename    TEXT NOT NULL,
+                file_size   INTEGER,
+                matched_at  TEXT,
+                imported_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_replays_session ON replays(session_id);
         ").map_err(|e| e.to_string())?;
+        // Add synced_to_server to any pre-existing sessions table that predates this column
+        let _ = conn.execute_batch("ALTER TABLE sessions ADD COLUMN synced_to_server INTEGER NOT NULL DEFAULT 0");
         set_schema_version(conn, 1);
     }
 

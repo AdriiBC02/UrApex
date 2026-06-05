@@ -123,10 +123,8 @@ export default function App() {
     const updateTimer = setTimeout(() => {
       check().then((u) => {
         if (u) { setPendingUpdate(u); setUpdateStatus(`v${u.version} available`) }
-      }).catch(() => {}) // Silently ignore if pubkey not set or no network
+      }).catch(() => {})
     }, 8000)
-
-    return () => { clearTimeout(updateTimer); unlisteners.forEach((fn) => fn()) }
 
     const unlisteners: Array<() => void> = []
     import("@tauri-apps/api/event").then(({ listen }) => {
