@@ -1,106 +1,151 @@
-mod watcher;
+mod db;
+mod metrics;
+mod metrics_snapshot;
+mod parser;
 mod uploader;
+mod watcher;
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 pub struct WatcherState(pub Mutex<Option<watcher::WatcherHandle>>);
+// Arc so it can be cloned into async tasks and the watcher thread
+pub struct DbState(pub Arc<Mutex<rusqlite::Connection>>);
+
+// ── Watcher ───────────────────────────────────────────────────────────────────
 
 #[tauri::command]
 async fn start_watching(
-    folder: String,
-    api_url: String,
-    api_key: String,
-    app: AppHandle,
-    state: State<'_, WatcherState>,
+    folder: String, api_url: String, api_key: String,
+    driver_name: Option<String>,
+    app: AppHandle, state: State<'_, WatcherState>,
 ) -> Result<(), String> {
-    let mut guard = state.0.lock().map_err(|e| e.to_string())?;
-    if let Some(handle) = guard.take() {
-        handle.stop();
-    }
-    let handle = watcher::start(folder, api_url, api_key, app)
-        .map_err(|e| e.to_string())?;
-    *guard = Some(handle);
+    let mut g = state.0.lock().map_err(|e| e.to_string())?;
+    if let Some(h) = g.take() { h.stop(); }
+    *g = Some(watcher::start(folder, api_url, api_key, driver_name, app).map_err(|e| e.to_string())?);
     Ok(())
 }
 
 #[tauri::command]
 async fn stop_watching(state: State<'_, WatcherState>) -> Result<(), String> {
-    let mut guard = state.0.lock().map_err(|e| e.to_string())?;
-    if let Some(handle) = guard.take() {
-        handle.stop();
-    }
+    let mut g = state.0.lock().map_err(|e| e.to_string())?;
+    if let Some(h) = g.take() { h.stop(); }
     Ok(())
 }
 
+// ── Import ────────────────────────────────────────────────────────────────────
+
 #[tauri::command]
-async fn upload_file(
-    file_path: String,
-    api_url: String,
-    api_key: String,
-) -> Result<serde_json::Value, String> {
-    uploader::upload(&file_path, &api_url, &api_key)
-        .await
-        .map_err(|e| e.to_string())
+async fn import_file(
+    file_path: String, api_url: String, api_key: String,
+    driver_name: Option<String>,
+    app: AppHandle, db_state: State<'_, DbState>,
+) -> Result<String, String> {
+    process_file(&file_path, &api_url, &api_key, driver_name.as_deref(), &app, &db_state.0).await
 }
 
-// CA-012: scan folder and upload all XML files not yet in hash cache
 #[tauri::command]
 async fn import_all_files(
-    folder: String,
-    api_url: String,
-    api_key: String,
-    app: AppHandle,
+    folder: String, api_url: String, api_key: String,
+    driver_name: Option<String>,
+    app: AppHandle, db_state: State<'_, DbState>,
 ) -> Result<usize, String> {
     let entries = std::fs::read_dir(&folder).map_err(|e| e.to_string())?;
-
-    let xml_files: Vec<String> = entries
-        .filter_map(|e| e.ok())
+    let xml_files: Vec<String> = entries.filter_map(|e| e.ok())
         .map(|e| e.path().to_string_lossy().to_string())
         .filter(|p| p.to_lowercase().ends_with(".xml"))
         .collect();
 
     let count = xml_files.len();
-
     for path in xml_files {
-        let api_url_c   = api_url.clone();
-        let api_key_c   = api_key.clone();
-        let app_c       = app.clone();
-        let path_c      = path.clone();
-
+        let _ = app.emit("file-detected", serde_json::json!({ "file": path }));
+        let (au, ak, dn, ac, db) = (
+            api_url.clone(), api_key.clone(),
+            driver_name.clone(), app.clone(),
+            Arc::clone(&db_state.0),
+        );
         tauri::async_runtime::spawn(async move {
-            let _ = app_c.emit("file-detected", serde_json::json!({ "file": path_c }));
-
-            match uploader::upload(&path_c, &api_url_c, &api_key_c).await {
-                Ok(result) => {
-                    let status = result
-                        .get("imports").and_then(|i| i.get(0))
-                        .and_then(|i| i.get("status")).and_then(|s| s.as_str())
-                        .unwrap_or("UNKNOWN");
-                    let msg = match status {
-                        "IMPORTED"  => "Session imported",
-                        "DUPLICATE" => "Already imported",
-                        _           => "Import failed",
-                    };
-                    send_notification(&app_c, "UrApex", msg);
-                }
-                Err(e) => log::error!("import_all_files error: {}", e),
+            if let Err(e) = process_file(&path, &au, &ak, dn.as_deref(), &ac, &db).await {
+                log::error!("import_all: {e}");
             }
         });
     }
-
     Ok(count)
 }
 
+// ── Session queries ───────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn get_sessions(db_state: State<'_, DbState>) -> Result<Vec<db::SessionSummary>, String> {
+    db::get_sessions(&db_state.0.lock().map_err(|e| e.to_string())?)
+}
+
+#[tauri::command]
+fn get_session_detail(id: String, db_state: State<'_, DbState>) -> Result<Option<db::SessionDetail>, String> {
+    db::get_session_detail(&db_state.0.lock().map_err(|e| e.to_string())?, &id)
+}
+
+#[tauri::command]
+fn delete_session(id: String, db_state: State<'_, DbState>) -> Result<(), String> {
+    db::delete_session(&db_state.0.lock().map_err(|e| e.to_string())?, &id)
+}
+
+// ── Core processing ───────────────────────────────────────────────────────────
+
+/// Parse + save locally; optionally sync to server if url/key non-empty.
+pub async fn process_file(
+    file_path: &str, api_url: &str, api_key: &str,
+    driver_name: Option<&str>,
+    app: &AppHandle, conn: &Arc<Mutex<rusqlite::Connection>>,
+) -> Result<String, String> {
+    use sha2::Digest;
+
+    let bytes   = std::fs::read(file_path).map_err(|e| e.to_string())?;
+    let content = String::from_utf8_lossy(&bytes);
+    let hash    = hex::encode(sha2::Sha256::digest(&bytes));
+
+    // Dedup
+    if db::hash_exists(&conn.lock().map_err(|e| e.to_string())?, &hash) {
+        return Ok("DUPLICATE".to_string());
+    }
+    if !parser::can_parse(&content) {
+        return Err("Not an LMU result file".to_string());
+    }
+
+    let session  = parser::parse(&content, driver_name)?;
+    let snap     = metrics_snapshot::MetricsSnapshot::from_session(&session);
+    let is_pb    = db::detect_pb(
+        &conn.lock().map_err(|e| e.to_string())?,
+        &session.track_name, &session.car_name, snap.best_lap_ms,
+    );
+    let sess_id  = db::insert_session(
+        &conn.lock().map_err(|e| e.to_string())?,
+        &session, &snap, file_path, &hash, is_pb,
+    )?;
+
+    // Optional server sync
+    if !api_url.is_empty() && !api_key.is_empty() {
+        match uploader::upload(file_path, api_url, api_key).await {
+            Ok(_)  => { let _ = db::mark_synced(&conn.lock().map_err(|e| e.to_string())?, &sess_id); }
+            Err(e) => log::warn!("Server sync failed (saved locally): {e}"),
+        }
+    }
+
+    if is_pb {
+        send_notification(app, "UrApex", &format!("New PB at {}! 🏆", session.track_name));
+    }
+
+    Ok(sess_id)
+}
+
+// ── Notification ──────────────────────────────────────────────────────────────
+
 pub fn send_notification(app: &AppHandle, title: &str, body: &str) {
     use tauri_plugin_notification::NotificationExt;
-    let _ = app
-        .notification()
-        .builder()
-        .title(title)
-        .body(body)
-        .show();
+    let _ = app.notification().builder().title(title).body(body).show();
 }
+
+// ── App entry ─────────────────────────────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -110,32 +155,31 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_autostart::init(
-            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            Some(vec![]),
-        ))
+        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec![])))
         .manage(WatcherState(Mutex::new(None)))
-        .invoke_handler(tauri::generate_handler![
-            start_watching,
-            stop_watching,
-            upload_file,
-            import_all_files,
-        ])
         .setup(|app| {
+            let db_path = app.path().app_data_dir()?.join("urapex.db");
+            let conn    = db::open(&db_path)?;
+            app.manage(DbState(Arc::new(Mutex::new(conn))));
+
             use tauri::tray::{TrayIconBuilder, TrayIconEvent};
-            let _tray = TrayIconBuilder::with_id("main")
+            TrayIconBuilder::with_id("main")
                 .tooltip("UrApex Companion")
                 .on_tray_icon_event(|tray, event| {
                     if let TrayIconEvent::Click { .. } = event {
-                        if let Some(window) = tray.app_handle().get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
+                        if let Some(w) = tray.app_handle().get_webview_window("main") {
+                            let _ = w.show(); let _ = w.set_focus();
                         }
                     }
                 })
                 .build(app)?;
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![
+            start_watching, stop_watching,
+            import_file, import_all_files,
+            get_sessions, get_session_detail, delete_session,
+        ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 window.hide().unwrap_or_default();
