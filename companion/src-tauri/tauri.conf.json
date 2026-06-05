@@ -39,8 +39,7 @@
       "webviewInstallMode": { "type": "embedBootstrapper" },
       "nsis": {
         "displayLanguageSelector": false,
-        "installMode": "perMachine",
-        "installerHooks": "installer-hooks.nsh"
+        "installMode": "perMachine"
       }
     }
   },
