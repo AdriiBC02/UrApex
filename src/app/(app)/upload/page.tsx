@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
-import { UploadZone } from "@/features/import/UploadZone"
+import { UploadPageClient } from "@/features/import/UploadPageClient"
 import { ImportHistory } from "@/features/import/ImportHistory"
 import { ReplayUploadSection } from "@/features/replays/ReplayUploadSection"
 import { Settings, Film } from "lucide-react"
@@ -13,23 +13,20 @@ export default async function UploadPage() {
 
   const [imports, profile, recentSessions] = await Promise.all([
     db.importFile.findMany({
-      where: { userId: session.user.id },
+      where:   { userId: session.user.id },
       orderBy: { createdAt: "desc" },
-      take: 30,
+      take:    30,
       include: { session: { select: { id: true } }, simulator: { select: { name: true } } },
     }),
     db.driverProfile.findUnique({
-      where: { userId: session.user.id },
+      where:  { userId: session.user.id },
       select: { simDriverName: true },
     }),
     db.session.findMany({
       where:   { userId: session.user.id, deletedAt: null },
       orderBy: { sessionDate: "desc" },
       take:    50,
-      include: {
-        track: { select: { name: true } },
-        car:   { select: { name: true } },
-      },
+      include: { track: { select: { name: true } }, car: { select: { name: true } } },
     }),
   ])
 
@@ -47,30 +44,23 @@ export default async function UploadPage() {
         <div className="max-w-2xl flex items-center gap-3 px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/60 text-sm">
           <span className="text-zinc-500">Importing as</span>
           <span className="text-zinc-100 font-semibold font-mono">{profile.simDriverName}</span>
-          <Link
-            href="/settings#simulator"
-            className="ml-auto flex items-center gap-1.5 text-xs text-zinc-500 hover:text-cyan-400 transition-colors"
-          >
-            <Settings className="w-3.5 h-3.5" />
-            Change
+          <Link href="/settings#simulator" className="ml-auto flex items-center gap-1.5 text-xs text-zinc-500 hover:text-cyan-400 transition-colors">
+            <Settings className="w-3.5 h-3.5" />Change
           </Link>
         </div>
       ) : (
         <div className="max-w-2xl flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-900/40 bg-amber-950/20 text-sm">
           <span className="text-amber-400 font-medium">Driver not configured</span>
           <span className="text-zinc-500">— you'll be asked to select your name when importing.</span>
-          <Link
-            href="/settings#simulator"
-            className="ml-auto flex items-center gap-1.5 text-xs text-zinc-500 hover:text-cyan-400 transition-colors"
-          >
-            <Settings className="w-3.5 h-3.5" />
-            Set now
+          <Link href="/settings#simulator" className="ml-auto flex items-center gap-1.5 text-xs text-zinc-500 hover:text-cyan-400 transition-colors">
+            <Settings className="w-3.5 h-3.5" />Set now
           </Link>
         </div>
       )}
 
+      {/* Upload zone + post-session modal */}
       <div className="max-w-2xl">
-        <UploadZone />
+        <UploadPageClient />
       </div>
 
       {/* Replay upload */}
@@ -91,10 +81,7 @@ export default async function UploadPage() {
         />
       </div>
 
-      <ImportHistory imports={imports.map((imp) => ({
-        ...imp,
-        errorMessage: imp.errorMessage ?? null,
-      }))} />
+      <ImportHistory imports={imports.map((imp) => ({ ...imp, errorMessage: imp.errorMessage ?? null }))} />
     </div>
   )
 }

@@ -3,18 +3,26 @@
 import { useState } from "react"
 import { Menu, ChevronRight } from "lucide-react"
 import { AppSidebar } from "./AppSidebar"
+import { CommandPalette } from "./CommandPalette"
 import Link from "next/link"
+
+interface RecentSession {
+  id: string; trackName: string; carName: string
+  sessionType: string; sessionDate: string
+}
 
 interface AppShellProps {
   user: { name?: string | null; email?: string | null }
+  recentSessions: RecentSession[]
   children: React.ReactNode
 }
 
-export function AppShell({ user, children }: AppShellProps) {
+export function AppShell({ user, recentSessions, children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
     <div className="app-bg flex h-screen bg-zinc-950 overflow-hidden">
+      <CommandPalette recentSessions={recentSessions} />
       {/* Ambient blob */}
       <div
         className="fixed bottom-[-15%] left-[10%] w-[500px] h-[500px] pointer-events-none z-0"

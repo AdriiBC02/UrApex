@@ -18,6 +18,7 @@ import {
   User,
   HardDrive,
   X,
+  Search,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -87,8 +88,20 @@ export function AppSidebar({ user, onClose }: AppSidebarProps) {
         )}
       </div>
 
+      {/* Cmd+K hint */}
+      <div className="px-3 pt-3 pb-1">
+        <button
+          onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }))}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-600 hover:text-zinc-400 text-xs transition-all"
+        >
+          <Search className="w-3.5 h-3.5 shrink-0" />
+          <span className="flex-1 text-left">Search…</span>
+          <kbd className="text-[10px] font-mono border border-zinc-700 rounded px-1 py-0.5 text-zinc-700">⌘K</kbd>
+        </button>
+      </div>
+
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto">
+      <nav className="flex-1 px-3 py-2 space-y-4 overflow-y-auto">
         {navSections.map((section) => (
           <div key={section.label}>
             <p className="px-2 mb-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
