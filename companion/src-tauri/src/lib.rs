@@ -360,6 +360,14 @@ pub fn send_notification(app: &AppHandle, title: &str, body: &str) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .target(tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+                    file_name: Some("urapex-companion".to_string()),
+                }))
+                .level(log::LevelFilter::Warn)
+                .build(),
+        )
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -368,12 +376,22 @@ pub fn run() {
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec![])))
         .manage(WatcherState(Mutex::new(None)))
         .setup(|app| {
-            let db_path = app.path().app_data_dir()?.join("urapex.db");
-            let conn    = db::open(&db_path)?;
+            let db_path = app.path().app_data_dir()
+                .map_err(|e| { log::error!("app_data_dir failed: {e}"); e })?
+                .join("urapex.db");
+
+            let conn = db::open(&db_path)
+                .map_err(|e| { log::error!("db::open failed: {e}"); e })?;
+
             app.manage(DbState(Arc::new(Mutex::new(conn))));
+
+            let icon = tauri::image::Image::from_bytes(
+                include_bytes!("../icons/32x32.png")
+            ).map_err(|e| { log::error!("icon load failed: {e}"); e })?;
 
             use tauri::tray::{TrayIconBuilder, TrayIconEvent};
             TrayIconBuilder::with_id("main")
+                .icon(icon)
                 .tooltip("UrApex Companion")
                 .on_tray_icon_event(|tray, event| {
                     if let TrayIconEvent::Click { .. } = event {
@@ -382,7 +400,9 @@ pub fn run() {
                         }
                     }
                 })
-                .build(app)?;
+                .build(app)
+                .map_err(|e| { log::error!("tray build failed: {e}"); e })?;
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
