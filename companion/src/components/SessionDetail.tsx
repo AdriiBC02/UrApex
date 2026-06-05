@@ -2,6 +2,11 @@ import { useState, useEffect } from "react"
 import { invoke } from "@tauri-apps/api/core"
 import { formatLapTime } from "../lib/time"
 import type { SessionSummary } from "./SessionList"
+import {
+  ArrowLeft, GitCompare, Timer, TrendingUp, BarChart3,
+  List, Users, FileText, Thermometer, Wind, Droplets,
+  MapPin, Plus, Trash2, ExternalLink,
+} from "lucide-react"
 
 interface LapRow {
   lapNumber:    number
@@ -30,17 +35,17 @@ export interface SessionDetail extends SessionSummary {
 }
 
 interface Participant {
-  id:             string
-  sessionId:      string
-  driverName:     string
-  carName:        string | null
-  carClass:       string | null
-  position:       number | null
-  lapsCompleted:  number
-  bestLapMs:      number | null
-  finishStatus:   string | null
-  pitStopsCount:  number
-  dnf:            boolean
+  id:            string
+  sessionId:     string
+  driverName:    string
+  carName:       string | null
+  carClass:      string | null
+  position:      number | null
+  lapsCompleted: number
+  bestLapMs:     number | null
+  finishStatus:  string | null
+  pitStopsCount: number
+  dnf:           boolean
 }
 
 interface ParticipantLap {
@@ -63,28 +68,22 @@ interface Note {
   createdAt: string
 }
 
-interface Stint {
-  compound:  string | null
-  lapCount:  number
-}
+interface Stint { compound: string | null; lapCount: number }
 
 const TYPE_LABEL: Record<string, string> = {
   RACE: "Race", QUALIFYING: "Qualifying", PRACTICE: "Practice",
 }
-
-// ── Stint computation ─────────────────────────────────────────────────────────
+const TYPE_COLOR: Record<string, string> = {
+  RACE: "var(--orange)", QUALIFYING: "var(--cyan)", PRACTICE: "var(--text-muted)",
+}
 
 function computeStints(laps: ParticipantLap[]): Stint[] {
   if (!laps.length) return []
   const stints: Stint[] = []
-  let cur = laps[0].tyreCompound ?? null
-  let count = 0
+  let cur = laps[0].tyreCompound ?? null, count = 0
   for (const lap of laps) {
     const c = lap.tyreCompound ?? null
-    if (count > 0 && c !== cur) {
-      stints.push({ compound: cur, lapCount: count })
-      cur = c; count = 0
-    }
+    if (count > 0 && c !== cur) { stints.push({ compound: cur, lapCount: count }); cur = c; count = 0 }
     cur = c; count++
   }
   if (count > 0) stints.push({ compound: cur, lapCount: count })
@@ -92,288 +91,302 @@ function computeStints(laps: ParticipantLap[]): Stint[] {
 }
 
 function compoundStyle(compound: string | null): React.CSSProperties {
-  if (!compound) return { background: "var(--border-light)", color: "var(--text-muted)" }
+  if (!compound) return { background: "var(--surface-3)", color: "var(--text-dim)" }
   const c = compound.toUpperCase()
   if (c.includes("SOFT")   || c === "S") return { background: "rgba(239,68,68,0.15)",  color: "#f87171" }
   if (c.includes("MEDIUM") || c === "M") return { background: "rgba(234,179,8,0.15)",  color: "#facc15" }
   if (c.includes("HARD")   || c === "H") return { background: "rgba(113,113,122,0.2)", color: "#d4d4d8" }
   if (c.includes("INTER")  || c === "I") return { background: "rgba(34,197,94,0.15)",  color: "#4ade80" }
   if (c.includes("WET")    || c === "W") return { background: "rgba(59,130,246,0.15)", color: "#60a5fa" }
-  return { background: "var(--border-light)", color: "var(--text-muted)" }
+  return { background: "var(--surface-3)", color: "var(--text-dim)" }
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
-
 interface Props {
-  session:    SessionDetail
-  allSessions: import("./SessionList").SessionSummary[]
-  onBack:     () => void
-  onCompare:  (secondId: string) => void
+  session:     SessionDetail
+  allSessions: SessionSummary[]
+  onBack:      () => void
+  onCompare:   (secondId: string) => void
 }
 
 export function SessionDetailView({ session: s, allSessions, onBack, onCompare }: Props) {
-  const [participants, setParticipants]         = useState<Participant[]>([])
-  const [expandedDriver, setExpandedDriver]     = useState<string | null>(null)
-  const [driverLaps, setDriverLaps]             = useState<Record<string, ParticipantLap[]>>({})
-  const [notes, setNotes]                       = useState<Note[]>([])
-  const [noteContent, setNoteContent]           = useState("")
-  const [noteVideoUrl, setNoteVideoUrl]         = useState("")
-  const [savingNote, setSavingNote]             = useState(false)
-  const [activeTab, setActiveTab]               = useState<"laps" | "grid" | "notes">("laps")
+  const [participants, setParticipants]           = useState<Participant[]>([])
+  const [expandedDriver, setExpandedDriver]       = useState<string | null>(null)
+  const [driverLaps, setDriverLaps]               = useState<Record<string, ParticipantLap[]>>({})
+  const [notes, setNotes]                         = useState<Note[]>([])
+  const [noteContent, setNoteContent]             = useState("")
+  const [noteVideoUrl, setNoteVideoUrl]           = useState("")
+  const [savingNote, setSavingNote]               = useState(false)
+  const [activeTab, setActiveTab]                 = useState<"laps" | "grid" | "notes">("laps")
   const [showComparePicker, setShowComparePicker] = useState(false)
 
   const best = s.bestLapMs
 
   useEffect(() => {
-    invoke<Participant[]>("get_participants", { sessionId: s.id })
-      .then(setParticipants).catch(console.error)
-    invoke<Note[]>("get_notes", { sessionId: s.id })
-      .then(setNotes).catch(console.error)
+    invoke<Participant[]>("get_participants", { sessionId: s.id }).then(setParticipants).catch(console.error)
+    invoke<Note[]>("get_notes", { sessionId: s.id }).then(setNotes).catch(console.error)
   }, [s.id])
 
-  async function loadDriverLaps(participantId: string) {
-    if (driverLaps[participantId]) return
+  async function loadDriverLaps(id: string) {
+    if (driverLaps[id]) return
     try {
-      const laps = await invoke<ParticipantLap[]>("get_participant_laps", { participantId })
-      setDriverLaps((prev) => ({ ...prev, [participantId]: laps }))
-    } catch (e) { console.error(e) }
+      const laps = await invoke<ParticipantLap[]>("get_participant_laps", { participantId: id })
+      setDriverLaps((p) => ({ ...p, [id]: laps }))
+    } catch { /* ignore */ }
   }
 
   function toggleDriver(id: string) {
-    if (expandedDriver === id) {
-      setExpandedDriver(null)
-    } else {
-      setExpandedDriver(id)
-      loadDriverLaps(id)
-    }
+    if (expandedDriver === id) { setExpandedDriver(null) }
+    else { setExpandedDriver(id); loadDriverLaps(id) }
   }
 
   async function saveNote() {
     if (!noteContent.trim()) return
     setSavingNote(true)
     try {
-      await invoke("create_note", {
-        sessionId: s.id,
-        content:   noteContent.trim(),
-        tags:      "[]",
-        videoUrl:  noteVideoUrl.trim() || null,
-      })
-      const updated = await invoke<Note[]>("get_notes", { sessionId: s.id })
-      setNotes(updated)
-      setNoteContent("")
-      setNoteVideoUrl("")
-    } catch (e) { console.error(e) }
+      await invoke("create_note", { sessionId: s.id, content: noteContent.trim(), tags: "[]", videoUrl: noteVideoUrl.trim() || null })
+      setNotes(await invoke<Note[]>("get_notes", { sessionId: s.id }))
+      setNoteContent(""); setNoteVideoUrl("")
+    } catch { /* ignore */ }
     finally { setSavingNote(false) }
   }
 
   async function deleteNote(id: string) {
     await invoke("delete_note", { id })
-    setNotes((prev) => prev.filter((n) => n.id !== id))
+    setNotes((p) => p.filter((n) => n.id !== id))
   }
 
-  const hasConditions = s.weather || s.tempAmbient != null || s.tempTrack != null || s.trackLengthM != null
-  const hasParticipants = participants.length > 0
+  const hasGrid = participants.length > 0
+  const tabs    = ["laps", hasGrid ? "grid" : null, "notes"].filter(Boolean) as ("laps" | "grid" | "notes")[]
+  const tabLabel = (t: string) =>
+    t === "laps"  ? "Laps" :
+    t === "grid"  ? `Grid (${participants.length})` :
+    `Notes${notes.length ? ` (${notes.length})` : ""}`
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Back + Compare */}
-      <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid var(--border)" }}>
-        <button onClick={onBack} style={{ textAlign: "left", padding: "8px 12px", fontSize: 11, color: "var(--text-muted)", background: "none", flex: 1 }}>
-          ← Back
+
+      {/* ── Toolbar ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderBottom: "1px solid var(--border-soft)", flexShrink: 0 }}>
+        <button onClick={onBack} className="btn btn-ghost" style={{ padding: "4px 8px", gap: 5, fontSize: 11 }}>
+          <ArrowLeft size={12} strokeWidth={2.5} /> Back
         </button>
+        <div style={{ flex: 1 }} />
         <button
           onClick={() => setShowComparePicker((v) => !v)}
-          style={{ padding: "5px 10px", fontSize: 10, color: showComparePicker ? "var(--cyan)" : "var(--text-muted)", background: "none", fontWeight: 600 }}
+          className={`btn btn-ghost ${showComparePicker ? "active" : ""}`}
+          style={{ padding: "4px 10px", gap: 5, fontSize: 11, color: showComparePicker ? "var(--cyan)" : undefined }}
         >
-          ⇄ Compare
+          <GitCompare size={12} strokeWidth={2} /> Compare
         </button>
       </div>
 
-      {/* Compare picker */}
+      {/* ── Compare picker ── */}
       {showComparePicker && (
-        <div style={{ borderBottom: "1px solid var(--border)", background: "var(--surface)", maxHeight: 160, overflow: "auto" }}>
-          <p style={{ fontSize: 10, color: "var(--text-dim)", padding: "4px 10px 2px", margin: 0, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            Pick session B
-          </p>
+        <div style={{ borderBottom: "1px solid var(--border-soft)", background: "var(--surface)", maxHeight: 160, overflow: "auto", flexShrink: 0 }}>
+          <p className="section-label" style={{ padding: "8px 12px 4px" }}>Compare with</p>
           {allSessions.filter((ss) => ss.id !== s.id).map((ss) => (
             <div
               key={ss.id}
               onClick={() => { onCompare(ss.id); setShowComparePicker(false) }}
-              style={{ padding: "6px 10px", cursor: "pointer", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              style={{ padding: "7px 12px", cursor: "pointer", borderBottom: "1px solid var(--border-soft)", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "background 0.1s" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
               <div>
-                <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text)", margin: 0 }}>{ss.trackName}</p>
+                <p style={{ fontSize: 12, fontWeight: 600, margin: 0 }}>{ss.trackName}</p>
                 <p style={{ fontSize: 10, color: "var(--text-muted)", margin: 0 }}>{ss.carName} · {new Date(ss.sessionDate).toLocaleDateString()}</p>
               </div>
-              {ss.bestLapMs && <span style={{ fontSize: 11, fontFamily: "monospace", color: "var(--text-muted)" }}>{formatLapTime(ss.bestLapMs)}</span>}
+              {ss.bestLapMs && <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--text-muted)" }}>{formatLapTime(ss.bestLapMs)}</span>}
             </div>
           ))}
           {allSessions.filter((ss) => ss.id !== s.id).length === 0 && (
-            <p style={{ fontSize: 11, color: "var(--text-dim)", padding: "8px 10px" }}>No other sessions.</p>
+            <p style={{ fontSize: 11, color: "var(--text-dim)", padding: "10px 12px" }}>No other sessions to compare.</p>
           )}
         </div>
       )}
 
-      <div style={{ flex: 1, overflow: "auto", padding: "12px" }}>
-        {/* Header */}
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
+      {/* ── Scrollable content ── */}
+      <div style={{ flex: 1, overflow: "auto" }}>
+
+        {/* Hero header */}
+        <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--border-soft)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+            <span style={{ fontSize: 9, fontWeight: 800, color: TYPE_COLOR[s.sessionType] ?? "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
               {TYPE_LABEL[s.sessionType] ?? s.sessionType}
             </span>
-            {s.isNewPb && <span style={{ fontSize: 9, fontWeight: 700, color: "var(--cyan)", background: "rgba(6,182,212,0.1)", padding: "1px 5px", borderRadius: 3 }}>New PB</span>}
-            {s.dnf && <span style={{ fontSize: 9, color: "var(--red)", background: "rgba(239,68,68,0.1)", padding: "1px 5px", borderRadius: 3 }}>DNF</span>}
+            {s.isNewPb && <span className="badge badge-cyan">PB</span>}
+            {s.dnf     && <span className="badge" style={{ background: "rgba(248,113,113,0.12)", color: "var(--red)" }}>DNF</span>}
+            {s.isOnline && <span className="badge badge-dim">Online</span>}
+            <span style={{ marginLeft: "auto", fontSize: 9, color: "var(--text-dim)" }}>
+              {new Date(s.sessionDate).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+            </span>
           </div>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: "0 0 2px" }}>{s.trackName}</h2>
+
+          <h2 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", margin: "0 0 3px", lineHeight: 1.2 }}>{s.trackName}</h2>
           <p style={{ fontSize: 11, color: "var(--text-muted)", margin: 0 }}>
-            {s.carName}{s.carClass ? ` · ${s.carClass}` : ""}
-            {s.finalPosition != null ? ` · P${s.finalPosition}` : ""}
-            {s.isOnline ? " · Online" : ""}
+            {s.carName}{s.carClass ? ` · ${s.carClass}` : ""}{s.finalPosition != null ? ` · P${s.finalPosition}` : ""}
           </p>
-          {hasConditions && (
-            <p style={{ fontSize: 10, color: "var(--text-dim)", margin: "4px 0 0", display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {s.weather && <span>{s.weather}</span>}
-              {s.tempAmbient != null && <span>{s.tempAmbient.toFixed(0)}°C air</span>}
-              {s.tempTrack   != null && <span>{s.tempTrack.toFixed(0)}°C track</span>}
-              {s.humidity    != null && <span>{s.humidity.toFixed(0)}% humidity</span>}
-              {s.trackLengthM != null && <span>{(s.trackLengthM / 1000).toFixed(3)} km</span>}
-            </p>
+
+          {/* Conditions */}
+          {(s.weather || s.tempAmbient != null || s.tempTrack != null || s.trackLengthM != null) && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 7, fontSize: 10, color: "var(--text-dim)" }}>
+              {s.weather       && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Wind size={10} strokeWidth={2} />{s.weather}</span>}
+              {s.tempAmbient   != null && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Thermometer size={10} strokeWidth={2} />{s.tempAmbient.toFixed(0)}°C air</span>}
+              {s.tempTrack     != null && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Thermometer size={10} strokeWidth={2} style={{ color: "var(--orange)" }} />{s.tempTrack.toFixed(0)}°C track</span>}
+              {s.humidity      != null && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Droplets size={10} strokeWidth={2} />{s.humidity.toFixed(0)}%</span>}
+              {s.trackLengthM  != null && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><MapPin size={10} strokeWidth={2} />{(s.trackLengthM / 1000).toFixed(3)} km</span>}
+            </div>
           )}
         </div>
 
         {/* Stats grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
-          <StatCard label="Best lap"    value={formatLapTime(s.bestLapMs)} highlight />
-          <StatCard label="Avg lap"     value={formatLapTime(s.avgLapMs ? Math.round(s.avgLapMs) : null)} />
-          <StatCard label="Ideal lap"   value={formatLapTime(s.idealLapMs)} />
-          <StatCard label="Consistency" value={s.consistencyScore != null ? `${s.consistencyScore.toFixed(1)}` : "—"} />
-          <StatCard label="Valid laps"  value={`${s.validLaps}/${s.totalLaps}`} />
-          {s.finalPosition != null ? <StatCard label="Position" value={`P${s.finalPosition}`} /> : null}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, padding: "10px 14px" }}>
+          <MiniStat icon={Timer}     label="Best lap"    value={formatLapTime(best)}                                      accent />
+          <MiniStat icon={Timer}     label="Avg lap"     value={formatLapTime(s.avgLapMs ? Math.round(s.avgLapMs) : null)} />
+          <MiniStat icon={Timer}     label="Ideal lap"   value={formatLapTime(s.idealLapMs)}                              />
+          <MiniStat icon={TrendingUp} label="Consistency" value={s.consistencyScore != null ? `${s.consistencyScore.toFixed(1)}` : "—"} />
+          <MiniStat icon={BarChart3} label="Valid laps"  value={`${s.validLaps}/${s.totalLaps}`}                          />
+          {s.finalPosition != null
+            ? <MiniStat icon={BarChart3} label="Position" value={`P${s.finalPosition}`} />
+            : <div />}
         </div>
 
         {/* Sub-tabs */}
-        <div style={{ display: "flex", gap: 2, marginBottom: 12, borderBottom: "1px solid var(--border)" }}>
-          {(["laps", hasParticipants ? "grid" : null, "notes"] as const).filter(Boolean).map((t) => (
-            <button
-              key={t!}
-              onClick={() => setActiveTab(t!)}
-              style={{
-                padding: "5px 10px", fontSize: 11, fontWeight: 600, background: "none", border: "none",
-                color: activeTab === t ? "var(--cyan)" : "var(--text-muted)",
-                borderBottom: activeTab === t ? "2px solid var(--cyan)" : "2px solid transparent",
-                cursor: "pointer",
-              }}
-            >
-              {t === "laps" ? "Laps" : t === "grid" ? `Grid (${participants.length})` : `Notes${notes.length ? ` (${notes.length})` : ""}`}
-            </button>
-          ))}
+        <div style={{ display: "flex", gap: 4, padding: "4px 14px 10px", borderBottom: "1px solid var(--border-soft)" }}>
+          {tabs.map((t) => {
+            const icons = { laps: List, grid: Users, notes: FileText }
+            const Icon = icons[t]
+            return (
+              <button
+                key={t}
+                onClick={() => setActiveTab(t)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 5,
+                  padding: "4px 10px", borderRadius: 6,
+                  fontSize: 11, fontWeight: 600,
+                  background: activeTab === t ? "var(--surface-2)" : "transparent",
+                  color: activeTab === t ? "var(--text)" : "var(--text-muted)",
+                  border: activeTab === t ? "1px solid var(--border)" : "1px solid transparent",
+                  transition: "all 0.1s",
+                }}
+              >
+                <Icon size={12} strokeWidth={2} style={{ color: activeTab === t ? "var(--cyan)" : undefined }} />
+                {tabLabel(t)}
+              </button>
+            )
+          })}
         </div>
 
-        {/* ── LAPS TAB ── */}
-        {activeTab === "laps" && s.laps.length > 0 && (
-          <div style={{ fontSize: 11, fontFamily: "monospace" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "28px 76px 52px 48px 48px 48px 48px", gap: "2px 6px", color: "var(--text-dim)", marginBottom: 4, fontSize: 10 }}>
-              <span>#</span><span>Time</span><span>Cmpd</span><span>S1</span><span>S2</span><span>S3</span><span>Fuel</span>
-            </div>
-            {s.laps.map((lap) => {
-              const isB = lap.lapTimeMs === best
-              return (
-                <div
-                  key={lap.lapNumber}
-                  style={{
-                    display: "grid", gridTemplateColumns: "28px 76px 52px 48px 48px 48px 48px",
-                    gap: "2px 6px", padding: "2px 0",
-                    opacity: lap.isValid ? 1 : 0.4,
-                    color: isB ? "var(--cyan)" : "var(--text)",
-                  }}
-                >
-                  <span style={{ color: "var(--text-dim)" }}>{lap.lapNumber}</span>
-                  <span>{formatLapTime(lap.lapTimeMs)}</span>
-                  <span style={{ fontSize: 9, ...compoundStyle(lap.tyreCompound), borderRadius: 3, padding: "0 3px", display: "inline-block", textAlign: "center" }}>
-                    {lap.tyreCompound ?? "—"}
-                  </span>
-                  <span style={{ color: "var(--text-muted)", fontSize: 10 }}>{formatLapTime(lap.sector1Ms)}</span>
-                  <span style={{ color: "var(--text-muted)", fontSize: 10 }}>{formatLapTime(lap.sector2Ms)}</span>
-                  <span style={{ color: "var(--text-muted)", fontSize: 10 }}>{formatLapTime(lap.sector3Ms)}</span>
-                  <span style={{ color: "var(--text-dim)", fontSize: 10 }}>
-                    {lap.fuelLoad != null ? `${lap.fuelLoad.toFixed(1)}L` : "—"}
-                  </span>
+        {/* ── Laps tab ── */}
+        {activeTab === "laps" && (
+          <div style={{ padding: "10px 14px" }}>
+            {s.laps.length === 0 ? (
+              <p style={{ fontSize: 11, color: "var(--text-dim)", textAlign: "center", padding: "20px 0" }}>No lap data.</p>
+            ) : (
+              <div style={{ fontFamily: "monospace", fontSize: 11 }}>
+                {/* Header */}
+                <div style={{ display: "grid", gridTemplateColumns: "24px 74px 52px 46px 46px 46px 42px", gap: "2px 6px", padding: "4px 6px", borderRadius: 5, marginBottom: 3 }}>
+                  {["#", "Time", "Cmpd", "S1", "S2", "S3", "Fuel"].map((h) => (
+                    <span key={h} className="section-label" style={{ fontSize: 9 }}>{h}</span>
+                  ))}
                 </div>
-              )
-            })}
+                {/* Rows */}
+                {s.laps.map((lap, i) => {
+                  const isBest = lap.lapTimeMs === best && lap.lapTimeMs != null
+                  return (
+                    <div
+                      key={lap.lapNumber}
+                      style={{
+                        display: "grid", gridTemplateColumns: "24px 74px 52px 46px 46px 46px 42px",
+                        gap: "2px 6px", padding: "3px 6px",
+                        borderRadius: 5,
+                        background: isBest ? "rgba(6,182,212,0.06)" : i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
+                        borderLeft: isBest ? "2px solid var(--cyan)" : "2px solid transparent",
+                        opacity: lap.isValid ? 1 : 0.4,
+                        alignItems: "center",
+                      }}
+                    >
+                      <span style={{ color: "var(--text-dim)", fontSize: 10 }}>{lap.lapNumber}</span>
+                      <span style={{ color: isBest ? "var(--cyan)" : "var(--text)", fontWeight: isBest ? 700 : 400 }}>
+                        {formatLapTime(lap.lapTimeMs)}
+                      </span>
+                      <span style={{ fontSize: 9, borderRadius: 3, padding: "1px 4px", textAlign: "center", ...compoundStyle(lap.tyreCompound) }}>
+                        {lap.tyreCompound ?? "—"}
+                      </span>
+                      {[lap.sector1Ms, lap.sector2Ms, lap.sector3Ms].map((ms, si) => (
+                        <span key={si} style={{ color: "var(--text-muted)", fontSize: 10 }}>{formatLapTime(ms)}</span>
+                      ))}
+                      <span style={{ color: "var(--text-dim)", fontSize: 10 }}>
+                        {lap.fuelLoad != null ? `${lap.fuelLoad.toFixed(1)}L` : "—"}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 
-        {/* ── RACE GRID TAB ── */}
+        {/* ── Grid tab ── */}
         {activeTab === "grid" && (
-          <div style={{ fontSize: 11 }}>
+          <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: 4 }}>
             {participants.map((p) => {
-              const isExpanded  = expandedDriver === p.id
-              const pLaps       = driverLaps[p.id] ?? []
-              const stints      = computeStints(pLaps)
+              const isEx  = expandedDriver === p.id
+              const pLaps = driverLaps[p.id] ?? []
+              const stints = computeStints(pLaps)
 
               return (
-                <div key={p.id} style={{ marginBottom: 2 }}>
-                  {/* Driver row */}
+                <div key={p.id}>
                   <div
                     onClick={() => toggleDriver(p.id)}
                     style={{
-                      display: "grid",
-                      gridTemplateColumns: "32px 1fr 70px 50px 50px",
-                      gap: "0 6px", padding: "5px 8px",
-                      borderRadius: isExpanded ? "6px 6px 0 0" : 6,
-                      background: isExpanded ? "rgba(6,182,212,0.06)" : "var(--border-light)",
-                      border: "1px solid var(--border)",
-                      cursor: "pointer",
-                      alignItems: "center",
+                      display: "grid", gridTemplateColumns: "36px 1fr 70px 60px",
+                      gap: "0 8px", padding: "7px 10px",
+                      borderRadius: isEx ? "8px 8px 0 0" : 8,
+                      background: isEx ? "rgba(6,182,212,0.06)" : "var(--surface-2)",
+                      border: `1px solid ${isEx ? "rgba(6,182,212,0.2)" : "var(--border)"}`,
+                      cursor: "pointer", alignItems: "center",
+                      transition: "background 0.1s",
                     }}
                   >
-                    <span style={{ fontWeight: 700, fontFamily: "monospace", color: p.dnf ? "var(--red)" : "var(--text-muted)" }}>
+                    <span style={{ fontWeight: 800, fontSize: 12, fontFamily: "monospace", color: p.dnf ? "var(--red)" : "var(--text-muted)", textAlign: "center" }}>
                       {p.dnf ? "DNF" : p.position != null ? `P${p.position}` : "—"}
                     </span>
-                    <span style={{ fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <span style={{ fontWeight: 600, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {p.driverName}
                     </span>
-                    <span style={{ fontFamily: "monospace", color: "var(--cyan)" }}>
+                    <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--cyan)", fontWeight: 600 }}>
                       {formatLapTime(p.bestLapMs)}
                     </span>
-                    <span style={{ color: "var(--text-dim)", fontSize: 10 }}>
-                      {p.lapsCompleted}L · {p.pitStopsCount}pit
-                    </span>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-                      {stints.map((st, i) => (
-                        <span key={i} style={{ fontSize: 9, fontWeight: 700, padding: "1px 4px", borderRadius: 3, ...compoundStyle(st.compound) }}>
-                          {st.compound ?? "?"}{st.lapCount}
-                        </span>
-                      ))}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 2, justifyContent: "flex-end" }}>
+                      {stints.length > 0
+                        ? stints.map((st, i) => (
+                            <span key={i} style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3, ...compoundStyle(st.compound) }}>
+                              {st.compound ?? "?"}{st.lapCount}
+                            </span>
+                          ))
+                        : <span style={{ fontSize: 9, color: "var(--text-dim)" }}>{p.lapsCompleted}L · {p.pitStopsCount}pit</span>
+                      }
                     </div>
                   </div>
 
-                  {/* Expanded laps */}
-                  {isExpanded && (
-                    <div style={{ border: "1px solid var(--border)", borderTop: "none", borderRadius: "0 0 6px 6px", background: "var(--surface)", padding: "6px 8px" }}>
+                  {isEx && (
+                    <div style={{ border: "1px solid rgba(6,182,212,0.15)", borderTop: "none", borderRadius: "0 0 8px 8px", background: "var(--surface)", padding: "8px 10px" }}>
                       {pLaps.length === 0 ? (
                         <span style={{ fontSize: 10, color: "var(--text-dim)" }}>Loading…</span>
                       ) : (
                         <div style={{ fontFamily: "monospace", fontSize: 10 }}>
-                          <div style={{ display: "grid", gridTemplateColumns: "24px 70px 44px 44px 44px 44px", gap: "1px 6px", color: "var(--text-dim)", marginBottom: 3 }}>
-                            <span>#</span><span>Time</span><span>S1</span><span>S2</span><span>S3</span><span>Cmpd</span>
+                          <div style={{ display: "grid", gridTemplateColumns: "22px 68px 42px 42px 42px 48px", gap: "1px 6px", color: "var(--text-dim)", marginBottom: 4, paddingBottom: 3, borderBottom: "1px solid var(--border-soft)" }}>
+                            {["#", "Time", "S1", "S2", "S3", "Cmpd"].map((h) => <span key={h}>{h}</span>)}
                           </div>
                           {pLaps.map((lap) => (
-                            <div
-                              key={lap.lapNumber}
-                              style={{
-                                display: "grid", gridTemplateColumns: "24px 70px 44px 44px 44px 44px",
-                                gap: "1px 6px", padding: "1.5px 0",
-                                opacity: lap.isValid ? 1 : 0.4,
-                              }}
-                            >
+                            <div key={lap.lapNumber} style={{ display: "grid", gridTemplateColumns: "22px 68px 42px 42px 42px 48px", gap: "1px 6px", padding: "2px 0", opacity: lap.isValid ? 1 : 0.4 }}>
                               <span style={{ color: "var(--text-dim)" }}>{lap.lapNumber}</span>
                               <span style={{ color: "var(--text)" }}>{formatLapTime(lap.lapTimeMs)}</span>
                               <span style={{ color: "var(--text-muted)" }}>{formatLapTime(lap.sector1Ms)}</span>
                               <span style={{ color: "var(--text-muted)" }}>{formatLapTime(lap.sector2Ms)}</span>
                               <span style={{ color: "var(--text-muted)" }}>{formatLapTime(lap.sector3Ms)}</span>
-                              <span style={{ ...compoundStyle(lap.tyreCompound), padding: "0 3px", borderRadius: 2, fontSize: 9 }}>
+                              <span style={{ fontSize: 9, ...compoundStyle(lap.tyreCompound), padding: "0 3px", borderRadius: 2 }}>
                                 {lap.tyreCompound ?? "—"}
                               </span>
                             </div>
@@ -388,54 +401,57 @@ export function SessionDetailView({ session: s, allSessions, onBack, onCompare }
           </div>
         )}
 
-        {/* ── NOTES TAB ── */}
+        {/* ── Notes tab ── */}
         {activeTab === "notes" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
             {/* Add note */}
-            <div style={{ background: "var(--border-light)", border: "1px solid var(--border)", borderRadius: 8, padding: 10 }}>
+            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className="card-header" style={{ marginBottom: 0, paddingBottom: 8 }}>
+                <Plus size={12} strokeWidth={2.5} style={{ color: "var(--text-dim)" }} />
+                <span style={{ fontWeight: 600, fontSize: 11 }}>Add debrief note</span>
+              </div>
               <textarea
                 value={noteContent}
                 onChange={(e) => setNoteContent(e.target.value)}
-                placeholder="Add a debrief note…"
+                placeholder="What happened this session? Any observations…"
                 rows={3}
-                style={{ width: "100%", resize: "vertical", fontSize: 11, background: "transparent", color: "var(--text)", border: "none", outline: "none", boxSizing: "border-box" }}
+                style={{ resize: "vertical" }}
               />
               <input
                 value={noteVideoUrl}
                 onChange={(e) => setNoteVideoUrl(e.target.value)}
                 placeholder="Video URL (optional)"
-                style={{ width: "100%", fontSize: 10, marginTop: 4, boxSizing: "border-box" }}
+                style={{ fontSize: 11 }}
               />
-              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
-                <button
-                  onClick={saveNote}
-                  disabled={savingNote || !noteContent.trim()}
-                  style={{ padding: "5px 12px", borderRadius: 5, background: "var(--cyan)", color: "#09090b", fontWeight: 700, fontSize: 11, opacity: !noteContent.trim() ? 0.5 : 1 }}
-                >
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button onClick={saveNote} disabled={savingNote || !noteContent.trim()} className="btn btn-primary" style={{ padding: "5px 14px" }}>
                   {savingNote ? "Saving…" : "Save note"}
                 </button>
               </div>
             </div>
 
-            {/* Note list */}
+            {/* Notes list */}
             {notes.map((n) => (
-              <div key={n.id} style={{ background: "var(--border-light)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                  <p style={{ fontSize: 11, color: "var(--text)", margin: 0, lineHeight: 1.5, flex: 1 }}>{n.content}</p>
-                  <button onClick={() => deleteNote(n.id)} style={{ fontSize: 10, color: "var(--text-dim)", background: "none", flexShrink: 0 }}>✕</button>
+              <div key={n.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                  <p style={{ fontSize: 12, color: "var(--text)", margin: 0, lineHeight: 1.55, flex: 1 }}>{n.content}</p>
+                  <button onClick={() => deleteNote(n.id)} className="btn btn-ghost" style={{ padding: "3px 6px", flexShrink: 0 }}>
+                    <Trash2 size={11} strokeWidth={2} />
+                  </button>
                 </div>
                 {n.videoUrl && (
-                  <a href={n.videoUrl} target="_blank" rel="noreferrer" style={{ fontSize: 9, color: "var(--cyan)", display: "block", marginTop: 4 }}>
-                    {n.videoUrl}
+                  <a href={n.videoUrl} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: "var(--cyan)", display: "flex", alignItems: "center", gap: 4 }}>
+                    <ExternalLink size={10} strokeWidth={2} /> {n.videoUrl}
                   </a>
                 )}
-                <p style={{ fontSize: 9, color: "var(--text-dim)", margin: "4px 0 0" }}>
-                  {new Date(n.createdAt).toLocaleDateString()}
+                <p style={{ fontSize: 9, color: "var(--text-dim)", margin: 0 }}>
+                  {new Date(n.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
                 </p>
               </div>
             ))}
+
             {notes.length === 0 && (
-              <p style={{ fontSize: 11, color: "var(--text-dim)", textAlign: "center", paddingTop: 8 }}>No notes yet.</p>
+              <p style={{ fontSize: 11, color: "var(--text-dim)", textAlign: "center", padding: "16px 0" }}>No notes yet for this session.</p>
             )}
           </div>
         )}
@@ -444,11 +460,14 @@ export function SessionDetailView({ session: s, allSessions, onBack, onCompare }
   )
 }
 
-function StatCard({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function MiniStat({ icon: Icon, label, value, accent }: { icon: React.ComponentType<{ size?: number; strokeWidth?: number }>; label: string; value: string; accent?: boolean }) {
   return (
-    <div style={{ background: "var(--border-light)", borderRadius: 6, padding: "7px 8px", border: "1px solid var(--border)" }}>
-      <p style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 2px" }}>{label}</p>
-      <p style={{ fontSize: 12, fontWeight: 700, fontFamily: "monospace", color: highlight ? "var(--cyan)" : "var(--text)", margin: 0 }}>{value}</p>
+    <div className="stat-tile">
+      <div className="stat-label">
+        <Icon size={10} strokeWidth={2} />
+        {label}
+      </div>
+      <div className="stat-value" style={{ fontSize: 14, color: accent ? "var(--cyan)" : "var(--text)" }}>{value}</div>
     </div>
   )
 }

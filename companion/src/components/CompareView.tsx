@@ -1,10 +1,15 @@
+import { ArrowLeft } from "lucide-react"
 import { formatLapTime } from "../lib/time"
 import type { SessionDetail } from "./SessionDetail"
 
 interface Props {
-  sessionA:  SessionDetail
-  sessionB:  SessionDetail
-  onBack:    () => void
+  sessionA: SessionDetail
+  sessionB: SessionDetail
+  onBack:   () => void
+}
+
+const TYPE_LABEL: Record<string, string> = {
+  RACE: "Race", QUALIFYING: "Qualifying", PRACTICE: "Practice",
 }
 
 function delta(a: number | null, b: number | null): string {
@@ -18,8 +23,7 @@ function deltaColor(a: number | null, b: number | null, lowerIsBetter = true): s
   if (a == null || b == null) return "var(--text-dim)"
   const d = a - b
   if (d === 0) return "var(--text-muted)"
-  const better = lowerIsBetter ? d < 0 : d > 0
-  return better ? "#4ade80" : "#f87171"
+  return (lowerIsBetter ? d < 0 : d > 0) ? "var(--green)" : "var(--red)"
 }
 
 function scoreDelta(a: number | null, b: number | null): string {
@@ -29,159 +33,153 @@ function scoreDelta(a: number | null, b: number | null): string {
   return (d > 0 ? "+" : "") + d.toFixed(1)
 }
 
-const TYPE_LABEL: Record<string, string> = {
-  RACE: "Race", QUALIFYING: "Qualifying", PRACTICE: "Practice",
-}
-
 export function CompareView({ sessionA: a, sessionB: b, onBack }: Props) {
-  // Build lap map for each session
   const lapsA = new Map(a.laps.map((l) => [l.lapNumber, l]))
   const lapsB = new Map(b.laps.map((l) => [l.lapNumber, l]))
-  const allLapNums = Array.from(
-    new Set([...lapsA.keys(), ...lapsB.keys()])
-  ).sort((x, y) => x - y)
+  const allLapNums = Array.from(new Set([...lapsA.keys(), ...lapsB.keys()])).sort((x, y) => x - y)
+
+  const hasSectors = a.laps.some((l) => l.sector1Ms) || b.laps.some((l) => l.sector1Ms)
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Back */}
-      <button onClick={onBack} style={{ textAlign: "left", padding: "8px 12px", borderBottom: "1px solid var(--border)", fontSize: 11, color: "var(--text-muted)", background: "none" }}>
-        ← Back
-      </button>
 
-      <div style={{ flex: 1, overflow: "auto", padding: 12 }}>
+      {/* Toolbar */}
+      <div style={{ padding: "6px 10px", borderBottom: "1px solid var(--border-soft)", flexShrink: 0 }}>
+        <button onClick={onBack} className="btn btn-ghost" style={{ padding: "4px 8px", gap: 5, fontSize: 11 }}>
+          <ArrowLeft size={12} strokeWidth={2.5} /> Back to session
+        </button>
+      </div>
 
-        {/* Session headers */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-          {[a, b].map((s, i) => (
-            <div key={i} style={{ background: "var(--border-light)", border: "1px solid var(--border)", borderRadius: 7, padding: "7px 9px" }}>
-              <p style={{ fontSize: 9, fontWeight: 700, color: i === 0 ? "var(--cyan)" : "var(--orange)", textTransform: "uppercase", margin: "0 0 2px" }}>
-                {i === 0 ? "A" : "B"} · {TYPE_LABEL[s.sessionType] ?? s.sessionType}
-              </p>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.trackName}</p>
-              <p style={{ fontSize: 10, color: "var(--text-muted)", margin: "1px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.carName}</p>
-              <p style={{ fontSize: 9, color: "var(--text-dim)", margin: "1px 0 0" }}>{new Date(s.sessionDate).toLocaleDateString()}</p>
-            </div>
-          ))}
+      <div style={{ flex: 1, overflow: "auto", padding: "14px" }}>
+
+        {/* Session headers A / B */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+          {([a, b] as const).map((s, i) => {
+            const color = i === 0 ? "var(--cyan)" : "var(--orange)"
+            return (
+              <div key={i} style={{ background: "var(--surface-2)", border: `1px solid ${color}30`, borderRadius: 10, padding: "10px 12px", borderLeft: `3px solid ${color}` }}>
+                <p style={{ fontSize: 9, fontWeight: 800, color, textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 4px" }}>
+                  Session {i === 0 ? "A" : "B"} · {TYPE_LABEL[s.sessionType] ?? s.sessionType}
+                </p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {s.trackName}
+                </p>
+                <p style={{ fontSize: 10, color: "var(--text-muted)", margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {s.carName}
+                </p>
+                <p style={{ fontSize: 9, color: "var(--text-dim)", margin: 0 }}>
+                  {new Date(s.sessionDate).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+                </p>
+              </div>
+            )
+          })}
         </div>
 
-        {/* Metrics comparison */}
-        <SectionLabel>Metrics</SectionLabel>
-        <table style={{ width: "100%", fontSize: 11, borderCollapse: "collapse", marginBottom: 12 }}>
-          <thead>
-            <tr style={{ borderBottom: "1px solid var(--border)" }}>
-              <th style={thStyle}>Metric</th>
-              <th style={{ ...thStyle, color: "var(--cyan)" }}>A</th>
-              <th style={{ ...thStyle, color: "var(--orange)" }}>B</th>
-              <th style={thStyle}>Δ</th>
-            </tr>
-          </thead>
-          <tbody>
-            <MetricRow label="Best lap"    vA={formatLapTime(a.bestLapMs)}    vB={formatLapTime(b.bestLapMs)}
-              delta={delta(a.bestLapMs, b.bestLapMs)}
-              deltaColor={deltaColor(a.bestLapMs, b.bestLapMs)} />
-            <MetricRow label="Avg lap"     vA={formatLapTime(a.avgLapMs ? Math.round(a.avgLapMs) : null)}
-              vB={formatLapTime(b.avgLapMs ? Math.round(b.avgLapMs) : null)}
-              delta={delta(a.avgLapMs ? Math.round(a.avgLapMs) : null, b.avgLapMs ? Math.round(b.avgLapMs) : null)}
-              deltaColor={deltaColor(a.avgLapMs, b.avgLapMs)} />
-            <MetricRow label="Ideal lap"   vA={formatLapTime(a.idealLapMs)}   vB={formatLapTime(b.idealLapMs)}
-              delta={delta(a.idealLapMs, b.idealLapMs)}
-              deltaColor={deltaColor(a.idealLapMs, b.idealLapMs)} />
-            <MetricRow label="Consistency" vA={a.consistencyScore?.toFixed(1) ?? "—"}  vB={b.consistencyScore?.toFixed(1) ?? "—"}
-              delta={scoreDelta(a.consistencyScore, b.consistencyScore)}
-              deltaColor={deltaColor(b.consistencyScore, a.consistencyScore, true)} />
-            <MetricRow label="Valid laps"  vA={`${a.validLaps}/${a.totalLaps}`} vB={`${b.validLaps}/${b.totalLaps}`} delta="" deltaColor="" />
-          </tbody>
-        </table>
+        {/* Metrics */}
+        <p className="section-label" style={{ marginBottom: 6 }}>Metrics</p>
+        <div className="card" style={{ padding: 0, overflow: "hidden", marginBottom: 16 }}>
+          <table style={{ width: "100%", fontSize: 11, borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border-soft)" }}>
+                <th style={TH}>Metric</th>
+                <th style={{ ...TH, color: "var(--cyan)" }}>A</th>
+                <th style={{ ...TH, color: "var(--orange)" }}>B</th>
+                <th style={{ ...TH, textAlign: "center" }}>Δ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <MRow label="Best lap"    vA={formatLapTime(a.bestLapMs)} vB={formatLapTime(b.bestLapMs)} d={delta(a.bestLapMs, b.bestLapMs)} dc={deltaColor(a.bestLapMs, b.bestLapMs)} />
+              <MRow label="Avg lap"     vA={formatLapTime(a.avgLapMs ? Math.round(a.avgLapMs) : null)} vB={formatLapTime(b.avgLapMs ? Math.round(b.avgLapMs) : null)} d={delta(a.avgLapMs ? Math.round(a.avgLapMs) : null, b.avgLapMs ? Math.round(b.avgLapMs) : null)} dc={deltaColor(a.avgLapMs, b.avgLapMs)} />
+              <MRow label="Ideal lap"   vA={formatLapTime(a.idealLapMs)} vB={formatLapTime(b.idealLapMs)} d={delta(a.idealLapMs, b.idealLapMs)} dc={deltaColor(a.idealLapMs, b.idealLapMs)} />
+              <MRow label="Consistency" vA={a.consistencyScore?.toFixed(1) ?? "—"} vB={b.consistencyScore?.toFixed(1) ?? "—"} d={scoreDelta(a.consistencyScore, b.consistencyScore)} dc={deltaColor(b.consistencyScore, a.consistencyScore, true)} last />
+            </tbody>
+          </table>
+        </div>
 
         {/* Lap-by-lap */}
         {allLapNums.length > 0 && (
           <>
-            <SectionLabel>Laps</SectionLabel>
-            <div style={{ fontFamily: "monospace", fontSize: 10 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "24px 1fr 1fr 60px", gap: "1px 6px", color: "var(--text-dim)", marginBottom: 4, paddingBottom: 3, borderBottom: "1px solid var(--border)" }}>
-                <span>#</span>
-                <span style={{ color: "var(--cyan)" }}>A</span>
-                <span style={{ color: "var(--orange)" }}>B</span>
-                <span>Δ</span>
+            <p className="section-label" style={{ marginBottom: 6 }}>Lap by lap</p>
+            <div className="card" style={{ padding: "8px 10px", fontFamily: "monospace", fontSize: 11 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "24px 1fr 1fr 64px", gap: "2px 8px", color: "var(--text-dim)", marginBottom: 5, paddingBottom: 5, borderBottom: "1px solid var(--border-soft)" }}>
+                <span className="section-label" style={{ fontSize: 9 }}>#</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: "var(--cyan)", textTransform: "uppercase", letterSpacing: "0.05em" }}>A</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: "var(--orange)", textTransform: "uppercase", letterSpacing: "0.05em" }}>B</span>
+                <span className="section-label" style={{ fontSize: 9, textAlign: "center" }}>Δ</span>
               </div>
-              {allLapNums.map((num) => {
+              {allLapNums.map((num, i) => {
                 const lA = lapsA.get(num)
                 const lB = lapsB.get(num)
                 const d  = delta(lA?.lapTimeMs ?? null, lB?.lapTimeMs ?? null)
                 const dc = deltaColor(lA?.lapTimeMs ?? null, lB?.lapTimeMs ?? null)
+                const invalid = lA?.isValid === false || lB?.isValid === false
                 return (
-                  <div key={num} style={{ display: "grid", gridTemplateColumns: "24px 1fr 1fr 60px", gap: "1px 6px", padding: "2px 0", opacity: (lA?.isValid === false || lB?.isValid === false) ? 0.45 : 1 }}>
-                    <span style={{ color: "var(--text-dim)" }}>{num}</span>
+                  <div key={num} style={{
+                    display: "grid", gridTemplateColumns: "24px 1fr 1fr 64px",
+                    gap: "2px 8px", padding: "2.5px 0",
+                    background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
+                    borderRadius: 3,
+                    opacity: invalid ? 0.4 : 1,
+                  }}>
+                    <span style={{ color: "var(--text-dim)", fontSize: 10 }}>{num}</span>
                     <span style={{ color: lA ? "var(--text)" : "var(--text-dim)" }}>{formatLapTime(lA?.lapTimeMs ?? null)}</span>
                     <span style={{ color: lB ? "var(--text)" : "var(--text-dim)" }}>{formatLapTime(lB?.lapTimeMs ?? null)}</span>
-                    <span style={{ color: dc, fontWeight: d !== "—" && d !== "=" ? 600 : 400 }}>{d}</span>
+                    <span style={{ color: dc, fontWeight: d !== "—" && d !== "=" ? 700 : 400, textAlign: "center", fontSize: 10 }}>{d}</span>
                   </div>
                 )
               })}
             </div>
-
-            {/* Sector best comparison */}
-            {(a.laps.some((l) => l.sector1Ms) || b.laps.some((l) => l.sector1Ms)) && (
-              <>
-                <SectionLabel style={{ marginTop: 12 }}>Best sectors</SectionLabel>
-                <table style={{ width: "100%", fontSize: 11, borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                      <th style={thStyle}>Sector</th>
-                      <th style={{ ...thStyle, color: "var(--cyan)" }}>A best</th>
-                      <th style={{ ...thStyle, color: "var(--orange)" }}>B best</th>
-                      <th style={thStyle}>Δ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(["sector1Ms", "sector2Ms", "sector3Ms"] as const).map((s, i) => {
-                      const valsA = a.laps.map((l) => l[s]).filter((v): v is number => v != null)
-                      const valsB = b.laps.map((l) => l[s]).filter((v): v is number => v != null)
-                      const bestA = valsA.length ? Math.min(...valsA) : null
-                      const bestB = valsB.length ? Math.min(...valsB) : null
-                      return (
-                        <MetricRow key={s}
-                          label={`S${i + 1}`}
-                          vA={formatLapTime(bestA)} vB={formatLapTime(bestB)}
-                          delta={delta(bestA, bestB)}
-                          deltaColor={deltaColor(bestA, bestB)}
-                        />
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </>
-            )}
           </>
+        )}
+
+        {/* Best sectors */}
+        {hasSectors && (
+          <div style={{ marginTop: 16 }}>
+            <p className="section-label" style={{ marginBottom: 6 }}>Best sectors</p>
+            <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+              <table style={{ width: "100%", fontSize: 11, borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--border-soft)" }}>
+                    <th style={TH}>Sector</th>
+                    <th style={{ ...TH, color: "var(--cyan)" }}>A best</th>
+                    <th style={{ ...TH, color: "var(--orange)" }}>B best</th>
+                    <th style={{ ...TH, textAlign: "center" }}>Δ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(["sector1Ms", "sector2Ms", "sector3Ms"] as const).map((key, i) => {
+                    const valsA = a.laps.map((l) => l[key]).filter((v): v is number => v != null)
+                    const valsB = b.laps.map((l) => l[key]).filter((v): v is number => v != null)
+                    const bestA = valsA.length ? Math.min(...valsA) : null
+                    const bestB = valsB.length ? Math.min(...valsB) : null
+                    return (
+                      <MRow key={key} label={`S${i + 1}`} vA={formatLapTime(bestA)} vB={formatLapTime(bestB)} d={delta(bestA, bestB)} dc={deltaColor(bestA, bestB)} last={i === 2} />
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
       </div>
     </div>
   )
 }
 
-const thStyle: React.CSSProperties = {
-  textAlign: "left", padding: "4px 6px",
-  fontSize: 10, fontWeight: 700, color: "var(--text-muted)",
-  textTransform: "uppercase", letterSpacing: "0.04em",
+const TH: React.CSSProperties = {
+  padding: "6px 12px", textAlign: "left",
+  fontSize: 9, fontWeight: 700, color: "var(--text-dim)",
+  textTransform: "uppercase", letterSpacing: "0.06em",
+  background: "var(--surface-3)",
 }
 
-function MetricRow({ label, vA, vB, delta: d, deltaColor: dc }: {
-  label: string; vA: string; vB: string; delta: string; deltaColor: string
-}) {
+function MRow({ label, vA, vB, d, dc, last }: { label: string; vA: string; vB: string; d: string; dc: string; last?: boolean }) {
   return (
-    <tr style={{ borderBottom: "1px solid var(--border)" }}>
-      <td style={{ padding: "5px 6px", color: "var(--text-muted)", fontSize: 11 }}>{label}</td>
-      <td style={{ padding: "5px 6px", fontFamily: "monospace", color: "var(--text)" }}>{vA}</td>
-      <td style={{ padding: "5px 6px", fontFamily: "monospace", color: "var(--text)" }}>{vB}</td>
-      <td style={{ padding: "5px 6px", fontFamily: "monospace", color: dc, fontWeight: 600 }}>{d}</td>
+    <tr style={{ borderBottom: last ? "none" : "1px solid var(--border-soft)" }}>
+      <td style={{ padding: "7px 12px", color: "var(--text-muted)", fontSize: 11, fontWeight: 500 }}>{label}</td>
+      <td style={{ padding: "7px 12px", fontFamily: "monospace", color: "var(--text)", fontSize: 11 }}>{vA}</td>
+      <td style={{ padding: "7px 12px", fontFamily: "monospace", color: "var(--text)", fontSize: 11 }}>{vB}</td>
+      <td style={{ padding: "7px 12px", fontFamily: "monospace", color: dc, fontWeight: 700, fontSize: 11, textAlign: "center" }}>{d}</td>
     </tr>
-  )
-}
-
-function SectionLabel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6, ...style }}>
-      {children}
-    </p>
   )
 }

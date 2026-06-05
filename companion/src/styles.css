@@ -158,6 +158,9 @@ select:focus { border-color: var(--cyan-dim); }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .spin { animation: spin 0.8s linear infinite; }
 
+/* Session list row */
+.session-row:hover { background: rgba(255,255,255,0.025) !important; }
+
 /* Stat tile */
 .stat-tile {
   background: var(--surface-2);
