@@ -10,7 +10,7 @@ import {
   SlidersHorizontal, Film, Settings, Minus, X,
   FolderOpen, CloudUpload, RotateCcw, Trash2,
   ArrowUpCircle, RefreshCw, Loader2, Download,
-  Map, Car, MonitorPlay,
+  Map, Car, MonitorPlay, LogOut,
   type LucideIcon,
 } from "lucide-react"
 import { SyncLog } from "./components/SyncLog"
@@ -595,6 +595,23 @@ export default function App() {
                 <button type="submit" className="btn btn-primary" style={{ alignSelf: "flex-start" }}>
                   Save settings
                 </button>
+
+                {/* Danger zone */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 8, borderTop: "1px solid var(--border-soft)", marginTop: 4 }}>
+                  <div>
+                    <p style={{ fontSize: 12, fontWeight: 600 }}>Quit app</p>
+                    <p style={{ fontSize: 11, color: "var(--text-dim)" }}>Close completely and exit from tray</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => invoke("quit_app")}
+                    className="btn btn-danger"
+                    style={{ gap: 6, flexShrink: 0 }}
+                  >
+                    <LogOut size={12} strokeWidth={2} />
+                    Quit
+                  </button>
+                </div>
               </form>
 
               {/* ── Overlay & Telemetry ── */}
@@ -749,7 +766,7 @@ function TitleBar({ watching, pendingUpdate, onUpdateClick }: { watching: boolea
 
       <div style={{ marginLeft: "auto", display: "flex", gap: 2 }}>
         <button className="wbtn" onClick={minimize} title="Minimize"><Minus size={10} strokeWidth={2} /></button>
-        <button className="wbtn wbtn-close" onClick={hideWindow} title="Close to tray"><X size={10} strokeWidth={2} /></button>
+        <button className="wbtn wbtn-close" onClick={hideWindow} title="Minimize to tray (right-click tray → Quit to exit)"><X size={10} strokeWidth={2} /></button>
       </div>
     </div>
   )

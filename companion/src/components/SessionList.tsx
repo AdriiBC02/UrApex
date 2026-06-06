@@ -14,6 +14,8 @@ export interface SessionSummary {
   isNewPb:          boolean
   dnf:              boolean
   syncedToServer:   boolean
+  finalPosition:    number | null
+  serverName:       string | null
 }
 
 const TYPE: Record<string, { label: string; color: string }> = {
@@ -75,6 +77,22 @@ export function SessionList({ sessions, selectedId, onSelect, onDelete }: Props)
                   DNF
                 </span>
               )}
+              {s.finalPosition != null && !s.dnf && (
+                <span style={{
+                  fontSize: 8, fontWeight: 800,
+                  color: s.finalPosition === 1 ? "#fbbf24"
+                    : s.finalPosition === 2 ? "#d4d4d8"
+                    : s.finalPosition === 3 ? "#fb923c"
+                    : "var(--text-muted)",
+                  padding: "0 5px", borderRadius: 4,
+                  background: s.finalPosition === 1 ? "rgba(251,191,36,0.12)"
+                    : s.finalPosition === 2 ? "rgba(212,212,216,0.1)"
+                    : s.finalPosition === 3 ? "rgba(251,146,60,0.12)"
+                    : "transparent",
+                }}>
+                  P{s.finalPosition}
+                </span>
+              )}
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete(s.id) }}
                 style={{ marginLeft: "auto", color: "var(--text-dim)", padding: "2px 4px", opacity: 0.6 }}
@@ -109,9 +127,10 @@ export function SessionList({ sessions, selectedId, onSelect, onDelete }: Props)
             </div>
 
             {/* Date */}
-            <p style={{ fontSize: 9, color: "var(--text-dim)", margin: "3px 0 0" }}>
+            <p style={{ fontSize: 9, color: "var(--text-dim)", margin: "3px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {new Date(s.sessionDate).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
               {!s.syncedToServer && <span style={{ marginLeft: 5, color: "var(--text-dim)" }}>· local</span>}
+              {s.serverName && <span style={{ marginLeft: 5 }}>· {s.serverName}</span>}
             </p>
           </div>
         )

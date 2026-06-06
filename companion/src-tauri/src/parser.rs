@@ -24,6 +24,7 @@ pub struct ParsedParticipant {
     pub pit_stops_count: i32,
     pub dnf:             bool,
     pub laps:            Vec<ParsedLap>,
+    pub grid_position:   Option<i32>,
 }
 
 #[derive(Debug)]
@@ -40,6 +41,8 @@ pub struct ParsedSession {
     pub is_online:     bool,
     pub dnf:           bool,
     pub laps:          Vec<ParsedLap>,
+    pub server_name:    Option<String>,
+    pub grid_position:  Option<i32>,  // player starting grid position
     // Conditions
     pub weather:       Option<String>,
     pub temp_ambient:  Option<f64>,
@@ -132,6 +135,15 @@ pub fn parse(content: &str, driver_name: Option<&str>) -> Result<ParsedSession, 
     let car_class = child_text(player, "CarClass").map(str::to_string);
     let final_position = child_text(player, "Position").and_then(|s| s.parse().ok());
 
+    let server_name = child_text(race_results, "ServerName")
+        .or_else(|| child_text(race_results, "Server"))
+        .map(str::to_string);
+
+    let grid_position = child_text(player, "GridPos")
+        .or_else(|| child_text(player, "StartPos"))
+        .or_else(|| child_text(player, "GridPosition"))
+        .and_then(|s| s.parse().ok());
+
     let finish_status = child_text(player, "FinishStatus").unwrap_or("");
     let dnf = !finish_status.is_empty()
         && finish_status != "Finished Normally"
@@ -156,6 +168,8 @@ pub fn parse(content: &str, driver_name: Option<&str>) -> Result<ParsedSession, 
         is_online,
         dnf,
         laps,
+        server_name,
+        grid_position,
         weather,
         temp_ambient,
         temp_track,
@@ -310,6 +324,9 @@ fn parse_all_participants(drivers: &[Node]) -> Vec<ParsedParticipant> {
             pit_stops_count: child_text(*d, "Pitstops").and_then(|s| s.parse().ok()).unwrap_or(0),
             dnf,
             laps: parse_laps(*d),
+            grid_position: child_text(*d, "GridPos")
+                .or_else(|| child_text(*d, "StartPos"))
+                .and_then(|s| s.parse().ok()),
         }
     }).collect()
 }

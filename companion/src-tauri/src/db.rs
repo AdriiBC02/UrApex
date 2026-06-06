@@ -19,6 +19,8 @@ pub struct SessionSummary {
     pub is_new_pb:         bool,
     pub dnf:               bool,
     pub synced_to_server:  bool,
+    pub final_position:    Option<i32>,
+    pub server_name:       Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -40,7 +42,7 @@ pub struct SessionDetail {
     #[serde(flatten)]
     pub summary:        SessionSummary,
     pub car_class:      Option<String>,
-    pub final_position: Option<i32>,
+    pub grid_position:  Option<i32>,
     pub duration_sec:   Option<i32>,
     pub is_online:      bool,
     pub avg_lap_ms:     Option<f64>,
@@ -67,6 +69,7 @@ pub struct Participant {
     pub finish_status:   Option<String>,
     pub pit_stops_count: i32,
     pub dnf:             bool,
+    pub grid_position:   Option<i32>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -433,6 +436,14 @@ fn migrate(conn: &Connection) -> Result<(), String> {
         set_schema_version(conn, 5);
     }
 
+    // v6 — grid position + server name
+    if v < 6 {
+        let _ = conn.execute_batch("ALTER TABLE sessions ADD COLUMN grid_position INTEGER");
+        let _ = conn.execute_batch("ALTER TABLE sessions ADD COLUMN server_name TEXT");
+        let _ = conn.execute_batch("ALTER TABLE participants ADD COLUMN grid_position INTEGER");
+        set_schema_version(conn, 6);
+    }
+
     Ok(())
 }
 
@@ -463,8 +474,9 @@ pub fn insert_session(
             total_laps, valid_laps, best_lap_ms, avg_lap_ms, ideal_lap_ms,
             consistency_score, is_new_pb, final_position, duration_sec,
             is_online, dnf, file_path, file_hash, imported_at,
-            weather, temp_ambient, temp_track, humidity, track_length_m)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25)",
+            weather, temp_ambient, temp_track, humidity, track_length_m,
+            grid_position, server_name)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27)",
         params![
             id, session.track_name, session.car_name, session.car_class,
             session.session_type, session.session_date,
@@ -476,6 +488,7 @@ pub fn insert_session(
             file_path, file_hash, now,
             session.weather, session.temp_ambient, session.temp_track,
             session.humidity, session.track_length_m,
+            session.grid_position, session.server_name,
         ],
     ).map_err(|e| e.to_string())?;
 
@@ -516,7 +529,8 @@ pub fn get_sessions(conn: &Connection) -> Result<Vec<SessionSummary>, String> {
     let mut stmt = conn.prepare(
         "SELECT id, track_name, car_name, session_type, session_date,
                 total_laps, valid_laps, best_lap_ms, consistency_score,
-                is_new_pb, dnf, synced_to_server
+                is_new_pb, dnf, synced_to_server,
+                final_position, server_name
          FROM sessions ORDER BY session_date DESC LIMIT 200"
     ).map_err(|e| e.to_string())?;
 
@@ -533,6 +547,8 @@ pub fn get_sessions(conn: &Connection) -> Result<Vec<SessionSummary>, String> {
         is_new_pb:         row.get::<_, i32>(9)? != 0,
         dnf:               row.get::<_, i32>(10)? != 0,
         synced_to_server:  row.get::<_, i32>(11)? != 0,
+        final_position:    row.get(12)?,
+        server_name:       row.get(13)?,
     })).map_err(|e| e.to_string())?;
 
     rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
@@ -542,7 +558,8 @@ pub fn get_session_detail(conn: &Connection, id: &str) -> Result<Option<SessionD
     let summary = conn.query_row(
         "SELECT id, track_name, car_name, session_type, session_date, total_laps, valid_laps,
                 best_lap_ms, consistency_score, is_new_pb, dnf, synced_to_server,
-                car_class, final_position, duration_sec, is_online, avg_lap_ms, ideal_lap_ms,
+                final_position, server_name,
+                car_class, grid_position, duration_sec, is_online, avg_lap_ms, ideal_lap_ms,
                 weather, temp_ambient, temp_track, humidity, track_length_m
          FROM sessions WHERE id=?1",
         params![id],
@@ -560,22 +577,24 @@ pub fn get_session_detail(conn: &Connection, id: &str) -> Result<Option<SessionD
                 is_new_pb:         row.get::<_, i32>(9)? != 0,
                 dnf:               row.get::<_, i32>(10)? != 0,
                 synced_to_server:  row.get::<_, i32>(11)? != 0,
+                final_position:    row.get(12)?,
+                server_name:       row.get(13)?,
             },
-            row.get::<_, Option<String>>(12)?,   // car_class
-            row.get::<_, Option<i32>>(13)?,      // final_position
-            row.get::<_, Option<i32>>(14)?,      // duration_sec
-            row.get::<_, i32>(15)? != 0,         // is_online
-            row.get::<_, Option<f64>>(16)?,      // avg_lap_ms
-            row.get::<_, Option<i32>>(17)?,      // ideal_lap_ms
-            row.get::<_, Option<String>>(18)?,   // weather
-            row.get::<_, Option<f64>>(19)?,      // temp_ambient
-            row.get::<_, Option<f64>>(20)?,      // temp_track
-            row.get::<_, Option<f64>>(21)?,      // humidity
-            row.get::<_, Option<f64>>(22)?,      // track_length_m
+            row.get::<_, Option<String>>(14)?,   // car_class
+            row.get::<_, Option<i32>>(15)?,      // grid_position
+            row.get::<_, Option<i32>>(16)?,      // duration_sec
+            row.get::<_, i32>(17)? != 0,         // is_online
+            row.get::<_, Option<f64>>(18)?,      // avg_lap_ms
+            row.get::<_, Option<i32>>(19)?,      // ideal_lap_ms
+            row.get::<_, Option<String>>(20)?,   // weather
+            row.get::<_, Option<f64>>(21)?,      // temp_ambient
+            row.get::<_, Option<f64>>(22)?,      // temp_track
+            row.get::<_, Option<f64>>(23)?,      // humidity
+            row.get::<_, Option<f64>>(24)?,      // track_length_m
         )),
     );
 
-    let Ok((summary, car_class, final_position, duration_sec, is_online,
+    let Ok((summary, car_class, grid_position, duration_sec, is_online,
             avg_lap_ms, ideal_lap_ms, weather, temp_ambient, temp_track, humidity, track_length_m)) = summary else {
         return Ok(None);
     };
@@ -598,7 +617,7 @@ pub fn get_session_detail(conn: &Connection, id: &str) -> Result<Option<SessionD
        .collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
 
     Ok(Some(SessionDetail {
-        summary, car_class, final_position, duration_sec, is_online,
+        summary, car_class, grid_position, duration_sec, is_online,
         avg_lap_ms, ideal_lap_ms, weather, temp_ambient, temp_track, humidity, track_length_m,
         laps,
     }))
@@ -621,12 +640,13 @@ pub fn insert_participants(
         let pid = uuid::Uuid::new_v4().to_string();
         conn.execute(
             "INSERT INTO participants (id, session_id, driver_name, car_name, car_class, position,
-             laps_completed, best_lap_ms, finish_status, pit_stops_count, dnf)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
+             laps_completed, best_lap_ms, finish_status, pit_stops_count, dnf, grid_position)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
             params![
                 pid, session_id, p.driver_name, p.car_name, p.car_class,
                 p.position, p.laps_completed, p.best_lap_ms,
                 p.finish_status, p.pit_stops_count, p.dnf as i32,
+                p.grid_position,
             ],
         ).map_err(|e| e.to_string())?;
 
@@ -652,7 +672,8 @@ pub fn insert_participants(
 pub fn get_participants(conn: &Connection, session_id: &str) -> Result<Vec<Participant>, String> {
     let mut stmt = conn.prepare(
         "SELECT id, session_id, driver_name, car_name, car_class, position,
-                laps_completed, best_lap_ms, finish_status, pit_stops_count, dnf
+                laps_completed, best_lap_ms, finish_status, pit_stops_count, dnf,
+                grid_position
          FROM participants WHERE session_id=?1 ORDER BY position ASC NULLS LAST"
     ).map_err(|e| e.to_string())?;
 
@@ -668,6 +689,7 @@ pub fn get_participants(conn: &Connection, session_id: &str) -> Result<Vec<Parti
         finish_status:   row.get(8)?,
         pit_stops_count: row.get(9)?,
         dnf:             row.get::<_, i32>(10)? != 0,
+        grid_position:   row.get(11)?,
     })).map_err(|e| e.to_string())?;
 
     rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())

@@ -388,6 +388,13 @@ async fn reassign_player(
     Ok(new_id)
 }
 
+// ── Quit ──────────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn quit_app(app: AppHandle) {
+    app.exit(0);
+}
+
 // ── Core processing ───────────────────────────────────────────────────────────
 
 pub async fn process_file(
@@ -602,7 +609,7 @@ pub fn run() {
                     }
                 })
                 .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click { .. } = event {
+                    if let TrayIconEvent::Click { button: tauri::tray::MouseButton::Left, .. } = event {
                         if let Some(w) = tray.app_handle().get_webview_window("main") {
                             let _ = w.show(); let _ = w.set_focus();
                         }
@@ -628,6 +635,7 @@ pub fn run() {
             get_tracks, get_cars, import_all_replays, reassign_player,
             start_telemetry, stop_telemetry,
             show_overlay, hide_overlay,
+            quit_app,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

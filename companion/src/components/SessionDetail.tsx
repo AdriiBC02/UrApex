@@ -5,7 +5,7 @@ import type { SessionSummary } from "./SessionList"
 import {
   ArrowLeft, GitCompare, Timer, TrendingUp, BarChart3,
   List, Users, FileText, Thermometer, Wind, Droplets,
-  MapPin, Plus, Trash2, ExternalLink, type LucideIcon,
+  MapPin, Plus, Trash2, ExternalLink, Server, type LucideIcon,
 } from "lucide-react"
 
 interface LapRow {
@@ -21,7 +21,7 @@ interface LapRow {
 
 export interface SessionDetail extends SessionSummary {
   carClass:      string | null
-  finalPosition: number | null
+  gridPosition:  number | null
   durationSec:   number | null
   isOnline:      boolean
   avgLapMs:      number | null
@@ -267,12 +267,18 @@ export function SessionDetailView({ session: s, allSessions, onBack, onCompare }
 
           <h2 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", margin: "0 0 3px", lineHeight: 1.2 }}>{s.trackName}</h2>
           <p style={{ fontSize: 11, color: "var(--text-muted)", margin: 0 }}>
-            {s.carName}{s.carClass ? ` · ${s.carClass}` : ""}{s.finalPosition != null ? ` · P${s.finalPosition}` : ""}
+            {s.carName}{s.carClass ? ` · ${s.carClass}` : ""}
+            {s.gridPosition != null && s.finalPosition != null
+              ? ` · P${s.gridPosition} → P${s.finalPosition}`
+              : s.finalPosition != null
+                ? ` · P${s.finalPosition}`
+                : ""}
           </p>
 
           {/* Conditions */}
-          {(s.weather || s.tempAmbient != null || s.tempTrack != null || s.trackLengthM != null) && (
+          {(s.weather || s.tempAmbient != null || s.tempTrack != null || s.trackLengthM != null || s.serverName) && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 7, fontSize: 10, color: "var(--text-dim)" }}>
+              {s.serverName    && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Server size={10} strokeWidth={2} />{s.serverName}</span>}
               {s.weather       && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Wind size={10} strokeWidth={2} />{s.weather}</span>}
               {s.tempAmbient   != null && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Thermometer size={10} strokeWidth={2} />{s.tempAmbient.toFixed(0)}°C air</span>}
               {s.tempTrack     != null && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Thermometer size={10} strokeWidth={2} style={{ color: "var(--orange)" }} />{s.tempTrack.toFixed(0)}°C track</span>}
