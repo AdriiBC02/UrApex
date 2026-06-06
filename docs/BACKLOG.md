@@ -170,8 +170,8 @@
 | CA-024 | Lap time chart in Session Detail | P2 | ✅ | SVG line chart above laps table; best lap dot highlighted |
 | CA-025 | Delta column in laps table | P2 | ✅ | Δ column showing +X.XXX vs session best lap |
 | CA-026 | Replay session linking UI | P2 | ✅ | Session picker dropdown on unlinked replays; calls match_replay |
-| CA-014 | In-game overlay window | P2 | 🔲 | Transparent always-on-top Tauri window |
-| CA-015 | UDP telemetry listener (LMU port 4444) | P2 | 🔲 | Feed data to overlay in real time |
+| CA-014 | In-game overlay window | P2 | ✅ | Transparent always-on-top Tauri window |
+| CA-015 | UDP telemetry listener (LMU port 4444) | P2 | ✅ | Feed data to overlay in real time |
 | CA-017 | VCR replay file tracking | P2 | ✅ | Watcher detecta .vcr en replay_folder; db::insert_replay; evento replay-detected; tabla replays en SQLite |
 | CA-018 | Companion Replays tab | P2 | ✅ | Tab Replays en companion UI; lista .vcr rastreados; botón delete; refresh automático en evento replay-detected |
 | CA-019 | Fix Windows runtime crashes | P0 | ✅ | x86 WebView2 (i686 build), plugin config v1→v2, manifest conflict, NSIS schema |

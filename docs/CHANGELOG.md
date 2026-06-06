@@ -12,6 +12,18 @@
 
 ---
 
+## [Unreleased — 0.33.0]
+
+> Companion v0.3 — in-game overlay + UDP telemetry.
+
+### Added
+- **In-game overlay (CA-014)** — transparent always-on-top Tauri window (360×180); shows speed, gear, RPM bar, throttle/brake bars, lap time, delta vs best, fuel bar; draggable; hidden by default
+- **UDP telemetry listener (CA-015)** — Rust listener on configurable port (default 4444); parses rF2/LMU binary packet format; emits `telemetry` events to overlay in real time
+- **Settings: Overlay section** — Start/stop telemetry, show/hide overlay, port config
+- Overlay auto-dims after 3s without data; live green dot when receiving packets
+
+---
+
 ## [0.32.0] — 2026-06-06
 
 > Companion v0.3 — lap chart, delta column, replay linking.
