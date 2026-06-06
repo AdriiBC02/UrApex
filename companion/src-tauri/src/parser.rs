@@ -61,7 +61,7 @@ pub fn parse(content: &str, driver_name: Option<&str>) -> Result<ParsedSession, 
     let content = normalize_xml_encoding(content);
     let doc = roxmltree::Document::parse_with_options(
         &content,
-        roxmltree::ParserOptions { allow_dtd: true, ..Default::default() },
+        roxmltree::ParsingOptions { allow_dtd: true, ..Default::default() },
     ).map_err(|e| format!("XML parse error: {e}"))?;
 
     let race_results = find_race_results(doc.root_element())

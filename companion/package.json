@@ -1,6 +1,6 @@
 {
   "name": "urapex",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "UrApex companion app — auto-syncs LMU session files to your dashboard",
   "private": true,
   "scripts": {
