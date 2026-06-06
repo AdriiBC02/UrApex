@@ -57,7 +57,10 @@ export function SyncLog({ logs }: { logs: LogEntry[] }) {
               {entry.file || "—"}
             </span>
             {entry.message && (
-              <span style={{ fontSize: 10, color: "var(--text-dim)", flexShrink: 0, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <span
+                title={entry.message}
+                style={{ fontSize: 10, color: "var(--text-dim)", flexShrink: 0, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              >
                 {entry.message}
               </span>
             )}

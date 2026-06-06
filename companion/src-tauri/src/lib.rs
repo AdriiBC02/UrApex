@@ -304,7 +304,8 @@ pub async fn process_file(
         return Err("Not an LMU result file".to_string());
     }
 
-    let session = parser::parse(&content, driver_name)?;
+    let session = parser::parse(&content, driver_name)
+        .map_err(|e| { diag(&format!("parse error [{file_path}]: {e}")); e })?;
     let snap    = metrics_snapshot::MetricsSnapshot::from_session(&session);
 
     let is_pb = {

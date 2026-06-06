@@ -56,7 +56,10 @@ pub fn can_parse(content: &str) -> bool {
 
 
 pub fn parse(content: &str, driver_name: Option<&str>) -> Result<ParsedSession, String> {
-    let doc = roxmltree::Document::parse(content)
+    // roxmltree rejects encoding declarations other than UTF-8/UTF-16, but
+    // we already have a UTF-8 &str — rewrite the declaration so it accepts it.
+    let content = normalize_xml_encoding(content);
+    let doc = roxmltree::Document::parse(&content)
         .map_err(|e| format!("XML parse error: {e}"))?;
 
     let race_results = find_race_results(doc.root_element())
@@ -148,6 +151,29 @@ pub fn parse(content: &str, driver_name: Option<&str>) -> Result<ParsedSession, 
         track_length_m,
         participants,
     })
+}
+
+// ── XML preprocessing ─────────────────────────────────────────────────────────
+
+fn normalize_xml_encoding(s: &str) -> std::borrow::Cow<str> {
+    // Strip UTF-8 BOM if present.
+    let s = s.strip_prefix('\u{FEFF}').unwrap_or(s);
+    // If the XML declaration names a non-UTF-8 encoding, replace it with
+    // UTF-8 — we already have a valid UTF-8 &str so the content is fine.
+    if s.starts_with("<?xml") {
+        if let Some(end) = s.find("?>") {
+            let decl_lower = s[..end + 2].to_ascii_lowercase();
+            if decl_lower.contains("encoding=")
+                && !decl_lower.contains("utf-8")
+                && !decl_lower.contains("utf8")
+            {
+                return std::borrow::Cow::Owned(
+                    format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?>{}", &s[end + 2..]),
+                );
+            }
+        }
+    }
+    std::borrow::Cow::Borrowed(s)
 }
 
 // ── Navigation helpers ────────────────────────────────────────────────────────
