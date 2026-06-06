@@ -379,7 +379,13 @@ async fn reassign_player(
         let conn = db_state.0.lock().map_err(|e| e.to_string())?;
         db::delete_session(&conn, &session_id)?;
     }
-    process_file(&file_path, "", "", Some(&driver_name), &app, &db_state.0).await
+    let new_id = process_file(&file_path, "", "", Some(&driver_name), &app, &db_state.0).await?;
+    // Emit file-result so App.tsx calls loadSessions() and the list refreshes
+    let filename = std::path::Path::new(&file_path)
+        .file_name().map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| file_path.clone());
+    let _ = app.emit("file-result", serde_json::json!({ "file": filename, "status": "success" }));
+    Ok(new_id)
 }
 
 // ── Core processing ───────────────────────────────────────────────────────────

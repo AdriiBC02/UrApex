@@ -58,20 +58,28 @@ jobs:
           dir src-tauri\target\i686-pc-windows-msvc\release\bundle\nsis\ 2>nul || echo "(empty)"
         shell: cmd
 
+      - name: Read version
+        id: ver
+        working-directory: companion
+        shell: pwsh
+        run: |
+          $conf    = Get-Content "src-tauri\tauri.conf.json" | ConvertFrom-Json
+          $version = $conf.version
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          echo "TAG=companion/v$version" >> $env:GITHUB_OUTPUT
+
       - name: Generate latest.json for auto-updater
         working-directory: companion
         shell: pwsh
         run: |
           $bundleDir = "src-tauri\target\i686-pc-windows-msvc\release\bundle\nsis"
-          $conf      = Get-Content "src-tauri\tauri.conf.json" | ConvertFrom-Json
-          $version   = $conf.version
+          $version   = "${{ steps.ver.outputs.VERSION }}"
 
-          # Find the installer and its signature file
           $exeFile = Get-ChildItem $bundleDir -Filter "*.exe" | Select-Object -First 1
           $sigFile = Get-ChildItem $bundleDir -Filter "*.sig"  | Select-Object -First 1
 
           if (-not $sigFile) {
-            Write-Warning "No .sig file found — TAURI_SIGNING_PRIVATE_KEY may not be set. Skipping latest.json."
+            Write-Warning "No .sig file — TAURI_SIGNING_PRIVATE_KEY not set. Skipping latest.json."
             exit 0
           }
 
@@ -94,11 +102,35 @@ jobs:
           $manifest | Out-File -FilePath "latest.json" -Encoding UTF8NoBOM
           Write-Host "Generated latest.json for v$version -> $downloadUrl"
 
-      - name: Delete existing release (clean up old assets)
+      - name: Install body text
+        id: body
+        shell: pwsh
+        run: |
+          $body = @"
+          ## UrApex App — Windows (x86)
+
+          > Compilado automáticamente desde ``main``.
+
+          ### Instalación
+          1. Descarga el ``.exe`` de abajo
+          2. Ejecútalo en tu PC de Windows (requiere admin para instalar en ``Program Files (x86)``)
+          3. En UrApex → **Settings → Companion app** → genera una API key
+          4. En la app → **Settings** → pega la API key, la URL de UrApex y la ruta de resultados LMU
+          5. **Start watching** — las sesiones se subirán automáticamente
+
+          **Ruta de resultados LMU:**
+          ``C:\Users\<usuario>\Documents\Le Mans Ultimate\UserData\player\Results\``
+          "@
+          # Escape for GitHub output (multiline)
+          $body = $body -replace "`r`n", "%0A" -replace "`n", "%0A"
+          echo "BODY=$body" >> $env:GITHUB_OUTPUT
+
+      - name: Delete existing companion-latest release
         run: gh release delete companion-latest --yes --cleanup-tag || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Always-current release — used by auto-updater
       - name: Upload to companion-latest release
         uses: softprops/action-gh-release@v2
         with:
@@ -107,20 +139,20 @@ jobs:
           prerelease: true
           make_latest: false
           fail_on_unmatched_files: false
-          body: |
-            ## UrApex App — Windows (x86)
-
-            > Compilado automáticamente desde `main`.
-
-            ### Instalación
-            1. Descarga el `.exe` de abajo
-            2. Ejecútalo en tu PC de Windows (requiere admin para instalar en `Program Files (x86)`)
-            3. En UrApex → **Settings → Companion app** → genera una API key
-            4. En la app → **Settings** → pega la API key, la URL de UrApex y la ruta de resultados LMU
-            5. **Start watching** — las sesiones se subirán automáticamente
-
-            **Ruta de resultados LMU:**
-            `C:\Users\<usuario>\Documents\Le Mans Ultimate\UserData\player\Results\`
+          body: ${{ steps.body.outputs.BODY }}
           files: |
             companion/src-tauri/target/i686-pc-windows-msvc/release/bundle/nsis/*.exe
             companion/latest.json
+
+      # Versioned release — permanent, for rollbacks
+      - name: Create versioned release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.TAG }}
+          name: "UrApex Companion v${{ steps.ver.outputs.VERSION }}"
+          prerelease: false
+          make_latest: false
+          fail_on_unmatched_files: false
+          body: ${{ steps.body.outputs.BODY }}
+          files: |
+            companion/src-tauri/target/i686-pc-windows-msvc/release/bundle/nsis/*.exe

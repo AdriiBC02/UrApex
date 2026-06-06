@@ -88,16 +88,26 @@ pub fn parse(content: &str, driver_name: Option<&str>) -> Result<ParsedSession, 
         .or_else(|| child_text(race_results, "RaceTime").and_then(|s| s.parse().ok()))
         .map(|m| (m * 60.0) as i32);
 
-    let weather    = child_text(session_node, "SkyType").map(str::to_string);
+    let weather = child_text(session_node, "SkyType")
+        .or_else(|| child_text(session_node, "WeatherType"))
+        .or_else(|| child_text(session_node, "Sky"))
+        .or_else(|| child_text(session_node, "Weather"))
+        .or_else(|| child_text(race_results, "SkyType"))
+        .or_else(|| child_text(race_results, "WeatherType"))
+        .map(str::to_string);
     let temp_ambient = child_text(session_node, "AmbientTemp")
         .or_else(|| child_text(session_node, "Ambient"))
+        .or_else(|| child_text(session_node, "AirTemp"))
         .or_else(|| child_text(race_results, "AmbientTemp"))
+        .or_else(|| child_text(race_results, "AirTemp"))
         .and_then(|s| s.parse::<f64>().ok());
     let temp_track = child_text(session_node, "TrackTemp")
         .or_else(|| child_text(session_node, "RoadTemp"))
+        .or_else(|| child_text(session_node, "SurfaceTemp"))
         .or_else(|| child_text(race_results, "TrackTemp"))
+        .or_else(|| child_text(race_results, "RoadTemp"))
         .and_then(|s| s.parse::<f64>().ok());
-    let humidity   = child_text(session_node, "Humidity")
+    let humidity = child_text(session_node, "Humidity")
         .or_else(|| child_text(race_results, "Humidity"))
         .and_then(|s| s.parse::<f64>().ok());
 
@@ -252,9 +262,15 @@ fn parse_laps(driver: Node) -> Vec<ParsedLap> {
             let is_valid = time_sec.map(|t| t > 0.0 && !time_str.contains('-')).unwrap_or(false);
 
             let fuel_load = lap.attribute("fuel")
+                .or_else(|| lap.attribute("Fuel"))
+                .or_else(|| lap.attribute("fuelLoad"))
                 .and_then(|s| s.parse::<f64>().ok())
                 .filter(|&v| v > 0.0);
             let tyre_compound = lap.attribute("fcompound")
+                .or_else(|| lap.attribute("compound"))
+                .or_else(|| lap.attribute("Compound"))
+                .or_else(|| lap.attribute("tyre"))
+                .or_else(|| lap.attribute("tire"))
                 .filter(|s| !s.is_empty())
                 .map(str::to_string);
 

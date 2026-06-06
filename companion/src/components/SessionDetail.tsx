@@ -121,6 +121,7 @@ export function SessionDetailView({ session: s, allSessions, onBack, onCompare }
   const [showReassign, setShowReassign]           = useState(false)
   const [reassigning, setReassigning]             = useState(false)
   const [compareDriver, setCompareDriver]         = useState<string | null>(null)
+  const [loadingDriverIds, setLoadingDriverIds]   = useState<Set<string>>(new Set())
 
   const best = s.bestLapMs
 
@@ -130,11 +131,16 @@ export function SessionDetailView({ session: s, allSessions, onBack, onCompare }
   }, [s.id])
 
   async function loadDriverLaps(id: string) {
-    if (driverLaps[id]) return
+    if (id in driverLaps) return  // already loaded (even if empty)
+    setLoadingDriverIds((prev) => new Set([...prev, id]))
     try {
       const laps = await invoke<ParticipantLap[]>("get_participant_laps", { participantId: id })
       setDriverLaps((p) => ({ ...p, [id]: laps }))
-    } catch { /* ignore */ }
+    } catch {
+      setDriverLaps((p) => ({ ...p, [id]: [] }))
+    } finally {
+      setLoadingDriverIds((prev) => { const s = new Set(prev); s.delete(id); return s })
+    }
   }
 
   function toggleDriver(id: string) {
@@ -430,8 +436,10 @@ export function SessionDetailView({ session: s, allSessions, onBack, onCompare }
 
                   {isEx && (
                     <div style={{ border: "1px solid rgba(6,182,212,0.15)", borderTop: "none", borderRadius: "0 0 8px 8px", background: "var(--surface)", padding: "8px 10px" }}>
-                      {pLaps.length === 0 ? (
+                      {loadingDriverIds.has(p.id) ? (
                         <span style={{ fontSize: 10, color: "var(--text-dim)" }}>Loading…</span>
+                      ) : pLaps.length === 0 ? (
+                        <span style={{ fontSize: 10, color: "var(--text-dim)" }}>No lap data for this driver</span>
                       ) : compareDriver === p.id ? (
                         <div style={{ fontFamily: "monospace", fontSize: 10 }}>
                           <p style={{ fontSize: 9, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>
