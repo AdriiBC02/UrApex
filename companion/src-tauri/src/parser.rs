@@ -59,8 +59,10 @@ pub fn parse(content: &str, driver_name: Option<&str>) -> Result<ParsedSession, 
     // roxmltree rejects encoding declarations other than UTF-8/UTF-16, but
     // we already have a UTF-8 &str — rewrite the declaration so it accepts it.
     let content = normalize_xml_encoding(content);
-    let doc = roxmltree::Document::parse(&content)
-        .map_err(|e| format!("XML parse error: {e}"))?;
+    let doc = roxmltree::Document::parse_with_options(
+        &content,
+        roxmltree::ParserOptions { allow_dtd: true, ..Default::default() },
+    ).map_err(|e| format!("XML parse error: {e}"))?;
 
     let race_results = find_race_results(doc.root_element())
         .ok_or_else(|| "Could not find <RaceResults>".to_string())?;
