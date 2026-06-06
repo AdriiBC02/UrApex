@@ -10,7 +10,7 @@ import {
   SlidersHorizontal, Film, Settings, Minus, X,
   FolderOpen, CloudUpload, RotateCcw, Trash2,
   ArrowUpCircle, RefreshCw, Loader2, Download,
-  Map, Car,
+  Map, Car, MonitorPlay,
   type LucideIcon,
 } from "lucide-react"
 import { SyncLog } from "./components/SyncLog"
@@ -103,6 +103,9 @@ export default function App() {
   const [installing, setInstalling]       = useState(false)
   const [updateProgress, setUpdateProgress] = useState(0)
   const [updateStatus, setUpdateStatus]   = useState("Up to date")
+  const [overlayVisible, setOverlayVisible] = useState(false)
+  const [telemetryPort, setTelemetryPort]   = useState("4444")
+  const [telemetryActive, setTelemetryActive] = useState(false)
 
   useEffect(() => {
     load("companion-settings.json", { autoSave: true, defaults: {} }).then(async (s) => {
@@ -272,6 +275,31 @@ export default function App() {
     try {
       const detail = await invoke<SessionDetail>("get_session_detail", { id: secondId })
       if (detail) setCompareDetail(detail)
+    } catch { /* ignore */ }
+  }
+
+  async function toggleOverlay() {
+    try {
+      if (overlayVisible) {
+        await invoke("hide_overlay")
+        setOverlayVisible(false)
+      } else {
+        await invoke("show_overlay")
+        setOverlayVisible(true)
+      }
+    } catch { /* ignore */ }
+  }
+
+  async function toggleTelemetry() {
+    try {
+      if (telemetryActive) {
+        await invoke("stop_telemetry")
+        setTelemetryActive(false)
+      } else {
+        const port = parseInt(telemetryPort) || 4444
+        await invoke("start_telemetry", { port })
+        setTelemetryActive(true)
+      }
     } catch { /* ignore */ }
   }
 
@@ -568,6 +596,48 @@ export default function App() {
                   Save settings
                 </button>
               </form>
+
+              {/* ── Overlay & Telemetry ── */}
+              <div className="card" style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 0 }}>
+                <div className="card-header">
+                  <MonitorPlay size={13} strokeWidth={2} style={{ color: "var(--text-dim)" }} />
+                  <span style={{ fontWeight: 600, fontSize: 12 }}>In-game overlay</span>
+                  <span style={{ fontSize: 10, color: "var(--text-dim)", marginLeft: "auto" }}>CA-014 / CA-015</span>
+                </div>
+                <Field label="UDP port" hint="Port LMU broadcasts telemetry on (default 4444). Requires rF2 UDP plugin in LMU.">
+                  <input
+                    value={telemetryPort}
+                    onChange={(e) => setTelemetryPort(e.target.value)}
+                    placeholder="4444"
+                    style={{ width: 80 }}
+                  />
+                </Field>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={toggleTelemetry}
+                    className={`btn ${telemetryActive ? "btn-danger" : "btn-ghost"}`}
+                    style={{ gap: 6 }}
+                  >
+                    <RadioTower size={12} strokeWidth={2} />
+                    {telemetryActive ? "Stop telemetry" : "Start telemetry"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleOverlay}
+                    className={`btn ${overlayVisible ? "btn-primary" : "btn-ghost"}`}
+                    style={{ gap: 6 }}
+                  >
+                    <MonitorPlay size={12} strokeWidth={2} />
+                    {overlayVisible ? "Hide overlay" : "Show overlay"}
+                  </button>
+                </div>
+                {telemetryActive && (
+                  <p style={{ fontSize: 10, color: "var(--green)", margin: 0 }}>
+                    Listening on UDP port {telemetryPort}…
+                  </p>
+                )}
+              </div>
 
               {/* ── Updates ── */}
               <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>

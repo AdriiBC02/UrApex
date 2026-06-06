@@ -3,6 +3,7 @@ mod db;
 mod metrics;
 mod metrics_snapshot;
 mod parser;
+mod telemetry;
 mod uploader;
 mod watcher;
 
@@ -28,6 +29,7 @@ fn diag(msg: &str) {
 }
 
 pub struct WatcherState(pub Mutex<Option<watcher::WatcherHandle>>);
+pub struct TelemetryState(pub Mutex<Option<telemetry::TelemetryHandle>>);
 pub struct DbState(pub Arc<Mutex<rusqlite::Connection>>);
 
 // ── Watcher ───────────────────────────────────────────────────────────────────
@@ -100,6 +102,46 @@ async fn import_all_files(
         });
     }
     Ok(count)
+}
+
+// ── Telemetry ─────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+async fn start_telemetry(
+    port: Option<u16>,
+    app: AppHandle,
+    state: State<'_, TelemetryState>,
+) -> Result<(), String> {
+    let mut g = state.0.lock().map_err(|e| e.to_string())?;
+    if let Some(h) = g.take() { h.stop(); }
+    *g = Some(telemetry::start(port.unwrap_or(4444), app).map_err(|e| e.to_string())?);
+    Ok(())
+}
+
+#[tauri::command]
+async fn stop_telemetry(state: State<'_, TelemetryState>) -> Result<(), String> {
+    let mut g = state.0.lock().map_err(|e| e.to_string())?;
+    if let Some(h) = g.take() { h.stop(); }
+    Ok(())
+}
+
+// ── Overlay ───────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn show_overlay(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("overlay") {
+        w.show().map_err(|e| e.to_string())?;
+        w.set_focus().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn hide_overlay(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("overlay") {
+        w.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 // ── Session queries ───────────────────────────────────────────────────────────
@@ -467,6 +509,7 @@ pub fn run() {
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec![])))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(WatcherState(Mutex::new(None)))
+        .manage(TelemetryState(Mutex::new(None)))
         .setup(|app| {
             diag("setup: started");
 
@@ -501,6 +544,24 @@ pub fn run() {
 
             app.manage(DbState(Arc::new(Mutex::new(conn))));
             diag("setup: db open ok");
+
+            // Overlay window — transparent, always-on-top, hidden until user enables it
+            tauri::WebviewWindowBuilder::new(
+                app,
+                "overlay",
+                tauri::WebviewUrl::App("index.html#overlay".into()),
+            )
+            .title("UrApex Overlay")
+            .inner_size(360.0, 180.0)
+            .min_inner_size(280.0, 140.0)
+            .resizable(true)
+            .decorations(false)
+            .transparent(true)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .visible(false)
+            .build()
+            .map_err(|e| { diag(&format!("overlay build failed: {e}")); e })?;
 
             let icon = tauri::image::Image::from_bytes(
                 include_bytes!("../icons/32x32.png")
@@ -559,6 +620,8 @@ pub fn run() {
             get_setups, create_setup, toggle_setup_favorite, update_setup_notes, delete_setup,
             get_replays, add_replay, match_replay, delete_replay,
             get_tracks, get_cars, import_all_replays, reassign_player,
+            start_telemetry, stop_telemetry,
+            show_overlay, hide_overlay,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
