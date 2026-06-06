@@ -53,10 +53,10 @@ jobs:
 
       - name: List build output
         working-directory: companion
-        run: |
-          echo "=== NSIS ==="
-          dir src-tauri\target\i686-pc-windows-msvc\release\bundle\nsis\ 2>nul || echo "(empty)"
         shell: cmd
+        run: |
+          echo === NSIS ===
+          dir src-tauri\target\i686-pc-windows-msvc\release\bundle\nsis\ 2>nul || echo (empty)
 
       - name: Read version
         id: ver
@@ -65,8 +65,8 @@ jobs:
         run: |
           $conf    = Get-Content "src-tauri\tauri.conf.json" | ConvertFrom-Json
           $version = $conf.version
-          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
-          echo "TAG=companion/v$version" >> $env:GITHUB_OUTPUT
+          echo "VERSION=$version" | Out-File -Append $env:GITHUB_OUTPUT
+          echo "TAG=companion/v$version" | Out-File -Append $env:GITHUB_OUTPUT
 
       - name: Generate latest.json for auto-updater
         working-directory: companion
@@ -100,51 +100,48 @@ jobs:
           } | ConvertTo-Json -Depth 5
 
           $manifest | Out-File -FilePath "latest.json" -Encoding UTF8NoBOM
-          Write-Host "Generated latest.json for v$version -> $downloadUrl"
+          Write-Host "Generated latest.json for v$version"
 
-      - name: Install body text
-        id: body
+      - name: Write release body
         shell: pwsh
         run: |
-          $body = @"
-          ## UrApex App — Windows (x86)
+          $body = @'
+          ## UrApex Companion — Windows (x86)
 
-          > Compilado automáticamente desde ``main``.
+          Compilado automáticamente desde `main`.
 
           ### Instalación
-          1. Descarga el ``.exe`` de abajo
-          2. Ejecútalo en tu PC de Windows (requiere admin para instalar en ``Program Files (x86)``)
+          1. Descarga el `.exe` de abajo
+          2. Ejecútalo en Windows (requiere admin — instala en `Program Files (x86)`)
           3. En UrApex → **Settings → Companion app** → genera una API key
           4. En la app → **Settings** → pega la API key, la URL de UrApex y la ruta de resultados LMU
           5. **Start watching** — las sesiones se subirán automáticamente
 
           **Ruta de resultados LMU:**
-          ``C:\Users\<usuario>\Documents\Le Mans Ultimate\UserData\player\Results\``
-          "@
-          # Escape for GitHub output (multiline)
-          $body = $body -replace "`r`n", "%0A" -replace "`n", "%0A"
-          echo "BODY=$body" >> $env:GITHUB_OUTPUT
+          `C:\Users\<usuario>\Documents\Le Mans Ultimate\UserData\player\Results\`
+          '@
+          $body | Out-File -FilePath "release-body.md" -Encoding UTF8NoBOM
 
       - name: Delete existing companion-latest release
         run: gh release delete companion-latest --yes --cleanup-tag || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Always-current release — used by auto-updater
+      # Always-current — used by auto-updater (overwrites on every build)
       - name: Upload to companion-latest release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: companion-latest
-          name: "UrApex — latest build"
+          name: "UrApex Companion — latest build"
           prerelease: true
           make_latest: false
           fail_on_unmatched_files: false
-          body: ${{ steps.body.outputs.BODY }}
+          body_path: release-body.md
           files: |
             companion/src-tauri/target/i686-pc-windows-msvc/release/bundle/nsis/*.exe
             companion/latest.json
 
-      # Versioned release — permanent, for rollbacks
+      # Versioned — permanent, for rollbacks (skips if tag already exists)
       - name: Create versioned release
         uses: softprops/action-gh-release@v2
         with:
@@ -153,6 +150,6 @@ jobs:
           prerelease: false
           make_latest: false
           fail_on_unmatched_files: false
-          body: ${{ steps.body.outputs.BODY }}
+          body_path: release-body.md
           files: |
             companion/src-tauri/target/i686-pc-windows-msvc/release/bundle/nsis/*.exe
