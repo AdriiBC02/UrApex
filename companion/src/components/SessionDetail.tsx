@@ -118,6 +118,9 @@ export function SessionDetailView({ session: s, allSessions, onBack, onCompare }
   const [savingNote, setSavingNote]               = useState(false)
   const [activeTab, setActiveTab]                 = useState<"laps" | "grid" | "notes">("laps")
   const [showComparePicker, setShowComparePicker] = useState(false)
+  const [showReassign, setShowReassign]           = useState(false)
+  const [reassigning, setReassigning]             = useState(false)
+  const [compareDriver, setCompareDriver]         = useState<string | null>(null)
 
   const best = s.bestLapMs
 
@@ -178,6 +181,13 @@ export function SessionDetailView({ session: s, allSessions, onBack, onCompare }
         >
           <GitCompare size={12} strokeWidth={2} /> Compare
         </button>
+        <button
+          onClick={() => setShowReassign((v) => !v)}
+          className={`btn btn-ghost ${showReassign ? "active" : ""}`}
+          style={{ padding: "4px 10px", gap: 5, fontSize: 11, color: showReassign ? "var(--amber)" : undefined }}
+        >
+          <Users size={12} strokeWidth={2} /> Reassign
+        </button>
       </div>
 
       {/* ── Compare picker ── */}
@@ -202,6 +212,33 @@ export function SessionDetailView({ session: s, allSessions, onBack, onCompare }
           {allSessions.filter((ss) => ss.id !== s.id).length === 0 && (
             <p style={{ fontSize: 11, color: "var(--text-dim)", padding: "10px 12px" }}>No other sessions to compare.</p>
           )}
+        </div>
+      )}
+
+      {showReassign && participants.length > 0 && (
+        <div style={{ borderBottom: "1px solid var(--border-soft)", background: "var(--surface)", maxHeight: 160, overflow: "auto", flexShrink: 0 }}>
+          <p className="section-label" style={{ padding: "8px 12px 4px" }}>Set player as…</p>
+          {participants.map((p) => (
+            <div
+              key={p.id}
+              onClick={async () => {
+                if (reassigning) return
+                setReassigning(true)
+                try {
+                  await invoke("reassign_player", { sessionId: s.id, driverName: p.driverName })
+                  setShowReassign(false)
+                  onBack()
+                } catch { /* ignore */ }
+                finally { setReassigning(false) }
+              }}
+              style={{ padding: "7px 12px", cursor: reassigning ? "wait" : "pointer", borderBottom: "1px solid var(--border-soft)", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "background 0.1s" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              <span style={{ fontSize: 12, fontWeight: 600 }}>{p.driverName}</span>
+              {p.bestLapMs && <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--text-muted)" }}>{formatLapTime(p.bestLapMs)}</span>}
+            </div>
+          ))}
         </div>
       )}
 
@@ -352,9 +389,21 @@ export function SessionDetailView({ session: s, allSessions, onBack, onCompare }
                     <span style={{ fontWeight: 800, fontSize: 12, fontFamily: "monospace", color: p.dnf ? "var(--red)" : "var(--text-muted)", textAlign: "center" }}>
                       {p.dnf ? "DNF" : p.position != null ? `P${p.position}` : "—"}
                     </span>
-                    <span style={{ fontWeight: 600, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {p.driverName}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setCompareDriver(compareDriver === p.id ? null : p.id)
+                          loadDriverLaps(p.id)
+                        }}
+                        style={{ fontSize: 9, fontWeight: 700, color: "var(--cyan)", padding: "2px 6px", borderRadius: 4, background: compareDriver === p.id ? "rgba(6,182,212,0.15)" : "rgba(6,182,212,0.07)", border: "1px solid rgba(6,182,212,0.2)", marginRight: 4, flexShrink: 0 }}
+                      >
+                        VS
+                      </button>
+                      <span style={{ fontWeight: 600, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {p.driverName}
+                      </span>
+                    </div>
                     <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--cyan)", fontWeight: 600 }}>
                       {formatLapTime(p.bestLapMs)}
                     </span>
@@ -374,6 +423,38 @@ export function SessionDetailView({ session: s, allSessions, onBack, onCompare }
                     <div style={{ border: "1px solid rgba(6,182,212,0.15)", borderTop: "none", borderRadius: "0 0 8px 8px", background: "var(--surface)", padding: "8px 10px" }}>
                       {pLaps.length === 0 ? (
                         <span style={{ fontSize: 10, color: "var(--text-dim)" }}>Loading…</span>
+                      ) : compareDriver === p.id ? (
+                        <div style={{ fontFamily: "monospace", fontSize: 10 }}>
+                          <p style={{ fontSize: 9, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>
+                            You vs {p.driverName}
+                          </p>
+                          <div style={{ display: "grid", gridTemplateColumns: "22px 1fr 1fr 52px", gap: "1px 6px", marginBottom: 4, paddingBottom: 3, borderBottom: "1px solid var(--border-soft)" }}>
+                            <span style={{ color: "var(--text-dim)" }}>#</span>
+                            <span style={{ color: "var(--cyan)", fontWeight: 700 }}>You</span>
+                            <span style={{ color: "var(--orange)", fontWeight: 700 }}>{p.driverName.split(" ")[0]}</span>
+                            <span style={{ color: "var(--text-dim)", textAlign: "center" }}>Δ</span>
+                          </div>
+                          {(() => {
+                            const myLaps    = new Map(s.laps.map((l) => [l.lapNumber, l]))
+                            const theirLaps = new Map(pLaps.map((l) => [l.lapNumber, l]))
+                            const allNums   = Array.from(new Set([...myLaps.keys(), ...theirLaps.keys()])).sort((a, b) => a - b)
+                            return allNums.map((num, i) => {
+                              const me    = myLaps.get(num)
+                              const them  = theirLaps.get(num)
+                              const d     = me?.lapTimeMs != null && them?.lapTimeMs != null ? me.lapTimeMs - them.lapTimeMs : null
+                              const dStr  = d == null ? "—" : d === 0 ? "=" : (d > 0 ? "+" : "") + (d / 1000).toFixed(3)
+                              const dColor = d == null ? "var(--text-dim)" : d < 0 ? "var(--green)" : d > 0 ? "var(--red)" : "var(--text-muted)"
+                              return (
+                                <div key={num} style={{ display: "grid", gridTemplateColumns: "22px 1fr 1fr 52px", gap: "1px 6px", padding: "2px 0", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)" }}>
+                                  <span style={{ color: "var(--text-dim)" }}>{num}</span>
+                                  <span style={{ color: me ? "var(--text)" : "var(--text-dim)", opacity: me?.isValid === false ? 0.4 : 1 }}>{formatLapTime(me?.lapTimeMs ?? null)}</span>
+                                  <span style={{ color: them ? "var(--text)" : "var(--text-dim)", opacity: them?.isValid === false ? 0.4 : 1 }}>{formatLapTime(them?.lapTimeMs ?? null)}</span>
+                                  <span style={{ color: dColor, fontWeight: d != null && d !== 0 ? 700 : 400, textAlign: "center" }}>{dStr}</span>
+                                </div>
+                              )
+                            })
+                          })()}
+                        </div>
                       ) : (
                         <div style={{ fontFamily: "monospace", fontSize: 10 }}>
                           <div style={{ display: "grid", gridTemplateColumns: "22px 68px 42px 42px 42px 48px", gap: "1px 6px", color: "var(--text-dim)", marginBottom: 4, paddingBottom: 3, borderBottom: "1px solid var(--border-soft)" }}>

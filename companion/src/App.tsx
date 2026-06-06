@@ -10,6 +10,7 @@ import {
   SlidersHorizontal, Film, Settings, Minus, X,
   FolderOpen, CloudUpload, RotateCcw, Trash2,
   ArrowUpCircle, RefreshCw, Loader2, Download,
+  Map, Car,
   type LucideIcon,
 } from "lucide-react"
 import { SyncLog } from "./components/SyncLog"
@@ -21,6 +22,8 @@ import { DashboardView } from "./components/Dashboard"
 import { SetupsView } from "./components/Setups"
 import { CompareView } from "./components/CompareView"
 import { AchievementsView } from "./components/Achievements"
+import { TracksView } from "./components/TracksView"
+import { CarsView } from "./components/CarsView"
 
 interface Settings {
   watchFolder:  string
@@ -48,19 +51,36 @@ interface LogEntry {
   timestamp: Date
 }
 
-type Tab = "dashboard" | "sync" | "sessions" | "goals" | "setups" | "achievements" | "replays" | "settings"
+type Tab = "dashboard" | "sync" | "sessions" | "tracks" | "cars" | "goals" | "setups" | "achievements" | "replays" | "settings"
 
 let store: Store | null = null
 let logId = 0
 
-const NAV_MAIN: { tab: Tab; icon: LucideIcon; label: string }[] = [
-  { tab: "dashboard",    icon: LayoutGrid,       label: "Dashboard"    },
-  { tab: "sync",         icon: RadioTower,        label: "Sync"         },
-  { tab: "sessions",     icon: List,              label: "Sessions"     },
-  { tab: "goals",        icon: Target,            label: "Goals"        },
-  { tab: "achievements", icon: Trophy,            label: "Achievements" },
-  { tab: "setups",       icon: SlidersHorizontal, label: "Setups"       },
-  { tab: "replays",      icon: Film,              label: "Replays"      },
+const NAV_SECTIONS: { label: string; items: { tab: Tab; icon: LucideIcon; label: string }[] }[] = [
+  {
+    label: "Sessions",
+    items: [
+      { tab: "dashboard",    icon: LayoutGrid,        label: "Dashboard"    },
+      { tab: "sessions",     icon: List,              label: "Sessions"     },
+      { tab: "tracks",       icon: Map,               label: "Tracks"       },
+      { tab: "cars",         icon: Car,               label: "Cars"         },
+    ],
+  },
+  {
+    label: "Training",
+    items: [
+      { tab: "goals",        icon: Target,            label: "Goals"        },
+      { tab: "achievements", icon: Trophy,            label: "Achievements" },
+      { tab: "setups",       icon: SlidersHorizontal, label: "Setups"       },
+    ],
+  },
+  {
+    label: "Sync",
+    items: [
+      { tab: "sync",         icon: RadioTower,        label: "Sync"         },
+      { tab: "replays",      icon: Film,              label: "Replays"      },
+    ],
+  },
 ]
 
 export default function App() {
@@ -266,31 +286,40 @@ export default function App() {
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         {/* Sidebar */}
         <aside style={{
-          width: 172, flexShrink: 0,
+          width: 180, flexShrink: 0,
           background: "var(--surface)",
           borderRight: "1px solid var(--border-soft)",
           display: "flex", flexDirection: "column",
-          padding: "6px 8px",
+          padding: "8px 8px",
+          overflowY: "auto",
         }}>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 1 }}>
-            {NAV_MAIN.map(({ tab: t, icon: Icon, label }) => {
-              const badge = t === "sessions" ? sessions.length : t === "replays" ? replays.length : 0
-              const isActive = tab === t
-              return (
-                <button key={t} onClick={() => setTab(t)} className={`nav-item ${isActive ? "active" : ""}`}>
-                  <Icon size={14} strokeWidth={1.75} className="nav-icon" />
-                  <span style={{ flex: 1 }}>{label}</span>
-                  {badge > 0 && (
-                    <span style={{ fontSize: 9, fontWeight: 600, color: isActive ? "var(--cyan)" : "var(--text-dim)", background: "var(--border)", padding: "1px 6px", borderRadius: 10 }}>
-                      {badge}
-                    </span>
-                  )}
-                  {t === "sync" && watching && (
-                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--green)", flexShrink: 0 }} className="pulse" />
-                  )}
-                </button>
-              )
-            })}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 0 }}>
+            {NAV_SECTIONS.map((section, si) => (
+              <div key={section.label} style={{ marginBottom: si < NAV_SECTIONS.length - 1 ? 4 : 0 }}>
+                <p style={{ fontSize: 9, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.08em", padding: "6px 10px 4px" }}>
+                  {section.label}
+                </p>
+                {section.items.map(({ tab: t, icon: Icon, label }) => {
+                  const badge = t === "sessions" ? sessions.length : t === "replays" ? replays.length : t === "tracks" ? 0 : t === "cars" ? 0 : 0
+                  const isActive = tab === t
+                  return (
+                    <button key={t} onClick={() => setTab(t)} className={`nav-item ${isActive ? "active" : ""}`}>
+                      <Icon size={14} strokeWidth={1.75} className="nav-icon" />
+                      <span style={{ flex: 1 }}>{label}</span>
+                      {badge > 0 && (
+                        <span style={{ fontSize: 9, fontWeight: 600, color: isActive ? "var(--cyan)" : "var(--text-dim)", background: "var(--border)", padding: "1px 6px", borderRadius: 10 }}>
+                          {badge}
+                        </span>
+                      )}
+                      {t === "sync" && watching && (
+                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--green)", flexShrink: 0 }} className="pulse" />
+                      )}
+                    </button>
+                  )
+                })}
+                {si < NAV_SECTIONS.length - 1 && <div style={{ height: 1, background: "var(--border-soft)", margin: "4px 8px" }} />}
+              </div>
+            ))}
           </div>
 
           <div style={{ borderTop: "1px solid var(--border-soft)", paddingTop: 6, display: "flex", flexDirection: "column", gap: 1 }}>
@@ -298,13 +327,8 @@ export default function App() {
               <Settings size={14} strokeWidth={1.75} className="nav-icon" />
               <span>Settings</span>
             </button>
-
-            {/* Live status */}
             <div style={{ padding: "6px 10px 2px", display: "flex", alignItems: "center", gap: 6 }}>
-              <span className={watching ? "pulse" : undefined} style={{
-                width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
-                background: watching ? "var(--green)" : "var(--border)",
-              }} />
+              <span className={watching ? "pulse" : undefined} style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: watching ? "var(--green)" : "var(--border)" }} />
               <span style={{ fontSize: 10, color: watching ? "var(--green)" : "var(--text-dim)", fontWeight: watching ? 600 : 400 }}>
                 {watching ? "Live" : "Idle"}
               </span>
@@ -332,6 +356,8 @@ export default function App() {
           {tab === "goals"        && <GoalsView />}
           {tab === "setups"       && <SetupsView />}
           {tab === "achievements" && <AchievementsView />}
+          {tab === "tracks"       && <TracksView />}
+          {tab === "cars"         && <CarsView />}
 
           {tab === "sync" && (
             <div style={{ flex: 1, overflow: "auto", padding: "20px 18px", display: "flex", flexDirection: "column", gap: 16 }}>
@@ -394,6 +420,18 @@ export default function App() {
                 <button onClick={loadReplays} className="btn btn-ghost" style={{ marginLeft: "auto", padding: "4px 8px", gap: 4, fontSize: 11 }}>
                   <RotateCcw size={11} strokeWidth={2} /> Refresh
                 </button>
+                {settings.replayFolder && (
+                  <button
+                    onClick={async () => {
+                      const added = await invoke<number>("import_all_replays", { folder: settings.replayFolder })
+                      if (added > 0) loadReplays()
+                    }}
+                    className="btn btn-ghost"
+                    style={{ padding: "4px 8px", gap: 4, fontSize: 11 }}
+                  >
+                    <CloudUpload size={11} strokeWidth={2} /> Import existing
+                  </button>
+                )}
               </div>
               {replays.length === 0 ? (
                 <div className="card" style={{ textAlign: "center", padding: "32px 16px" }}>

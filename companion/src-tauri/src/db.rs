@@ -145,6 +145,27 @@ pub struct RecentPb {
     pub session_date: String,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrackStat {
+    pub track_name:  String,
+    pub sessions:    i32,
+    pub best_lap_ms: Option<i32>,
+    pub last_driven: String,
+    pub total_laps:  i32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CarStat {
+    pub car_name:    String,
+    pub car_class:   Option<String>,
+    pub sessions:    i32,
+    pub best_lap_ms: Option<i32>,
+    pub last_driven: String,
+    pub total_laps:  i32,
+}
+
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Achievement {
@@ -896,6 +917,43 @@ pub fn get_dashboard_stats(conn: &Connection) -> Result<DashboardStats, String> 
         pb_count,
         recent_pb,
     })
+}
+
+pub fn get_tracks(conn: &Connection) -> Result<Vec<TrackStat>, String> {
+    let mut stmt = conn.prepare(
+        "SELECT track_name, COUNT(*) as sessions,
+                MIN(CASE WHEN best_lap_ms > 0 THEN best_lap_ms END) as best_lap_ms,
+                MAX(session_date) as last_driven,
+                SUM(valid_laps) as total_laps
+         FROM sessions GROUP BY track_name ORDER BY sessions DESC, last_driven DESC"
+    ).map_err(|e| e.to_string())?;
+    let rows = stmt.query_map([], |row| Ok(TrackStat {
+        track_name:  row.get(0)?,
+        sessions:    row.get(1)?,
+        best_lap_ms: row.get(2)?,
+        last_driven: row.get(3)?,
+        total_laps:  row.get(4)?,
+    })).map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+pub fn get_cars(conn: &Connection) -> Result<Vec<CarStat>, String> {
+    let mut stmt = conn.prepare(
+        "SELECT car_name, car_class, COUNT(*) as sessions,
+                MIN(CASE WHEN best_lap_ms > 0 THEN best_lap_ms END) as best_lap_ms,
+                MAX(session_date) as last_driven,
+                SUM(valid_laps) as total_laps
+         FROM sessions GROUP BY car_name ORDER BY sessions DESC, last_driven DESC"
+    ).map_err(|e| e.to_string())?;
+    let rows = stmt.query_map([], |row| Ok(CarStat {
+        car_name:    row.get(0)?,
+        car_class:   row.get(1)?,
+        sessions:    row.get(2)?,
+        best_lap_ms: row.get(3)?,
+        last_driven: row.get(4)?,
+        total_laps:  row.get(5)?,
+    })).map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
 }
 
 // ── Achievements ─────────────────────────────────────────────────────────────

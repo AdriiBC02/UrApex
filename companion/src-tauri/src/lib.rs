@@ -280,6 +280,66 @@ fn delete_replay(id: String, db_state: State<'_, DbState>) -> Result<(), String>
     db::delete_replay(&conn, &id)
 }
 
+// ── Tracks & Cars ─────────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn get_tracks(db_state: State<'_, DbState>) -> Result<Vec<db::TrackStat>, String> {
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::get_tracks(&conn)
+}
+
+#[tauri::command]
+fn get_cars(db_state: State<'_, DbState>) -> Result<Vec<db::CarStat>, String> {
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::get_cars(&conn)
+}
+
+#[tauri::command]
+async fn import_all_replays(folder: String, db_state: State<'_, DbState>) -> Result<usize, String> {
+    let entries = std::fs::read_dir(&folder).map_err(|e| e.to_string())?;
+    let vcr_files: Vec<String> = entries
+        .filter_map(|e| e.ok())
+        .map(|e| e.path().to_string_lossy().to_string())
+        .filter(|p| p.to_lowercase().ends_with(".vcr"))
+        .collect();
+    let mut added = 0usize;
+    for path in vcr_files {
+        let filename = std::path::Path::new(&path)
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| path.clone());
+        let file_size = std::fs::metadata(&path).ok().map(|m| m.len() as i64);
+        let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+        if !db::replay_path_exists(&conn, &path) {
+            let _ = db::insert_replay(&conn, &path, &filename, file_size, None);
+            added += 1;
+        }
+    }
+    Ok(added)
+}
+
+#[tauri::command]
+async fn reassign_player(
+    session_id: String,
+    driver_name: String,
+    db_state: State<'_, DbState>,
+    app: AppHandle,
+) -> Result<String, String> {
+    let file_path = {
+        let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+        conn.query_row(
+            "SELECT file_path FROM sessions WHERE id=?1",
+            rusqlite::params![session_id],
+            |row| row.get::<_, String>(0),
+        ).map_err(|e| e.to_string())?
+    };
+    {
+        let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+        db::delete_session(&conn, &session_id)?;
+    }
+    process_file(&file_path, "", "", Some(&driver_name), &app, &db_state.0).await
+}
+
 // ── Core processing ───────────────────────────────────────────────────────────
 
 pub async fn process_file(
@@ -418,8 +478,8 @@ pub fn run() {
                 tauri::WebviewUrl::App("index.html".into()),
             )
             .title("UrApex")
-            .inner_size(760.0, 580.0)
-            .min_inner_size(620.0, 460.0)
+            .inner_size(960.0, 680.0)
+            .min_inner_size(720.0, 520.0)
             .resizable(true)
             .decorations(false)
             .center()
@@ -498,6 +558,7 @@ pub fn run() {
             get_achievements,
             get_setups, create_setup, toggle_setup_favorite, update_setup_notes, delete_setup,
             get_replays, add_replay, match_replay, delete_replay,
+            get_tracks, get_cars, import_all_replays, reassign_player,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
