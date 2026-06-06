@@ -320,46 +320,55 @@ export function SessionDetailView({ session: s, allSessions, onBack, onCompare }
             {s.laps.length === 0 ? (
               <p style={{ fontSize: 11, color: "var(--text-dim)", textAlign: "center", padding: "20px 0" }}>No lap data.</p>
             ) : (
-              <div style={{ fontFamily: "monospace", fontSize: 11 }}>
-                {/* Header */}
-                <div style={{ display: "grid", gridTemplateColumns: "24px 74px 52px 46px 46px 46px 42px", gap: "2px 6px", padding: "4px 6px", borderRadius: 5, marginBottom: 3 }}>
-                  {["#", "Time", "Cmpd", "S1", "S2", "S3", "Fuel"].map((h) => (
-                    <span key={h} className="section-label" style={{ fontSize: 9 }}>{h}</span>
-                  ))}
+              <>
+                <LapChart laps={s.laps} best={best} />
+                <div style={{ fontFamily: "monospace", fontSize: 11 }}>
+                  {/* Header */}
+                  <div style={{ display: "grid", gridTemplateColumns: "24px 74px 48px 52px 46px 46px 46px 42px", gap: "2px 6px", padding: "4px 6px", borderRadius: 5, marginBottom: 3 }}>
+                    {["#", "Time", "Δ", "Cmpd", "S1", "S2", "S3", "Fuel"].map((h) => (
+                      <span key={h} className="section-label" style={{ fontSize: 9 }}>{h}</span>
+                    ))}
+                  </div>
+                  {/* Rows */}
+                  {s.laps.map((lap, i) => {
+                    const isBest = lap.lapTimeMs === best && lap.lapTimeMs != null
+                    const delta = lap.lapTimeMs != null && best != null && lap.lapTimeMs !== best
+                      ? `+${((lap.lapTimeMs - best) / 1000).toFixed(3)}`
+                      : null
+                    return (
+                      <div
+                        key={lap.lapNumber}
+                        style={{
+                          display: "grid", gridTemplateColumns: "24px 74px 48px 52px 46px 46px 46px 42px",
+                          gap: "2px 6px", padding: "3px 6px",
+                          borderRadius: 5,
+                          background: isBest ? "rgba(6,182,212,0.06)" : i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
+                          borderLeft: isBest ? "2px solid var(--cyan)" : "2px solid transparent",
+                          opacity: lap.isValid ? 1 : 0.4,
+                          alignItems: "center",
+                        }}
+                      >
+                        <span style={{ color: "var(--text-dim)", fontSize: 10 }}>{lap.lapNumber}</span>
+                        <span style={{ color: isBest ? "var(--cyan)" : "var(--text)", fontWeight: isBest ? 700 : 400 }}>
+                          {formatLapTime(lap.lapTimeMs)}
+                        </span>
+                        <span style={{ fontSize: 10, color: isBest ? "var(--cyan)" : delta ? "var(--text-dim)" : "var(--text-dim)" }}>
+                          {isBest ? "—" : delta ?? "—"}
+                        </span>
+                        <span style={{ fontSize: 9, borderRadius: 3, padding: "1px 4px", textAlign: "center", ...compoundStyle(lap.tyreCompound) }}>
+                          {lap.tyreCompound ?? "—"}
+                        </span>
+                        {[lap.sector1Ms, lap.sector2Ms, lap.sector3Ms].map((ms, si) => (
+                          <span key={si} style={{ color: "var(--text-muted)", fontSize: 10 }}>{formatLapTime(ms)}</span>
+                        ))}
+                        <span style={{ color: "var(--text-dim)", fontSize: 10 }}>
+                          {lap.fuelLoad != null ? `${lap.fuelLoad.toFixed(1)}L` : "—"}
+                        </span>
+                      </div>
+                    )
+                  })}
                 </div>
-                {/* Rows */}
-                {s.laps.map((lap, i) => {
-                  const isBest = lap.lapTimeMs === best && lap.lapTimeMs != null
-                  return (
-                    <div
-                      key={lap.lapNumber}
-                      style={{
-                        display: "grid", gridTemplateColumns: "24px 74px 52px 46px 46px 46px 42px",
-                        gap: "2px 6px", padding: "3px 6px",
-                        borderRadius: 5,
-                        background: isBest ? "rgba(6,182,212,0.06)" : i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
-                        borderLeft: isBest ? "2px solid var(--cyan)" : "2px solid transparent",
-                        opacity: lap.isValid ? 1 : 0.4,
-                        alignItems: "center",
-                      }}
-                    >
-                      <span style={{ color: "var(--text-dim)", fontSize: 10 }}>{lap.lapNumber}</span>
-                      <span style={{ color: isBest ? "var(--cyan)" : "var(--text)", fontWeight: isBest ? 700 : 400 }}>
-                        {formatLapTime(lap.lapTimeMs)}
-                      </span>
-                      <span style={{ fontSize: 9, borderRadius: 3, padding: "1px 4px", textAlign: "center", ...compoundStyle(lap.tyreCompound) }}>
-                        {lap.tyreCompound ?? "—"}
-                      </span>
-                      {[lap.sector1Ms, lap.sector2Ms, lap.sector3Ms].map((ms, si) => (
-                        <span key={si} style={{ color: "var(--text-muted)", fontSize: 10 }}>{formatLapTime(ms)}</span>
-                      ))}
-                      <span style={{ color: "var(--text-dim)", fontSize: 10 }}>
-                        {lap.fuelLoad != null ? `${lap.fuelLoad.toFixed(1)}L` : "—"}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
+              </>
             )}
           </div>
         )}
@@ -537,6 +546,44 @@ export function SessionDetailView({ session: s, allSessions, onBack, onCompare }
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function LapChart({ laps, best }: { laps: LapRow[]; best: number | null }) {
+  const valid = laps.filter((l) => l.lapTimeMs != null && l.isValid)
+  if (valid.length < 3) return null
+
+  const W = 400, H = 72, padL = 4, padR = 4, padT = 6, padB = 6
+  const times = valid.map((l) => l.lapTimeMs!)
+  const minT = Math.min(...times)
+  const maxT = Math.max(...times)
+  const range = maxT - minT || 1000
+  const minLap = valid[0].lapNumber
+  const maxLap = valid[valid.length - 1].lapNumber
+  const spanLap = maxLap - minLap || 1
+
+  const cx = (lapNum: number) => padL + ((lapNum - minLap) / spanLap) * (W - padL - padR)
+  const cy = (ms: number) => padT + (1 - (ms - minT) / range) * (H - padT - padB)
+
+  const pts = valid.map((l) => `${cx(l.lapNumber).toFixed(1)},${cy(l.lapTimeMs!).toFixed(1)}`).join(" ")
+
+  return (
+    <div style={{ marginBottom: 10, borderRadius: 6, overflow: "hidden", background: "var(--surface-2)", border: "1px solid var(--border-soft)" }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: H, display: "block" }} preserveAspectRatio="none">
+        <polyline points={pts} fill="none" stroke="rgba(6,182,212,0.35)" strokeWidth={1.5} />
+        {valid.map((l) => {
+          const isPb = l.lapTimeMs === best
+          return (
+            <circle
+              key={l.lapNumber}
+              cx={cx(l.lapNumber)} cy={cy(l.lapTimeMs!)}
+              r={isPb ? 4 : 2.5}
+              fill={isPb ? "#06b6d4" : "rgba(6,182,212,0.55)"}
+            />
+          )
+        })}
+      </svg>
     </div>
   )
 }

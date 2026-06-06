@@ -12,6 +12,17 @@
 
 ---
 
+## [0.32.0] — 2026-06-06
+
+> Companion v0.3 — lap chart, delta column, replay linking.
+
+### Added
+- **Lap time chart** — SVG line chart above the laps table in Session Detail; valid laps as connected cyan dots, best lap highlighted in solid cyan; renders only when ≥3 valid laps
+- **Delta column in laps table** — `Δ` column after `Time` showing `+X.XXX` vs session best lap; best lap shows `—` in cyan
+- **Replay session linking** — unlinked `.vcr` cards in Replays tab now show a session picker dropdown; selecting a session calls `match_replay`; linked replays show the track name instead
+
+---
+
 ## [0.31.0] — 2026-06-06
 
 > Companion v0.2.0 — auto-update, UI polish pass, watcher persistence.

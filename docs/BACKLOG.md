@@ -167,6 +167,9 @@
 | CA-011 | Persistent sync history | P2 | ✅ | plugin-store key syncLogs; max 100 entries; clear button |
 | CA-012 | Sync historical files ("import all") | P2 | ✅ | Rust command scans folder + uploads with hash dedup; button in sync tab |
 | CA-013 | Windows startup on boot | P2 | ✅ | tauri-plugin-autostart; toggle in Settings |
+| CA-024 | Lap time chart in Session Detail | P2 | ✅ | SVG line chart above laps table; best lap dot highlighted |
+| CA-025 | Delta column in laps table | P2 | ✅ | Δ column showing +X.XXX vs session best lap |
+| CA-026 | Replay session linking UI | P2 | ✅ | Session picker dropdown on unlinked replays; calls match_replay |
 | CA-014 | In-game overlay window | P2 | 🔲 | Transparent always-on-top Tauri window |
 | CA-015 | UDP telemetry listener (LMU port 4444) | P2 | 🔲 | Feed data to overlay in real time |
 | CA-017 | VCR replay file tracking | P2 | ✅ | Watcher detecta .vcr en replay_folder; db::insert_replay; evento replay-detected; tabla replays en SQLite |

@@ -444,9 +444,35 @@ export default function App() {
                   <Film size={14} strokeWidth={1.75} style={{ color: "var(--text-dim)", flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 12, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.filename}</p>
-                    <p style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 2 }}>
-                      {r.sessionId ? "Linked to session" : "Not linked"} · {r.fileSize != null ? `${(r.fileSize / 1024 / 1024).toFixed(1)} MB` : ""} · {new Date(r.importedAt).toLocaleDateString()}
-                    </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                      {r.sessionId ? (
+                        <span style={{ fontSize: 10, color: "var(--green)" }}>
+                          {sessions.find((s) => s.id === r.sessionId)
+                            ? `↳ ${sessions.find((s) => s.id === r.sessionId)!.trackName}`
+                            : "Linked"}
+                        </span>
+                      ) : (
+                        <select
+                          defaultValue=""
+                          onChange={async (e) => {
+                            if (!e.target.value) return
+                            await invoke("match_replay", { replayId: r.id, sessionId: e.target.value })
+                            loadReplays()
+                          }}
+                          style={{ fontSize: 10, padding: "2px 4px", background: "var(--surface-3)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text-muted)", maxWidth: 180 }}
+                        >
+                          <option value="">Link to session…</option>
+                          {sessions.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.trackName} · {new Date(s.sessionDate).toLocaleDateString()}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      <span style={{ fontSize: 10, color: "var(--text-dim)" }}>
+                        {r.fileSize != null ? `${(r.fileSize / 1024 / 1024).toFixed(1)} MB` : ""} · {new Date(r.importedAt).toLocaleDateString()}
+                      </span>
+                    </div>
                   </div>
                   <button onClick={() => handleDeleteReplay(r.id)} className="btn btn-ghost" style={{ padding: "4px 8px", flexShrink: 0 }} title="Remove">
                     <Trash2 size={12} strokeWidth={2} />
