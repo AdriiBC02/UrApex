@@ -185,15 +185,14 @@ pub fn start(
             std::thread::sleep(std::time::Duration::from_millis(EMIT_MS));
             tick = tick.wrapping_add(1);
 
-            let diag_result = read_shared_memory_diag();
-
-            let (frame, status) = match &diag_result {
-                ShmReadResult::Ok(ref sm) => {
-                    let f = TelemetryFrame::from_shared(sm);
+            // Consume by value so pattern bindings are i32/u8, not &i32/&u8
+            let (frame, status) = match read_shared_memory_diag() {
+                ShmReadResult::Ok(sm) => {
+                    let f = TelemetryFrame::from_shared(&sm);
                     let s = ShmStatus {
                         state:        "connected".to_string(),
                         connected:    true,
-                        num_vehicles: 0, // not directly available here
+                        num_vehicles: 0,
                         game_phase:   sm.game_phase,
                         speed_kph:    (sm.speed_ms * 3.6) as f32,
                         position:     sm.place as i32,
