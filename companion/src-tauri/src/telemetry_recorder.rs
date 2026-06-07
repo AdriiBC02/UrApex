@@ -197,6 +197,28 @@ pub fn get_samples(conn: &Connection, recording_id: &str) -> Result<Vec<Telemetr
     rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
 }
 
+/// Returns the most recent completed recording that has no session_id yet
+/// and whose ended_at is within `max_age_secs` seconds of now.
+pub fn get_latest_completed_unlinked(
+    conn:         &Connection,
+    max_age_secs: i64,
+) -> Result<Option<String>, String> {
+    let result = conn.query_row(
+        "SELECT id FROM telemetry_recordings \
+         WHERE session_id IS NULL \
+           AND ended_at IS NOT NULL \
+           AND (strftime('%s','now') - strftime('%s', ended_at)) <= ?1 \
+         ORDER BY ended_at DESC LIMIT 1",
+        rusqlite::params![max_age_secs],
+        |row| row.get::<_, String>(0),
+    );
+    match result {
+        Ok(id)                        => Ok(Some(id)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e)                        => Err(e.to_string()),
+    }
+}
+
 pub fn associate_recording(conn: &Connection, recording_id: &str, session_id: &str) -> Result<(), String> {
     conn.execute(
         "UPDATE telemetry_recordings SET session_id = ?1 WHERE id = ?2",

@@ -72,6 +72,21 @@ export default async function SessionComparePage({
 
   const bothSelected = sessionA && sessionB
 
+  // PB session: best lap at same track + car as session A (excluding session A itself)
+  const pbSession = sessionA && !sessionB
+    ? await db.session.findFirst({
+        where: {
+          userId, deletedAt: null,
+          trackId: sessionA.trackId,
+          carId:   sessionA.carId,
+          id: { not: sessionA.id },
+          bestLapMs: { not: null },
+        },
+        orderBy: { bestLapMs: "asc" },
+        select: { id: true, bestLapMs: true, sessionDate: true, sessionType: true },
+      })
+    : null
+
   // Best sectors for each session
   const bestSectors = bothSelected
     ? {
@@ -168,6 +183,24 @@ export default async function SessionComparePage({
       {/* Session picker — shown when one slot is empty */}
       {(idA && !idB) || (!idA && !idB) ? (
         <Section title={idA ? "Pick a session to compare with" : "Pick session A"} icon={Flag}>
+          {/* PB shortcut */}
+          {pbSession && (
+            <Link
+              href={`/sessions/compare?a=${idA}&b=${pbSession.id}`}
+              className="flex items-center gap-3 mb-4 px-4 py-3 rounded-xl border border-cyan-800/30 bg-cyan-950/20 hover:bg-cyan-950/30 transition-colors group"
+            >
+              <div className="w-7 h-7 rounded-lg bg-cyan-500/10 flex items-center justify-center shrink-0">
+                <Timer className="w-4 h-4 text-cyan-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-cyan-300 group-hover:text-cyan-200">Compare vs my PB at this track</p>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  {formatLapTime(pbSession.bestLapMs)} · {SESSION_TYPE_LABELS[pbSession.sessionType] ?? pbSession.sessionType} · {new Date(pbSession.sessionDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" })}
+                </p>
+              </div>
+              <ArrowRight className="w-3.5 h-3.5 text-cyan-600 group-hover:text-cyan-400 transition-colors shrink-0" />
+            </Link>
+          )}
           <div className="space-y-1">
             {sessions.length === 0 && (
               <p className="text-sm text-zinc-600 text-center py-4">No sessions found.</p>

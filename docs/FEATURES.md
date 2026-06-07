@@ -33,7 +33,7 @@
 | Email + password registration | P0 | 1 | ✅ |
 | Email + password login | P0 | 1 | ✅ |
 | Session management | P0 | 1 | ✅ |
-| Password reset via email | P1 | 1 | 🔲 |
+| Password reset via email | P1 | 1 | ✅ |
 | OAuth login (Google) | P2 | 3 | 🔲 |
 | Account deletion (GDPR) | P1 | 3 | 🔲 |
 | Data export (GDPR) | P1 | 3 | 🔲 |
@@ -52,10 +52,10 @@
 | Short bio | P2 | 3 | ✅ |
 | Avatar upload | P2 | 3 | 🔲 |
 | Simulators used selection | P1 | 1 | 🔲 |
-| Public profile toggle | P1 | 3 | 🔲 |
+| Public profile toggle | P1 | 3 | ✅ |
 | Global stats summary (cached) | P1 | 2 | ✅ |
 | In-game driver name (simDriverName) | P1 | 1 | ✅ |
-| Driver DNA radar chart | P2 | 2 | 🔲 |
+| Driver DNA radar chart | P2 | 2 | ✅ |
 | Streak tracking (sessions/week) | P2 | 2 | 🔲 |
 | Driver specialties inference | P3 | 4+ | 💡 |
 
@@ -142,7 +142,7 @@
 | Penalty list | P1 | 1 | ✅ |
 | Pit stop list | P1 | 1 | ✅ |
 | Session soft delete | P1 | 2 | ✅ |
-| Session privacy toggle | P1 | 3 | 🔲 |
+| Session privacy toggle | P1 | 3 | ✅ |
 | Session filters (type) | P1 | 1 | ✅ |
 | Session sorting | P1 | 1 | ✅ |
 | Session filters (date, track, car, PB) | P1 | 3 | ✅ |
@@ -176,7 +176,7 @@
 | Focus Score | P2 | 4 | 🔲 |
 | Adaptability Score | P3 | 4+ | 🔲 |
 | Metrics caching in DB | P0 | 1 | ✅ |
-| Metric recalculation job | P1 | 2 | 🔲 |
+| Metric recalculation job | P1 | 2 | ✅ |
 
 ---
 
@@ -192,7 +192,7 @@
 | Recent achievements | P1 | 2 | ✅ |
 | Quick insight (rule-based) | P1 | 2 | ✅ |
 | PB highlights | P1 | 2 | ✅ |
-| Streak widget | P2 | 2 | 🔲 |
+| Streak widget | P2 | 2 | ✅ |
 | Heatmap calendar | P2 | 3 | 💡 |
 
 ---
@@ -208,9 +208,9 @@
 | Improvement badge | P1 | 2 | ✅ |
 | Session type breakdown chart | P1 | 2 | ✅ |
 | Consistency trend chart | P2 | 2 | ✅ |
-| Best sectors at track | P1 | 2 | 🔲 |
-| Ideal lap at track | P1 | 2 | 🔲 |
-| Lap time distribution chart | P2 | 2 | 🔲 |
+| Best sectors at track | P1 | 2 | ✅ |
+| Ideal lap at track | P1 | 2 | ✅ |
+| Lap time distribution chart | P2 | 2 | ✅ |
 | Cars used at track | P1 | 1 | ✅ |
 
 ---
@@ -225,8 +225,8 @@
 | Improvement badge | P1 | 2 | ✅ |
 | Session type breakdown chart | P1 | 2 | ✅ |
 | Consistency trend chart | P2 | 2 | ✅ |
-| Best track / worst track | P2 | 2 | 🔲 |
-| Pace evolution with car | P2 | 2 | 🔲 |
+| Best track / worst track | P2 | 2 | ✅ |
+| Pace evolution with car | P2 | 2 | ✅ |
 | Car class comparison | P3 | 3+ | 🔲 |
 
 ---
@@ -242,7 +242,7 @@
 | Sector delta (S1/S2/S3) | P1 | 2 | ✅ |
 | Ideal lap row in comparison | P1 | 2 | ✅ |
 | Telemetry overlay comparison | P2 | 4 | 🔲 |
-| Compare vs personal best | P1 | 2 | 🔲 |
+| Compare vs personal best | P1 | 2 | ✅ |
 
 ---
 
@@ -401,6 +401,7 @@
 | Dashboard: Active Goals widget | P2 | 5 | ✅ |
 | Dashboard: Recent Achievements widget | P2 | 5 | ✅ |
 | Session Detail: best sector mini-stats (S1/S2/S3) | P2 | 5 | ✅ |
+| Global keybindings (overlay toggle + per-panel, configurable) | P2 | 5 | ✅ |
 | macOS support | P3 | 6+ | 🔲 |
 
 ---
@@ -433,7 +434,7 @@
 | GitHub Actions CI (type-check + migrate) | P1 | 3 | ✅ |
 | Companion app CI build (.exe + .msi) | P1 | 5 | ✅ |
 | Vercel free-tier deployment setup | P1 | 3 | ✅ |
-| Metric recalculation job | P1 | 2 | 🔲 |
+| Metric recalculation job | P1 | 2 | ✅ |
 
 ---
 

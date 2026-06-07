@@ -8,11 +8,63 @@
 
 ## [Unreleased]
 
-> Next up: compile + test on Windows (CA-016) — verify SHM offsets against real LMU session, associate telemetry recording with session, upload recording to web app.
+> Next up: compile + test on Windows (CA-016) — verify SHM offsets against real LMU session.
 
 ---
 
-## [Unreleased — 0.36.0] · Companion v0.5.0
+## [Unreleased — 0.39.0] · Companion v0.6.0
+
+> Companion: track detail, car detail, Driver DNA, streak — paridad analytics con el web app.
+
+### Added
+- **TracksView — detalle por circuito** — click en cualquier track abre una vista de detalle con: best sectors (S1/S2/S3) + ideal lap, PB evolution (SVG line chart), breakdown de tipos de sesión, consistency trend (SVG), distribución de tiempos de vuelta (SVG scatter con ref. PB/Med), tabla de todas las sesiones con car/type/best lap
+- **CarsView — detalle por coche** — click abre detalle con: best/worst circuit (cards verde/rojo), best lap by circuit (lista rankeada), PB evolution (SVG), consistency trend (SVG), breakdown de tipos, tabla de sesiones por track
+- **Dashboard: streak widget** — racha de días consecutivos con sesión; badge "WEEKLY" ≥7 · "ON FIRE" ≥14 · "LEGEND" ≥30; se oculta si streak = 0
+- **Dashboard: Driver DNA radar chart** — SVG RadarChart con 4 dimensiones (Consistency, Pace, Safety, Improvement) calculadas desde los datos locales; grid de scores debajo del radar
+- **`get_track_detail` / `get_car_detail` / `get_driver_dna`** — 3 nuevos comandos Tauri que ejecutan queries SQLite en Rust; `get_driver_dna` calcula Pace desde `ideal_lap/best_lap`, Safety desde `valid_laps/total_laps`, Improvement desde mejora por combo track+car, streak con algoritmo de días consecutivos
+- **`today_date_str()` / `yesterday_date_str()`** — helpers en `date.rs` para el cálculo de streak
+- **SessionDetail: Compare vs my PB** — al abrir el picker de comparación, aparece una fila fijada arriba "My PB at this track" si existe una sesión PB distinta en el mismo track+car; comando Rust `get_pb_session_id_for` filtrando por track\_name + car\_name ordenado por best\_lap\_ms ASC
+
+---
+
+## [Unreleased — 0.38.0]
+
+> Phase 2 analytics gaps + telemetría auto-asociada.
+
+### Added
+- **Telemetría auto-asociada (companion)** — tras subir el XML y obtener el `importFileId`, el companion hace polling de `GET /api/import/{id}` (ahora con Bearer) para obtener el web `sessionId`; si hay una grabación de telemetría completada en los últimos 15 minutos, la sube automáticamente a `POST /api/sessions/{id}/telemetry` y la asocia en SQLite local
+- **`upload_telemetry()` en `uploader.rs`** — POST de todos los frames al web app con Bearer auth; `poll_import_session_id()` para esperar a que el import se procese
+- **`get_latest_completed_unlinked()` en `telemetry_recorder.rs`** — query de la grabación más reciente sin session_id y dentro del rango de edad configurado
+- **Bearer en `GET /api/import/[id]`** — el companion puede consultar el estado del import sin sesión de browser
+- **Track detail: best sectors + ideal lap** — S1/S2/S3 mínimos de todas las vueltas válidas en esa pista; ideal lap = suma de mejores sectores; se muestran como stat tiles
+- **Track detail: distribución de tiempos** — `LapDistributionChart` (scatter chart, punto por vuelta válida) con líneas de referencia para PB y mediana; oculto con menos de 5 vueltas
+- **Car detail: pace score trend** — `TrendChart` del paceScore por sesión; visible junto al consistency trend cuando hay datos suficientes
+- **Car detail: mejor/peor circuito** — cards verdes/rojas resaltando el circuito con mejor y peor tiempo absoluto con este coche
+- **Dashboard: streak widget** — racha de días consecutivos con al menos una sesión; badges "WEEKLY" / "ON FIRE" / "LEGEND" según longitud; visible en la columna derecha
+- **Profile: Driver DNA radar chart** — `DriverDNAChart` (Recharts RadarChart) con las 6 dimensiones (Consistency, Safety, Pace, Improvement, Racecraft, Qualifying); reemplaza la cuadrícula de grades por un layout radar + grades en paralelo
+- **Compare: shortcut "Compare vs my PB"** — cuando el slot A está seleccionado, busca automáticamente la sesión con mejor vuelta en el mismo track+car y muestra un banner para cargarlo en slot B con un click
+
+### Changed
+- `GET /api/import/[id]` acepta Bearer token (mismo patrón que `/api/upload`)
+- `cars/[slug]/page.tsx` incluye `paceScore` en los datos de sesión para el trend chart
+
+---
+
+## [Unreleased — 0.37.0] · Companion v0.5.1
+
+> Global keybindings for overlay control + overlay visibility + GPU compositing fixes.
+
+### Added
+- **Global keybindings (companion)** — `tauri-plugin-global-shortcut`; defaults: `Alt+Shift+O` toggles overlay, `Alt+Shift+1–7` toggles each of the 7 panels; registered from Rust in `setup()` with defaults; JS overrides from plugin-store on startup; `KeybindingsPanel` component in Settings → Overlay — click-to-record combos (require ≥1 modifier, Esc cancels), clear per-row, reset all to defaults; `KeybindingsConfig` + `DEFAULT_KEYBINDINGS` exported from `OverlaySettings.tsx`
+
+### Fixed
+- **Overlay focus steal** — `show_overlay` no longer calls `set_focus()`; overlay now appears on top of LMU without stealing focus from the game or causing it to minimise
+- **WebView2 GPU compositing** — removed `--disable-gpu` and `--disable-gpu-compositing` from the main window; those flags were propagating to the overlay WebView2 process and disabling GPU compositing, which broke transparency and `backdropFilter` on the overlay window
+- **TS2464 computed property** — captured narrowed key before closure in `KeybindingsPanel` to fix "A computed property must be of type 'string', 'number', 'symbol', or 'any'" TypeScript error
+
+---
+
+## [Unreleased — 0.36.0] · Companion v0.5.1
 
 > Performance pass + borderless mode notice.
 

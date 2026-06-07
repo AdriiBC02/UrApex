@@ -493,6 +493,35 @@ fn get_cars(db_state: State<'_, DbState>) -> Result<Vec<db::CarStat>, String> {
 }
 
 #[tauri::command]
+fn get_track_detail(track_name: String, db_state: State<'_, DbState>) -> Result<Option<db::TrackDetail>, String> {
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::get_track_detail(&conn, &track_name)
+}
+
+#[tauri::command]
+fn get_car_detail(car_name: String, db_state: State<'_, DbState>) -> Result<Option<db::CarDetail>, String> {
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::get_car_detail(&conn, &car_name)
+}
+
+#[tauri::command]
+fn get_driver_dna(db_state: State<'_, DbState>) -> Result<db::DriverDna, String> {
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::get_driver_dna(&conn)
+}
+
+#[tauri::command]
+fn get_pb_session_id_for(
+    track_name: String,
+    car_name:   String,
+    exclude_id: String,
+    db_state:   State<'_, DbState>,
+) -> Result<Option<String>, String> {
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    db::get_pb_session_id_for(&conn, &track_name, &car_name, &exclude_id)
+}
+
+#[tauri::command]
 async fn import_all_replays(folder: String, db_state: State<'_, DbState>) -> Result<usize, String> {
     let entries = std::fs::read_dir(&folder).map_err(|e| e.to_string())?;
     let vcr_files: Vec<String> = entries
@@ -634,9 +663,47 @@ pub async fn process_file(
 
     if !api_url.is_empty() && !api_key.is_empty() {
         match uploader::upload(file_path, api_url, api_key).await {
-            Ok(_) => {
+            Ok(resp) => {
                 if let Ok(c) = conn.lock() {
                     let _ = db::mark_synced(&c, &sess_id);
+                }
+                // Auto-associate + upload telemetry if a recent recording exists
+                let import_file_id = resp
+                    .get("imports").and_then(|i| i.get(0))
+                    .and_then(|i| i.get("importFileId"))
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+
+                if let Some(iid) = import_file_id {
+                    let au2 = api_url.to_string();
+                    let ak2 = api_key.to_string();
+                    let conn2 = Arc::clone(conn);
+                    tauri::async_runtime::spawn(async move {
+                        if let Some(web_session_id) =
+                            uploader::poll_import_session_id(&iid, &au2, &ak2).await
+                        {
+                            // Look for a recently completed unlinked recording (within 15 min)
+                            let recording_id = conn2.lock().ok().and_then(|c| {
+                                telemetry_recorder::get_latest_completed_unlinked(&c, 900).ok().flatten()
+                            });
+                            if let Some(rid) = recording_id {
+                                let samples = conn2.lock().ok().and_then(|c| {
+                                    telemetry_recorder::get_samples(&c, &rid).ok()
+                                });
+                                if let Some(samples) = samples {
+                                    match uploader::upload_telemetry(&samples, &web_session_id, &au2, &ak2).await {
+                                        Ok(()) => {
+                                            log::info!("Telemetry uploaded for session {web_session_id}");
+                                            if let Ok(c) = conn2.lock() {
+                                                let _ = telemetry_recorder::associate_recording(&c, &rid, &web_session_id);
+                                            }
+                                        }
+                                        Err(e) => log::warn!("Telemetry upload failed: {e}"),
+                                    }
+                                }
+                            }
+                        }
+                    });
                 }
             }
             Err(e) => log::warn!("Server sync failed (saved locally): {e}"),
@@ -817,7 +884,8 @@ pub fn run() {
             get_achievements,
             get_setups, create_setup, toggle_setup_favorite, update_setup_notes, delete_setup,
             get_replays, add_replay, match_replay, delete_replay,
-            get_tracks, get_cars, import_all_replays, reassign_player,
+            get_tracks, get_cars, get_track_detail, get_car_detail, get_driver_dna, get_pb_session_id_for,
+            import_all_replays, reassign_player,
             start_telemetry, stop_telemetry,
             start_recording, stop_recording,
             list_recordings, get_recording_samples,

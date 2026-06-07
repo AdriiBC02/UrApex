@@ -62,6 +62,52 @@ const RARITY_COLOR: Record<string, string> = {
   LEGENDARY: "#f59e0b",
 }
 
+interface DriverDna {
+  consistency:  number | null
+  pace:         number | null
+  safety:       number | null
+  improvement:  number | null
+  streak:       number
+}
+
+// ── SVG Radar chart ───────────────────────────────────────────────────────────
+
+function RadarChart({ dna }: { dna: DriverDna }) {
+  const dims = [
+    { label: "Consistency", value: dna.consistency },
+    { label: "Pace",        value: dna.pace },
+    { label: "Safety",      value: dna.safety },
+    { label: "Improvement", value: dna.improvement },
+  ]
+  const S = 150; const cx = S / 2; const cy = S / 2; const R = 52
+  const n = dims.length
+  const θ = (i: number) => (2 * Math.PI * i / n) - Math.PI / 2
+  const pt = (i: number, scale: number) => ({
+    x: cx + R * scale * Math.cos(θ(i)),
+    y: cy + R * scale * Math.sin(θ(i)),
+  })
+  const poly = (scale: number) =>
+    Array.from({ length: n }, (_, i) => pt(i, scale)).map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")
+  const valuePts = dims.map((d, i) => {
+    const v = Math.max(0, Math.min(100, d.value ?? 0)) / 100
+    const p = pt(i, v); return `${p.x.toFixed(1)},${p.y.toFixed(1)}`
+  }).join(" ")
+
+  return (
+    <svg viewBox={`0 0 ${S} ${S}`} style={{ width: "100%", height: S }}>
+      {[25, 50, 75, 100].map(lvl => (
+        <polygon key={lvl} points={poly(lvl / 100)} fill="none" stroke="#27272a" strokeWidth={0.6} />
+      ))}
+      {dims.map((_, i) => { const p = pt(i, 1); return <line key={i} x1={cx} y1={cy} x2={p.x.toFixed(1)} y2={p.y.toFixed(1)} stroke="#27272a" strokeWidth={0.6} /> })}
+      <polygon points={valuePts} fill="rgba(6,182,212,0.15)" stroke="#06b6d4" strokeWidth={1.5} />
+      {dims.map((d, i) => { const v = Math.max(0, Math.min(100, d.value ?? 0)) / 100; const p = pt(i, v); return <circle key={i} cx={p.x.toFixed(1)} cy={p.y.toFixed(1)} r={2.5} fill="#06b6d4" /> })}
+      {dims.map((d, i) => { const p = pt(i, 1.28); return (
+        <text key={i} x={p.x.toFixed(1)} y={p.y.toFixed(1)} textAnchor="middle" dominantBaseline="middle" fontSize={8.5} fill="#71717a" fontWeight={600}>{d.label}</text>
+      )})}
+    </svg>
+  )
+}
+
 interface Props {
   onOpenSession: (id: string) => void
   hasFolder:     boolean
@@ -78,20 +124,20 @@ const TILES: { key: keyof DashboardStats; label: string; icon: LucideIcon; accen
 ]
 
 export function DashboardView({ onOpenSession, hasFolder, watching }: Props) {
-  const [stats, setStats]             = useState<DashboardStats | null>(null)
-  const [goals, setGoals]             = useState<GoalSummary[]>([])
+  const [stats, setStats]               = useState<DashboardStats | null>(null)
+  const [goals, setGoals]               = useState<GoalSummary[]>([])
   const [achievements, setAchievements] = useState<AchieveSummary[]>([])
-  const [loading, setLoading]         = useState(true)
+  const [dna, setDna]                   = useState<DriverDna | null>(null)
+  const [loading, setLoading]           = useState(true)
 
   useEffect(() => {
     Promise.all([
       invoke<DashboardStats>("get_dashboard_stats"),
       invoke<GoalSummary[]>("get_goals").catch(() => [] as GoalSummary[]),
       invoke<AchieveSummary[]>("get_achievements").catch(() => [] as AchieveSummary[]),
-    ]).then(([s, g, a]) => {
-      setStats(s)
-      setGoals(g)
-      setAchievements(a)
+      invoke<DriverDna>("get_driver_dna").catch(() => null),
+    ]).then(([s, g, a, d]) => {
+      setStats(s); setGoals(g); setAchievements(a); setDna(d)
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [])
@@ -218,6 +264,47 @@ export function DashboardView({ onOpenSession, hasFolder, watching }: Props) {
               background: stats.avgConsistency >= 80 ? "var(--green)" : stats.avgConsistency >= 60 ? "var(--cyan)" : "var(--amber)",
               transition: "width 0.6s ease",
             }} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Streak ── */}
+      {dna && dna.streak > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(249,115,22,0.06)", border: "1px solid rgba(249,115,22,0.18)", borderRadius: 10, padding: "10px 14px" }}>
+          <span style={{ fontSize: 24, lineHeight: 1 }}>🔥</span>
+          <div>
+            <p style={{ fontSize: 18, fontWeight: 900, color: "#f97316", lineHeight: 1, margin: 0 }}>
+              {dna.streak} day{dna.streak !== 1 ? "s" : ""}
+            </p>
+            <p style={{ fontSize: 10, color: "rgba(249,115,22,0.6)", margin: "2px 0 0 0" }}>active streak</p>
+          </div>
+          {dna.streak >= 7 && (
+            <span style={{ marginLeft: "auto", fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: "rgba(249,115,22,0.12)", color: "#f97316", border: "1px solid rgba(249,115,22,0.2)" }}>
+              {dna.streak >= 30 ? "🏆 LEGEND" : dna.streak >= 14 ? "⚡ ON FIRE" : "🎯 WEEKLY"}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* ── Driver DNA radar ── */}
+      {dna && (dna.consistency != null || dna.pace != null) && (
+        <div className="card" style={{ padding: "10px 12px" }}>
+          <p style={{ fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", margin: "0 0 6px 0" }}>Driver DNA</p>
+          <RadarChart dna={dna} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginTop: 8 }}>
+            {[
+              { label: "Consistency",  value: dna.consistency },
+              { label: "Pace",         value: dna.pace },
+              { label: "Safety",       value: dna.safety },
+              { label: "Improvement",  value: dna.improvement },
+            ].map(({ label, value }) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "3px 6px", background: "var(--surface-2)", borderRadius: 5 }}>
+                <span style={{ fontSize: 10, color: "var(--text-dim)" }}>{label}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: value != null ? "var(--cyan)" : "var(--text-dim)" }}>
+                  {value != null ? value.toFixed(0) : "—"}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}

@@ -147,7 +147,7 @@ export default async function DashboardPage() {
   const twelveWeeksAgo = new Date(weekStart)
   twelveWeeksAgo.setDate(weekStart.getDate() - 11 * 7)
 
-  const [profile, recentSessions, recentPBs, activeGoals, recentAchievements, thisWeekCount, lastWeekCount, activitySessions] =
+  const [profile, recentSessions, recentPBs, activeGoals, recentAchievements, thisWeekCount, lastWeekCount, activitySessions, allSessionDates] =
     await Promise.all([
       db.driverProfile.findUnique({ where: { userId } }),
       db.session.findMany({
@@ -184,6 +184,11 @@ export default async function DashboardPage() {
         select: { sessionDate: true, consistencyScore: true },
         orderBy: { sessionDate: "asc" },
       }),
+      db.session.findMany({
+        where: { userId, deletedAt: null },
+        select: { sessionDate: true },
+        orderBy: { sessionDate: "desc" },
+      }),
     ])
 
   const hasData  = (profile?.totalSessions ?? 0) > 0
@@ -214,6 +219,30 @@ export default async function DashboardPage() {
       date: new Date(s.sessionDate).toISOString().split("T")[0],
       value: s.consistencyScore!,
     }))
+
+  // Streak — consecutive distinct days from today going back
+  const uniqueDays = [...new Set(
+    allSessionDates.map(s => new Date(s.sessionDate).toISOString().split("T")[0])
+  )].sort().reverse() // newest first
+  let streak = 0
+  if (uniqueDays.length > 0) {
+    const todayStr  = now.toISOString().split("T")[0]
+    const yestStr   = new Date(now.getTime() - 864e5).toISOString().split("T")[0]
+    // streak starts from today or yesterday (so a gap of 1 day doesn't break it)
+    const startStr  = uniqueDays[0] === todayStr || uniqueDays[0] === yestStr ? uniqueDays[0] : null
+    if (startStr) {
+      let cursor = new Date(startStr)
+      for (const day of uniqueDays) {
+        const cursorStr = cursor.toISOString().split("T")[0]
+        if (day === cursorStr) {
+          streak++
+          cursor = new Date(cursor.getTime() - 864e5)
+        } else {
+          break
+        }
+      }
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -578,6 +607,24 @@ export default async function DashboardPage() {
                   )
                 })}
               </div>
+            </div>
+          )}
+
+          {/* Streak widget */}
+          {streak > 0 && (
+            <div className="rounded-2xl border border-orange-800/30 bg-orange-950/10 backdrop-blur-sm px-4 py-3.5 flex items-center gap-4">
+              <div className="text-3xl leading-none">🔥</div>
+              <div>
+                <p className="text-xl font-black text-orange-400 tabular-nums leading-none">{streak} day{streak !== 1 ? "s" : ""}</p>
+                <p className="text-[11px] text-orange-600/70 mt-0.5 font-medium">active streak</p>
+              </div>
+              {streak >= 7 && (
+                <div className="ml-auto">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-500/15 text-orange-400 border border-orange-500/20">
+                    {streak >= 30 ? "🏆 LEGEND" : streak >= 14 ? "⚡ ON FIRE" : "🎯 WEEKLY"}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 

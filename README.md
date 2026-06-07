@@ -37,7 +37,7 @@ A full-stack driver development platform for sim racers. Import your Le Mans Ult
 
 ### Progression
 - **Goals** — 8 target types (best lap, consistency, session count, hours driven, etc.) with auto-progress on import
-- **Achievements** — 10 rarity-tiered achievements that unlock automatically based on activity
+- **Achievements** — 31 rarity-tiered achievements across 6 categories that unlock automatically based on activity
 - **Improvement score** — per track+car improvement percentage vs. first session baseline
 - **Session notes** — free-text debrief with tags and video URL
 
@@ -51,6 +51,7 @@ A full-stack driver development platform for sim racers. Import your Le Mans Ult
 - **Native Shared Memory telemetry** — rF2 SHM API via `windows` crate; zero packet loss, ~1 ms latency
 - **Telemetry recorder** — captures live data at 10 Hz into SQLite for post-session review
 - **Overlay settings** — toggle any panel on/off and adjust opacity from the companion app or the web Settings page; config is persisted and synced live to the running overlay
+- **Global keybindings** — configurable shortcuts (default `Alt+Shift+O` toggle overlay, `Alt+Shift+1–7` per panel); recorded via click-to-capture in Settings → Overlay
 
 ### Replay Management
 - Upload `.vcr` replay files and associate them with sessions

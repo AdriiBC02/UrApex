@@ -102,13 +102,14 @@ function compoundStyle(compound: string | null): React.CSSProperties {
 }
 
 interface Props {
-  session:     SessionDetail
-  allSessions: SessionSummary[]
-  onBack:      () => void
-  onCompare:   (secondId: string) => void
+  session:          SessionDetail
+  allSessions:      SessionSummary[]
+  onBack:           () => void
+  onCompare:        (secondId: string) => void
+  onCompareVsPb?:   () => void
 }
 
-export function SessionDetailView({ session: s, allSessions, onBack, onCompare }: Props) {
+export function SessionDetailView({ session: s, allSessions, onBack, onCompare, onCompareVsPb }: Props) {
   const [participants, setParticipants]           = useState<Participant[]>([])
   const [expandedDriver, setExpandedDriver]       = useState<string | null>(null)
   const [driverLaps, setDriverLaps]               = useState<Record<string, ParticipantLap[]>>({})
@@ -203,8 +204,19 @@ export function SessionDetailView({ session: s, allSessions, onBack, onCompare }
 
       {/* ── Compare picker ── */}
       {showComparePicker && (
-        <div style={{ borderBottom: "1px solid var(--border-soft)", background: "var(--surface)", maxHeight: 160, overflow: "auto", flexShrink: 0 }}>
+        <div style={{ borderBottom: "1px solid var(--border-soft)", background: "var(--surface)", maxHeight: 180, overflow: "auto", flexShrink: 0 }}>
           <p className="section-label" style={{ padding: "8px 12px 4px" }}>Compare with</p>
+          {onCompareVsPb && (
+            <div
+              onClick={() => { onCompareVsPb(); setShowComparePicker(false) }}
+              style={{ padding: "7px 12px", cursor: "pointer", borderBottom: "1px solid var(--border-soft)", display: "flex", alignItems: "center", gap: 8, background: "rgba(6,182,212,0.05)", transition: "background 0.1s" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(6,182,212,0.10)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(6,182,212,0.05)")}
+            >
+              <Timer size={11} strokeWidth={2} style={{ color: "var(--cyan)", flexShrink: 0 }} />
+              <p style={{ fontSize: 12, fontWeight: 600, color: "var(--cyan)", margin: 0 }}>My PB at this track</p>
+            </div>
+          )}
           {allSessions.filter((ss) => ss.id !== s.id).map((ss) => (
             <div
               key={ss.id}

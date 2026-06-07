@@ -3,10 +3,20 @@ import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { getImportQueue } from "@/server/queue/import.queue"
 
-// GET /api/import/[id] — status check
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function resolveUserId(req: NextRequest): Promise<string | null> {
+  const bearer = req.headers.get("authorization")?.match(/^Bearer (.+)$/)?.[1]
+  if (bearer) {
+    const user = await db.user.findUnique({ where: { apiKey: bearer }, select: { id: true } })
+    return user?.id ?? null
+  }
   const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  return session?.user?.id ?? null
+}
+
+// GET /api/import/[id] — status check (supports Bearer token for companion polling)
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const userId = await resolveUserId(req)
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id } = await params
   const importFile = await db.importFile.findUnique({
@@ -14,7 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     include: { session: { select: { id: true } } },
   })
 
-  if (!importFile || importFile.userId !== session.user.id) {
+  if (!importFile || importFile.userId !== userId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
 

@@ -85,8 +85,7 @@
 
 ## Phase 3 — Product Polish
 
-**Status:** 🔄 In progress
-**Estimated duration:** 2–3 weeks
+**Status:** ✅ Complete
 **Goal:** The app feels like a real product, not a prototype.
 
 ### Completed
@@ -101,16 +100,14 @@
 - [x] Async import pipeline (BullMQ + Redis + Vercel Cron fallback)
 - [x] GitHub Actions CI (type-check → lint → test → migrate)
 - [x] Vercel production setup (Neon + Upstash + R2)
+- [x] Privacy controls (session visibility, profile visibility)
+- [x] Responsive design audit
+- [x] Cmd+K command palette
+- [x] Post-session ritual modal
+- [x] Password reset flow
 
-### Pending
-- [ ] Privacy controls (session visibility, profile visibility)
-- [ ] Responsive design audit
-- [ ] Cmd+K command palette
-- [ ] Post-session ritual modal
-- [ ] Password reset flow
-
-### Completion Criterion
-> A new user can go from registration to first session imported in under 3 minutes, without needing documentation.
+### Completion Criterion met
+> ✅ A new user can go from registration to first session imported in under 3 minutes, without needing documentation.
 
 ---
 
@@ -169,6 +166,8 @@
 - [x] Overlay settings panel in web app Settings page
 - [x] Dashboard: active goals widget + recent achievements widget
 - [x] Session Detail: best S1/S2/S3 sector mini-stats
+- [x] Global keybindings (Alt+Shift+O + Alt+Shift+1–7, configurable in Settings)
+- [x] Overlay focus-steal fix + WebView2 GPU compositing fix
 - [ ] Test on real Windows machine with LMU running (verify SHM offsets)
 - [ ] Associate telemetry recording with session in web app
 - [ ] Upload telemetry recording to web app
@@ -283,8 +282,8 @@ These are ideas that may become phases after Phase 8, or may be folded into exis
 └── Phase 2 — Analytics        ✅ Complete
 
 2026
-├── Phase 3 — Polish           🔄 In progress (most features done)
-├── Phase 5 — Sync Agent       🔄 In progress (parallel with Phase 3)
+├── Phase 3 — Polish           ✅ Complete
+├── Phase 5 — Sync Agent       🔄 In progress (overlay + keybindings done; pending: Windows test)
 ├── Phase 4 — Telemetry        🔲 ~4-6 weeks
 ├── Phase 6 — AI Coach         🔲 ~3-4 weeks
 ├── Phase 7 — Community        🔲 ~4-6 weeks

@@ -1012,6 +1012,418 @@ pub fn get_cars(conn: &Connection) -> Result<Vec<CarStat>, String> {
     rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
 }
 
+// ── Track / Car detail ───────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PbPoint {
+    pub date:        String,
+    pub best_lap_ms: i32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrendPoint {
+    pub date:  String,
+    pub value: f64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TypeCount {
+    pub session_type: String,
+    pub count:        i32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrackBest {
+    pub track_name:  String,
+    pub best_lap_ms: i32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionRowForTrack {
+    pub id:                String,
+    pub session_date:      String,
+    pub car_name:          String,
+    pub session_type:      String,
+    pub total_laps:        i32,
+    pub best_lap_ms:       Option<i32>,
+    pub consistency_score: Option<f64>,
+    pub is_new_pb:         bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrackDetail {
+    pub track_name:          String,
+    pub total_sessions:      i32,
+    pub total_laps:          i32,
+    pub best_lap_ms:         Option<i32>,
+    pub avg_consistency:     Option<f64>,
+    pub best_s1_ms:          Option<i32>,
+    pub best_s2_ms:          Option<i32>,
+    pub best_s3_ms:          Option<i32>,
+    pub ideal_lap_ms:        Option<i32>,
+    pub pb_history:          Vec<PbPoint>,
+    pub consistency_trend:   Vec<TrendPoint>,
+    pub session_type_counts: Vec<TypeCount>,
+    pub lap_times_ms:        Vec<i32>,
+    pub sessions:            Vec<SessionRowForTrack>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionRowForCar {
+    pub id:                String,
+    pub session_date:      String,
+    pub track_name:        String,
+    pub session_type:      String,
+    pub total_laps:        i32,
+    pub best_lap_ms:       Option<i32>,
+    pub consistency_score: Option<f64>,
+    pub is_new_pb:         bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CarDetail {
+    pub car_name:            String,
+    pub car_class:           Option<String>,
+    pub total_sessions:      i32,
+    pub total_laps:          i32,
+    pub best_lap_ms:         Option<i32>,
+    pub avg_consistency:     Option<f64>,
+    pub track_bests:         Vec<TrackBest>,
+    pub pb_history:          Vec<PbPoint>,
+    pub consistency_trend:   Vec<TrendPoint>,
+    pub session_type_counts: Vec<TypeCount>,
+    pub sessions:            Vec<SessionRowForCar>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DriverDna {
+    pub consistency: Option<f64>,  // avg consistency_score
+    pub pace:        Option<f64>,  // avg (ideal_lap/best_lap)*100 where both available
+    pub safety:      Option<f64>,  // avg (valid_laps/total_laps)*100
+    pub improvement: Option<f64>,  // (first_best - current_best)/first_best*100 across combos
+    pub streak:      i32,          // consecutive days with sessions up to today
+}
+
+pub fn get_track_detail(conn: &Connection, track_name: &str) -> Result<Option<TrackDetail>, String> {
+    let total_sessions: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM sessions WHERE track_name=?1",
+        params![track_name], |r| r.get(0),
+    ).unwrap_or(0);
+    if total_sessions == 0 { return Ok(None); }
+
+    let total_laps: i32 = conn.query_row(
+        "SELECT COALESCE(SUM(valid_laps),0) FROM sessions WHERE track_name=?1",
+        params![track_name], |r| r.get(0),
+    ).unwrap_or(0);
+
+    let best_lap_ms: Option<i32> = conn.query_row(
+        "SELECT MIN(best_lap_ms) FROM sessions WHERE track_name=?1 AND best_lap_ms>0",
+        params![track_name], |r| r.get(0),
+    ).ok().flatten();
+
+    let avg_consistency: Option<f64> = conn.query_row(
+        "SELECT AVG(consistency_score) FROM sessions WHERE track_name=?1 AND consistency_score IS NOT NULL",
+        params![track_name], |r| r.get(0),
+    ).ok().flatten();
+
+    let best_s1_ms: Option<i32> = conn.query_row(
+        "SELECT MIN(sector1_ms) FROM laps \
+         WHERE session_id IN (SELECT id FROM sessions WHERE track_name=?1) \
+           AND is_valid=1 AND sector1_ms>0",
+        params![track_name], |r| r.get(0),
+    ).ok().flatten();
+
+    let best_s2_ms: Option<i32> = conn.query_row(
+        "SELECT MIN(sector2_ms) FROM laps \
+         WHERE session_id IN (SELECT id FROM sessions WHERE track_name=?1) \
+           AND is_valid=1 AND sector2_ms>0",
+        params![track_name], |r| r.get(0),
+    ).ok().flatten();
+
+    let best_s3_ms: Option<i32> = conn.query_row(
+        "SELECT MIN(sector3_ms) FROM laps \
+         WHERE session_id IN (SELECT id FROM sessions WHERE track_name=?1) \
+           AND is_valid=1 AND sector3_ms>0",
+        params![track_name], |r| r.get(0),
+    ).ok().flatten();
+
+    let ideal_lap_ms = match (best_s1_ms, best_s2_ms, best_s3_ms) {
+        (Some(s1), Some(s2), Some(s3)) => Some(s1 + s2 + s3),
+        _ => None,
+    };
+
+    let mut stmt = conn.prepare(
+        "SELECT lap_time_ms FROM laps \
+         WHERE session_id IN (SELECT id FROM sessions WHERE track_name=?1) \
+           AND is_valid=1 AND lap_time_ms>0 ORDER BY lap_time_ms ASC",
+    ).map_err(|e| e.to_string())?;
+    let lap_times_ms: Vec<i32> = stmt.query_map(params![track_name], |r| r.get(0))
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    // Sessions asc for history/trend computation
+    let mut stmt = conn.prepare(
+        "SELECT id, session_date, car_name, session_type, valid_laps, best_lap_ms, consistency_score, is_new_pb \
+         FROM sessions WHERE track_name=?1 ORDER BY session_date ASC",
+    ).map_err(|e| e.to_string())?;
+    let session_rows_asc: Vec<SessionRowForTrack> = stmt.query_map(params![track_name], |r| {
+        Ok(SessionRowForTrack {
+            id:                r.get(0)?,
+            session_date:      r.get(1)?,
+            car_name:          r.get(2)?,
+            session_type:      r.get(3)?,
+            total_laps:        r.get(4)?,
+            best_lap_ms:       r.get(5)?,
+            consistency_score: r.get(6)?,
+            is_new_pb:         r.get::<_, i32>(7)? == 1,
+        })
+    }).map_err(|e| e.to_string())?
+    .filter_map(|r| r.ok())
+    .collect();
+
+    // PB history (running minimum)
+    let mut running_best = i32::MAX;
+    let pb_history: Vec<PbPoint> = session_rows_asc.iter()
+        .filter_map(|s| {
+            let ms = s.best_lap_ms.filter(|&m| m > 0)?;
+            if ms < running_best { running_best = ms; Some(PbPoint { date: s.session_date.clone(), best_lap_ms: ms }) }
+            else { None }
+        })
+        .collect();
+
+    let consistency_trend: Vec<TrendPoint> = session_rows_asc.iter()
+        .filter_map(|s| s.consistency_score.map(|v| TrendPoint { date: s.session_date.clone(), value: v }))
+        .collect();
+
+    let mut type_map: std::collections::HashMap<String, i32> = std::collections::HashMap::new();
+    for s in &session_rows_asc { *type_map.entry(s.session_type.clone()).or_insert(0) += 1; }
+    let session_type_counts: Vec<TypeCount> = type_map.into_iter()
+        .map(|(session_type, count)| TypeCount { session_type, count })
+        .collect();
+
+    let sessions: Vec<SessionRowForTrack> = session_rows_asc.into_iter().rev().collect();
+
+    Ok(Some(TrackDetail {
+        track_name: track_name.to_string(),
+        total_sessions, total_laps, best_lap_ms, avg_consistency,
+        best_s1_ms, best_s2_ms, best_s3_ms, ideal_lap_ms,
+        pb_history, consistency_trend, session_type_counts, lap_times_ms, sessions,
+    }))
+}
+
+pub fn get_car_detail(conn: &Connection, car_name: &str) -> Result<Option<CarDetail>, String> {
+    let total_sessions: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM sessions WHERE car_name=?1",
+        params![car_name], |r| r.get(0),
+    ).unwrap_or(0);
+    if total_sessions == 0 { return Ok(None); }
+
+    let car_class: Option<String> = conn.query_row(
+        "SELECT car_class FROM sessions WHERE car_name=?1 AND car_class IS NOT NULL LIMIT 1",
+        params![car_name], |r| r.get(0),
+    ).ok().flatten();
+
+    let total_laps: i32 = conn.query_row(
+        "SELECT COALESCE(SUM(valid_laps),0) FROM sessions WHERE car_name=?1",
+        params![car_name], |r| r.get(0),
+    ).unwrap_or(0);
+
+    let best_lap_ms: Option<i32> = conn.query_row(
+        "SELECT MIN(best_lap_ms) FROM sessions WHERE car_name=?1 AND best_lap_ms>0",
+        params![car_name], |r| r.get(0),
+    ).ok().flatten();
+
+    let avg_consistency: Option<f64> = conn.query_row(
+        "SELECT AVG(consistency_score) FROM sessions WHERE car_name=?1 AND consistency_score IS NOT NULL",
+        params![car_name], |r| r.get(0),
+    ).ok().flatten();
+
+    // Best lap per track
+    let mut stmt = conn.prepare(
+        "SELECT track_name, MIN(best_lap_ms) as best FROM sessions \
+         WHERE car_name=?1 AND best_lap_ms>0 \
+         GROUP BY track_name ORDER BY best ASC",
+    ).map_err(|e| e.to_string())?;
+    let track_bests: Vec<TrackBest> = stmt.query_map(params![car_name], |r| {
+        Ok(TrackBest { track_name: r.get(0)?, best_lap_ms: r.get(1)? })
+    }).map_err(|e| e.to_string())?
+    .filter_map(|r| r.ok())
+    .collect();
+
+    // Sessions asc for trends
+    let mut stmt = conn.prepare(
+        "SELECT id, session_date, track_name, session_type, valid_laps, best_lap_ms, consistency_score, is_new_pb \
+         FROM sessions WHERE car_name=?1 ORDER BY session_date ASC",
+    ).map_err(|e| e.to_string())?;
+    let session_rows_asc: Vec<SessionRowForCar> = stmt.query_map(params![car_name], |r| {
+        Ok(SessionRowForCar {
+            id:                r.get(0)?,
+            session_date:      r.get(1)?,
+            track_name:        r.get(2)?,
+            session_type:      r.get(3)?,
+            total_laps:        r.get(4)?,
+            best_lap_ms:       r.get(5)?,
+            consistency_score: r.get(6)?,
+            is_new_pb:         r.get::<_, i32>(7)? == 1,
+        })
+    }).map_err(|e| e.to_string())?
+    .filter_map(|r| r.ok())
+    .collect();
+
+    let mut running_best = i32::MAX;
+    let pb_history: Vec<PbPoint> = session_rows_asc.iter()
+        .filter_map(|s| {
+            let ms = s.best_lap_ms.filter(|&m| m > 0)?;
+            if ms < running_best { running_best = ms; Some(PbPoint { date: s.session_date.clone(), best_lap_ms: ms }) }
+            else { None }
+        })
+        .collect();
+
+    let consistency_trend: Vec<TrendPoint> = session_rows_asc.iter()
+        .filter_map(|s| s.consistency_score.map(|v| TrendPoint { date: s.session_date.clone(), value: v }))
+        .collect();
+
+    let mut type_map: std::collections::HashMap<String, i32> = std::collections::HashMap::new();
+    for s in &session_rows_asc { *type_map.entry(s.session_type.clone()).or_insert(0) += 1; }
+    let session_type_counts: Vec<TypeCount> = type_map.into_iter()
+        .map(|(session_type, count)| TypeCount { session_type, count })
+        .collect();
+
+    let sessions: Vec<SessionRowForCar> = session_rows_asc.into_iter().rev().collect();
+
+    Ok(Some(CarDetail {
+        car_name: car_name.to_string(), car_class,
+        total_sessions, total_laps, best_lap_ms, avg_consistency,
+        track_bests, pb_history, consistency_trend, session_type_counts, sessions,
+    }))
+}
+
+/// Returns the id of the best-lap session at the given track+car, excluding `exclude_id`.
+pub fn get_pb_session_id_for(
+    conn:       &Connection,
+    track_name: &str,
+    car_name:   &str,
+    exclude_id: &str,
+) -> Result<Option<String>, String> {
+    match conn.query_row(
+        "SELECT id FROM sessions \
+         WHERE track_name=?1 AND car_name=?2 AND id!=?3 AND best_lap_ms>0 \
+         ORDER BY best_lap_ms ASC LIMIT 1",
+        params![track_name, car_name, exclude_id],
+        |r| r.get::<_, String>(0),
+    ) {
+        Ok(id)                                    => Ok(Some(id)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e)                                    => Err(e.to_string()),
+    }
+}
+
+pub fn get_driver_dna(conn: &Connection) -> Result<DriverDna, String> {
+    // Consistency: avg of all sessions
+    let consistency: Option<f64> = conn.query_row(
+        "SELECT AVG(consistency_score) FROM sessions WHERE consistency_score IS NOT NULL",
+        [], |r| r.get(0),
+    ).ok().flatten();
+
+    // Pace: avg of (ideal_lap_ms/best_lap_ms)*100 where both >0
+    let pace: Option<f64> = conn.query_row(
+        "SELECT AVG(CAST(ideal_lap_ms AS REAL)/best_lap_ms*100) \
+         FROM sessions WHERE ideal_lap_ms>0 AND best_lap_ms>0",
+        [], |r| r.get(0),
+    ).ok().flatten();
+
+    // Safety: avg of (valid_laps/total_laps)*100 where total_laps>0
+    let safety: Option<f64> = conn.query_row(
+        "SELECT AVG(CAST(valid_laps AS REAL)/total_laps*100) \
+         FROM sessions WHERE total_laps>0",
+        [], |r| r.get(0),
+    ).ok().flatten();
+
+    // Improvement: average per-combo improvement % (first_best - min_best) / first_best * 100
+    let mut stmt = conn.prepare(
+        "SELECT MIN(session_date), MIN(best_lap_ms), MAX(session_date), \
+                (SELECT best_lap_ms FROM sessions s2 WHERE s2.track_name=s.track_name AND s2.car_name=s.car_name AND best_lap_ms>0 ORDER BY session_date ASC LIMIT 1) as first_best \
+         FROM sessions s WHERE best_lap_ms>0 GROUP BY track_name, car_name HAVING COUNT(*)>1",
+    ).map_err(|e| e.to_string())?;
+    let combo_improvements: Vec<f64> = stmt.query_map([], |r| {
+        let first_best: Option<i32> = r.get(3)?;
+        let best: Option<i32>       = r.get(1)?;
+        Ok((first_best, best))
+    }).map_err(|e| e.to_string())?
+    .filter_map(|r| r.ok())
+    .filter_map(|(first, best)| {
+        let f = first? as f64;
+        let b = best?  as f64;
+        if f > 0.0 && b < f { Some((f - b) / f * 100.0) } else { None }
+    })
+    .collect();
+    let improvement = if combo_improvements.is_empty() { None }
+    else { Some(combo_improvements.iter().sum::<f64>() / combo_improvements.len() as f64 * 5.0) }; // scale ×5 so ~2% avg → ~10
+
+    // Streak: consecutive days with sessions ending today or yesterday
+    let mut stmt = conn.prepare(
+        "SELECT DISTINCT date(session_date) as day FROM sessions ORDER BY day DESC",
+    ).map_err(|e| e.to_string())?;
+    let days: Vec<String> = stmt.query_map([], |r| r.get(0))
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    let streak = compute_streak(&days);
+
+    Ok(DriverDna { consistency, pace, safety, improvement, streak })
+}
+
+fn compute_streak(days_desc: &[String]) -> i32 {
+    if days_desc.is_empty() { return 0; }
+    let today = crate::date::today_date_str();
+    let yesterday = crate::date::yesterday_date_str();
+    if days_desc[0] != today && days_desc[0] != yesterday { return 0; }
+    let mut streak = 1i32;
+    for w in days_desc.windows(2) {
+        if days_are_consecutive(&w[1], &w[0]) { streak += 1; } else { break; }
+    }
+    streak
+}
+
+fn days_are_consecutive(older: &str, newer: &str) -> bool {
+    // Parse YYYY-MM-DD and check newer = older + 1 day
+    let parse = |s: &str| -> Option<(i32, u32, u32)> {
+        let mut p = s.split('-');
+        let y: i32 = p.next()?.parse().ok()?;
+        let m: u32 = p.next()?.parse().ok()?;
+        let d: u32 = p.next()?.parse().ok()?;
+        Some((y, m, d))
+    };
+    let (oy, om, od) = match parse(older) { Some(v) => v, None => return false };
+    let (ny, nm, nd) = match parse(newer) { Some(v) => v, None => return false };
+    // Compute older + 1 day
+    let days_in_month = |y: i32, m: u32| match m {
+        1|3|5|7|8|10|12 => 31,
+        4|6|9|11 => 30,
+        2 => if y % 4 == 0 && (y % 100 != 0 || y % 400 == 0) { 29 } else { 28 },
+        _ => 30,
+    };
+    let (ey, em, ed) = if od < days_in_month(oy, om) {
+        (oy, om, od + 1)
+    } else if om < 12 {
+        (oy, om + 1, 1)
+    } else {
+        (oy + 1, 1, 1)
+    };
+    ny == ey && nm == em && nd == ed
+}
+
 // ── Achievements ─────────────────────────────────────────────────────────────
 
 // (slug, name, description, category, rarity, icon, target)

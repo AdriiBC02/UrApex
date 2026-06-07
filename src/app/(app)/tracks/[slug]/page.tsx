@@ -6,7 +6,8 @@ import { SESSION_TYPE_LABELS } from "@/lib/constants"
 import { ScoreBadge } from "@/components/shared/ScoreBadge"
 import { PBEvolutionChart } from "@/components/charts/PBEvolutionChart"
 import { TrendChart } from "@/components/charts/TrendChart"
-import { ArrowLeft, Flag, TrendingDown, TrendingUp, Trophy } from "lucide-react"
+import { LapDistributionChart } from "@/components/charts/LapDistributionChart"
+import { ArrowLeft, Flag, TrendingDown, TrendingUp, Trophy, Zap } from "lucide-react"
 import Link from "next/link"
 
 const SESSION_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
@@ -40,14 +41,25 @@ export default async function TrackDetailPage({ params }: { params: Promise<{ sl
   const track = await db.track.findUnique({ where: { slug } })
   if (!track) notFound()
 
-  const sessions = await db.session.findMany({
-    where: { userId, trackId: track.id, deletedAt: null },
-    orderBy: { sessionDate: "asc" },
-    include: {
-      car:       { select: { name: true, slug: true } },
-      simulator: { select: { slug: true, name: true } },
-    },
-  })
+  const [sessions, bestSectors, lapTimes] = await Promise.all([
+    db.session.findMany({
+      where: { userId, trackId: track.id, deletedAt: null },
+      orderBy: { sessionDate: "asc" },
+      include: {
+        car:       { select: { name: true, slug: true } },
+        simulator: { select: { slug: true, name: true } },
+      },
+    }),
+    db.lap.aggregate({
+      where: { session: { userId, trackId: track.id, deletedAt: null }, isValid: true },
+      _min: { sector1Ms: true, sector2Ms: true, sector3Ms: true },
+    }),
+    db.lap.findMany({
+      where: { session: { userId, trackId: track.id, deletedAt: null }, isValid: true },
+      select: { lapTimeMs: true },
+      orderBy: { lapTimeMs: "asc" },
+    }),
+  ])
   if (sessions.length === 0) notFound()
 
   // ── Aggregates ──────────────────────────────────────────────────────────────
@@ -109,6 +121,12 @@ export default async function TrackDetailPage({ params }: { params: Promise<{ sl
     .map(s => ({ date: s.sessionDate.toISOString().split("T")[0], value: s.consistencyScore! }))
 
   const lastSession = sessionsByDate[0]
+
+  const bestS1 = bestSectors._min.sector1Ms
+  const bestS2 = bestSectors._min.sector2Ms
+  const bestS3 = bestSectors._min.sector3Ms
+  const idealLap = bestS1 != null && bestS2 != null && bestS3 != null ? bestS1 + bestS2 + bestS3 : null
+  const lapTimesMs = lapTimes.map(l => l.lapTimeMs).filter((v): v is number => v != null)
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -253,6 +271,37 @@ export default async function TrackDetailPage({ params }: { params: Promise<{ sl
             height={140}
           />
         </Section>
+      )}
+
+      {/* Best sectors + lap distribution */}
+      {(idealLap != null || lapTimesMs.length >= 5) && (
+        <div className="grid lg:grid-cols-2 gap-5">
+          {idealLap != null && (
+            <Section title="Best sectors" icon={Zap} iconColor="text-yellow-400">
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                {[
+                  { label: "S1", ms: bestS1 },
+                  { label: "S2", ms: bestS2 },
+                  { label: "S3", ms: bestS3 },
+                ].map(({ label, ms }) => (
+                  <div key={label} className="rounded-xl border border-zinc-800/60 bg-zinc-800/30 px-3 py-2.5 text-center">
+                    <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">{label}</p>
+                    <p className="font-mono text-sm font-bold text-cyan-400">{formatLapTime(ms ?? null)}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-yellow-800/30 bg-yellow-950/10 px-4 py-2.5">
+                <span className="text-sm text-zinc-400">Ideal lap</span>
+                <span className="font-mono text-sm font-bold text-yellow-400">{formatLapTime(idealLap)}</span>
+              </div>
+            </Section>
+          )}
+          {lapTimesMs.length >= 5 && (
+            <Section title="Lap time distribution" icon={Flag} iconColor="text-zinc-500">
+              <LapDistributionChart data={lapTimesMs} />
+            </Section>
+          )}
+        </div>
       )}
 
       {/* Session history */}

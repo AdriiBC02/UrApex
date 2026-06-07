@@ -101,6 +101,7 @@ export default function App() {
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [replays, setReplays]             = useState<ReplaySummary[]>([])
   const [compareDetail, setCompareDetail] = useState<SessionDetail | null>(null)
+  const [pbSessionId, setPbSessionId]     = useState<string | null>(null)
   const [appVersion, setAppVersion]       = useState("")
   const [pendingUpdate, setPendingUpdate] = useState<Update | null>(null)
   const [checkingUpdate, setCheckingUpdate] = useState(false)
@@ -222,8 +223,17 @@ export default function App() {
     try { setReplays(await invoke<ReplaySummary[]>("get_replays")) } catch { /* ignore */ }
   }
   async function openSession(id: string) {
-    setSelectedId(id); setLoadingDetail(true)
-    try { setSessionDetail(await invoke<SessionDetail>("get_session_detail", { id })) } catch { /* ignore */ }
+    setSelectedId(id); setLoadingDetail(true); setPbSessionId(null)
+    try {
+      const detail = await invoke<SessionDetail>("get_session_detail", { id })
+      setSessionDetail(detail)
+      if (detail) {
+        const pbId = await invoke<string | null>("get_pb_session_id_for", {
+          trackName: detail.trackName, carName: detail.carName, excludeId: id,
+        }).catch(() => null)
+        setPbSessionId(pbId)
+      }
+    } catch { /* ignore */ }
     finally { setLoadingDetail(false) }
   }
   async function handleDeleteSession(id: string) {
@@ -290,6 +300,13 @@ export default function App() {
   async function handleCompare(secondId: string) {
     try {
       const detail = await invoke<SessionDetail>("get_session_detail", { id: secondId })
+      if (detail) setCompareDetail(detail)
+    } catch { /* ignore */ }
+  }
+  async function handleCompareVsPb() {
+    if (!pbSessionId) return
+    try {
+      const detail = await invoke<SessionDetail>("get_session_detail", { id: pbSessionId })
       if (detail) setCompareDetail(detail)
     } catch { /* ignore */ }
   }
@@ -583,7 +600,7 @@ export default function App() {
                   ) : compareDetail && sessionDetail ? (
                     <CompareView sessionA={sessionDetail} sessionB={compareDetail} onBack={() => setCompareDetail(null)} />
                   ) : sessionDetail ? (
-                    <SessionDetailView session={sessionDetail} allSessions={sessions} onBack={() => { setSelectedId(null); setSessionDetail(null); setCompareDetail(null) }} onCompare={handleCompare} />
+                    <SessionDetailView session={sessionDetail} allSessions={sessions} onBack={() => { setSelectedId(null); setSessionDetail(null); setCompareDetail(null) }} onCompare={handleCompare} onCompareVsPb={pbSessionId ? handleCompareVsPb : undefined} />
                   ) : (
                     <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 12 }}>
                       Failed to load session

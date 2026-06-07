@@ -1,6 +1,7 @@
 use reqwest::multipart;
 use sha2::{Digest, Sha256};
 use std::{fs, path::Path, time::Duration};
+use crate::telemetry_recorder::TelemetrySample;
 
 const MAX_RETRIES: u32 = 3;
 const RETRY_DELAY_MS: u64 = 2000;
@@ -82,6 +83,90 @@ async fn try_upload(
 
     let json: serde_json::Value = response.json().await?;
     Ok(json)
+}
+
+// ── Telemetry upload ──────────────────────────────────────────────────────────
+
+pub async fn upload_telemetry(
+    samples:    &[TelemetrySample],
+    session_id: &str,
+    api_url:    &str,
+    api_key:    &str,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    if samples.is_empty() { return Ok(()); }
+
+    let frames: Vec<serde_json::Value> = samples.iter().map(|s| serde_json::json!({
+        "t_ms":         s.t_ms,
+        "lap":          s.lap,
+        "speed_kph":    s.speed_kph,
+        "rpm":          s.rpm,
+        "gear":         s.gear,
+        "throttle":     s.throttle,
+        "brake":        s.brake,
+        "steering":     s.steering,
+        "fuel_l":       s.fuel_l,
+        "tire_fl_temp": s.tire_fl_temp, "tire_fr_temp": s.tire_fr_temp,
+        "tire_rl_temp": s.tire_rl_temp, "tire_rr_temp": s.tire_rr_temp,
+        "tire_fl_wear": s.tire_fl_wear, "tire_fr_wear": s.tire_fr_wear,
+        "tire_rl_wear": s.tire_rl_wear, "tire_rr_wear": s.tire_rr_wear,
+        "tire_fl_pres": s.tire_fl_pres, "tire_fr_pres": s.tire_fr_pres,
+        "tire_rl_pres": s.tire_rl_pres, "tire_rr_pres": s.tire_rr_pres,
+        "brk_fl_temp":  s.brk_fl_temp,  "brk_fr_temp":  s.brk_fr_temp,
+        "brk_rl_temp":  s.brk_rl_temp,  "brk_rr_temp":  s.brk_rr_temp,
+        "oil_temp":     s.oil_temp,
+        "h2o_temp":     s.h2o_temp,
+        "game_phase":   s.game_phase,
+        "flag":         s.flag,
+    })).collect();
+
+    let body = serde_json::json!({ "frames": frames, "sampleHz": 10 });
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(120))
+        .build()?;
+
+    let resp = client
+        .post(format!("{}/api/sessions/{}/telemetry", api_url.trim_end_matches('/'), session_id))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .json(&body)
+        .send()
+        .await?;
+
+    if !resp.status().is_success() {
+        return Err(format!("telemetry upload failed: HTTP {}", resp.status()).into());
+    }
+    Ok(())
+}
+
+/// Poll GET /api/import/{id} (with Bearer) until status is IMPORTED or FAILED.
+/// Returns the web session id on success.
+pub async fn poll_import_session_id(
+    import_file_id: &str,
+    api_url:        &str,
+    api_key:        &str,
+) -> Option<String> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()
+        .ok()?;
+
+    for _ in 0..20 {
+        tokio::time::sleep(Duration::from_millis(1500)).await;
+        let Ok(resp) = client
+            .get(format!("{}/api/import/{}", api_url.trim_end_matches('/'), import_file_id))
+            .header("Authorization", format!("Bearer {}", api_key))
+            .send()
+            .await
+        else { continue };
+
+        let Ok(json) = resp.json::<serde_json::Value>().await else { continue };
+        let status = json.get("status").and_then(|s| s.as_str()).unwrap_or("");
+        if status == "IMPORTED" {
+            return json.get("sessionId").and_then(|v| v.as_str()).map(|s| s.to_string());
+        }
+        if status == "FAILED" { break; }
+    }
+    None
 }
 
 // ── Local hash cache (persisted in app data dir) ──────────────────────────────

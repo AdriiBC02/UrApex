@@ -6,7 +6,7 @@ import { SESSION_TYPE_LABELS } from "@/lib/constants"
 import { ScoreBadge } from "@/components/shared/ScoreBadge"
 import { PBEvolutionChart } from "@/components/charts/PBEvolutionChart"
 import { TrendChart } from "@/components/charts/TrendChart"
-import { ArrowLeft, Flag, TrendingDown, TrendingUp, Trophy } from "lucide-react"
+import { ArrowLeft, Flag, Star, StarOff, TrendingDown, TrendingUp, Trophy } from "lucide-react"
 import Link from "next/link"
 
 const SESSION_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
@@ -99,8 +99,18 @@ export default async function CarDetailPage({ params }: { params: Promise<{ slug
   const consistencyTrend = consistentSessions
     .map(s => ({ date: s.sessionDate.toISOString().split("T")[0], value: s.consistencyScore! }))
 
+  // Pace score trend
+  const paceTrend = sessions
+    .filter(s => s.paceScore != null)
+    .map(s => ({ date: s.sessionDate.toISOString().split("T")[0], value: s.paceScore! }))
+
   const lastSession = sessionsByDate[0]
   const circuits = Object.values(trackBests).length
+
+  // Best / worst circuit (by best lap time, ascending = fastest = best)
+  const sortedCircuits = Object.values(trackBests).sort((a, b) => a.best - b.best)
+  const bestCircuit  = sortedCircuits[0] ?? null
+  const worstCircuit = sortedCircuits.length > 1 ? sortedCircuits[sortedCircuits.length - 1] : null
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -227,18 +237,58 @@ export default async function CarDetailPage({ params }: { params: Promise<{ slug
         </div>
       </div>
 
-      {/* Consistency trend */}
-      {consistencyTrend.length >= 3 && (
-        <Section title="Consistency trend" icon={TrendingUp} iconColor="text-green-400">
-          <TrendChart
-            data={consistencyTrend}
-            color="#4ade80"
-            domain={[0, 100]}
-            formatter={(v) => v.toFixed(0)}
-            label="Consistency"
-            height={140}
-          />
-        </Section>
+      {/* Consistency + pace trends */}
+      <div className={`grid gap-5 ${consistencyTrend.length >= 3 && paceTrend.length >= 3 ? "lg:grid-cols-2" : ""}`}>
+        {consistencyTrend.length >= 3 && (
+          <Section title="Consistency trend" icon={TrendingUp} iconColor="text-green-400">
+            <TrendChart
+              data={consistencyTrend}
+              color="#4ade80"
+              domain={[0, 100]}
+              formatter={(v) => v.toFixed(0)}
+              label="Consistency"
+              height={140}
+            />
+          </Section>
+        )}
+        {paceTrend.length >= 3 && (
+          <Section title="Pace score trend" icon={TrendingUp} iconColor="text-cyan-400">
+            <TrendChart
+              data={paceTrend}
+              color="#06b6d4"
+              domain={[0, 100]}
+              formatter={(v) => v.toFixed(0)}
+              label="Pace"
+              height={140}
+            />
+          </Section>
+        )}
+      </div>
+
+      {/* Best / worst circuit */}
+      {bestCircuit && worstCircuit && (
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="rounded-2xl border border-green-800/30 bg-green-950/10 backdrop-blur-sm p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Star className="w-3.5 h-3.5 text-green-400" />
+              <p className="text-[11px] font-semibold text-green-500 uppercase tracking-widest">Best circuit</p>
+            </div>
+            <Link href={`/tracks/${bestCircuit.track.slug}`} className="text-base font-bold text-zinc-100 hover:text-cyan-400 transition-colors">
+              {bestCircuit.track.name}
+            </Link>
+            <p className="font-mono text-sm text-green-400 mt-0.5">{formatLapTime(bestCircuit.best)}</p>
+          </div>
+          <div className="rounded-2xl border border-red-800/30 bg-red-950/10 backdrop-blur-sm p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <StarOff className="w-3.5 h-3.5 text-red-400" />
+              <p className="text-[11px] font-semibold text-red-500 uppercase tracking-widest">Weakest circuit</p>
+            </div>
+            <Link href={`/tracks/${worstCircuit.track.slug}`} className="text-base font-bold text-zinc-100 hover:text-cyan-400 transition-colors">
+              {worstCircuit.track.name}
+            </Link>
+            <p className="font-mono text-sm text-red-400 mt-0.5">{formatLapTime(worstCircuit.best)}</p>
+          </div>
+        </div>
       )}
 
       {/* Session history */}

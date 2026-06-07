@@ -128,6 +128,12 @@
 | AN-016 | Metric recalculation job | P1 | ✅ | RecalculateQueue+Worker; POST /api/import/recalculate; button in ImportHistory |
 | AN-017 | Full race data — all drivers | P1 | ✅ | ParticipantLap table; parser extracts laps/pits/conditions for all drivers; session detail Race Grid + Strategy sections |
 | AN-018 | CSV export — Race Grid | P2 | 🔲 | GET /api/sessions/[id]/export — full grid with per-driver laps, stints, conditions |
+| AN-019 | Track: best sectors + ideal lap + lap distribution | P1 | ✅ | Sector query + LapDistributionChart |
+| AN-020 | Car: pace score trend + best/worst circuit | P1 | ✅ | TrendChart(paceScore) + green/red circuit cards |
+| AN-021 | Dashboard: streak widget | P1 | ✅ | Consecutive days with sessions; badges at 7/14/30 |
+| AN-022 | Profile: Driver DNA radar chart | P1 | ✅ | Recharts RadarChart con 6 dimensiones |
+| AN-023 | Compare: "Compare vs my PB" shortcut | P1 | ✅ | Auto-selects PB session at same track+car in slot B |
+| AN-024 | Telemetría auto-asociada tras XML import | P1 | ✅ | Companion poll → sessionId → upload frames → associate local |
 
 ---
 
@@ -179,6 +185,7 @@
 | CA-021 | Tray right-click menu with Quit | P1 | ✅ | MenuItem + PredefinedMenuItem::separator; app.exit(0); previously no way to close without Task Manager |
 | CA-022 | Watcher auto-restart on launch | P2 | ✅ | `watchActive` persisted to plugin-store; auto-restores previous watching state on app open |
 | CA-023 | Auto-update (Tauri updater plugin) | P3 | ✅ | tauri-plugin-updater; CI signing; latest.json; Settings check button + progress bar |
+| CA-027 | Global keybindings for overlay | P2 | ✅ | tauri-plugin-global-shortcut; Alt+Shift+O toggle overlay, Alt+Shift+1–7 panels; KeybindingsPanel in Settings; overlay focus-steal + GPU compositing fixes |
 
 ---
 

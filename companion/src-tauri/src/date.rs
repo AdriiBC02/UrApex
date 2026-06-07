@@ -17,6 +17,23 @@ pub fn unix_to_iso(secs: u64) -> String {
     format!("{y:04}-{mo:02}-{d:02}T{h:02}:{m:02}:{s:02}")
 }
 
+/// Returns today's date as "YYYY-MM-DD" (UTC).
+pub fn today_date_str() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
+    let (y, m, d) = civil_from_days(secs / 86400);
+    format!("{y:04}-{m:02}-{d:02}")
+}
+
+/// Returns yesterday's date as "YYYY-MM-DD" (UTC).
+pub fn yesterday_date_str() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
+    let days = secs / 86400;
+    let (y, m, d) = civil_from_days(if days > 0 { days - 1 } else { 0 });
+    format!("{y:04}-{m:02}-{d:02}")
+}
+
 /// Howard Hinnant's Gregorian calendar algorithm.
 /// <https://howardhinnant.github.io/date_algorithms.html>
 fn civil_from_days(days: u64) -> (i64, u64, u64) {
