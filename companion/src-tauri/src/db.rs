@@ -444,6 +444,40 @@ fn migrate(conn: &Connection) -> Result<(), String> {
         set_schema_version(conn, 6);
     }
 
+    // v7 — telemetry recordings (Shared Memory data recorded at 10 Hz)
+    if v < 7 {
+        conn.execute_batch("
+            CREATE TABLE IF NOT EXISTS telemetry_recordings (
+                id           TEXT PRIMARY KEY,
+                session_id   TEXT REFERENCES sessions(id) ON DELETE SET NULL,
+                track_name   TEXT NOT NULL DEFAULT '',
+                session_type TEXT NOT NULL DEFAULT '',
+                started_at   TEXT NOT NULL,
+                ended_at     TEXT
+            );
+            CREATE INDEX IF NOT EXISTS idx_tel_rec_session ON telemetry_recordings(session_id);
+            CREATE INDEX IF NOT EXISTS idx_tel_rec_started ON telemetry_recordings(started_at DESC);
+
+            CREATE TABLE IF NOT EXISTS telemetry_samples (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                recording_id TEXT NOT NULL REFERENCES telemetry_recordings(id) ON DELETE CASCADE,
+                t_ms         INTEGER NOT NULL,
+                lap          INTEGER NOT NULL DEFAULT 0,
+                speed_kph    REAL, rpm REAL, gear INTEGER,
+                throttle REAL, brake REAL, steering REAL, fuel_l REAL,
+                tire_fl_temp REAL, tire_fr_temp REAL, tire_rl_temp REAL, tire_rr_temp REAL,
+                tire_fl_wear REAL, tire_fr_wear REAL, tire_rl_wear REAL, tire_rr_wear REAL,
+                tire_fl_pres REAL, tire_fr_pres REAL, tire_rl_pres REAL, tire_rr_pres REAL,
+                brk_fl_temp  REAL, brk_fr_temp  REAL, brk_rl_temp  REAL, brk_rr_temp  REAL,
+                oil_temp REAL, h2o_temp REAL,
+                game_phase INTEGER DEFAULT 0,
+                flag       INTEGER DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_tel_samples_rec ON telemetry_samples(recording_id, t_ms);
+        ").map_err(|e| e.to_string())?;
+        set_schema_version(conn, 7);
+    }
+
     Ok(())
 }
 

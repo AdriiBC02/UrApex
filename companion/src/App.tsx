@@ -103,9 +103,9 @@ export default function App() {
   const [installing, setInstalling]       = useState(false)
   const [updateProgress, setUpdateProgress] = useState(0)
   const [updateStatus, setUpdateStatus]   = useState("Up to date")
-  const [overlayVisible, setOverlayVisible] = useState(false)
-  const [telemetryPort, setTelemetryPort]   = useState("4444")
-  const [telemetryActive, setTelemetryActive] = useState(false)
+  const [overlayVisible, setOverlayVisible]     = useState(false)
+  const [telemetryActive, setTelemetryActive]   = useState(false)
+  const [recordingId, setRecordingId]           = useState<string | null>(null)
 
   useEffect(() => {
     load("companion-settings.json", { autoSave: true, defaults: {} }).then(async (s) => {
@@ -294,11 +294,28 @@ export default function App() {
     try {
       if (telemetryActive) {
         await invoke("stop_telemetry")
+        if (recordingId) {
+          await invoke("stop_recording")
+          setRecordingId(null)
+        }
         setTelemetryActive(false)
       } else {
-        const port = parseInt(telemetryPort) || 4444
-        await invoke("start_telemetry", { port })
+        await invoke("start_telemetry")
         setTelemetryActive(true)
+      }
+    } catch { /* ignore */ }
+  }
+
+  async function toggleRecording() {
+    try {
+      if (recordingId) {
+        await invoke("stop_recording")
+        setRecordingId(null)
+      } else {
+        const id = await invoke<string>("start_recording", {
+          trackName: "Unknown", sessionType: "RACE",
+        })
+        setRecordingId(id)
       }
     } catch { /* ignore */ }
   }
@@ -619,17 +636,13 @@ export default function App() {
                 <div className="card-header">
                   <MonitorPlay size={13} strokeWidth={2} style={{ color: "var(--text-dim)" }} />
                   <span style={{ fontWeight: 600, fontSize: 12 }}>In-game overlay</span>
-                  <span style={{ fontSize: 10, color: "var(--text-dim)", marginLeft: "auto" }}>CA-014 / CA-015</span>
+                  <span style={{ fontSize: 10, color: "var(--text-dim)", marginLeft: "auto" }}>SHM</span>
                 </div>
-                <Field label="UDP port" hint="Port LMU broadcasts telemetry on (default 4444). Requires rF2 UDP plugin in LMU.">
-                  <input
-                    value={telemetryPort}
-                    onChange={(e) => setTelemetryPort(e.target.value)}
-                    placeholder="4444"
-                    style={{ width: 80 }}
-                  />
-                </Field>
-                <div style={{ display: "flex", gap: 8 }}>
+                <p style={{ fontSize: 10, color: "var(--text-dim)", margin: 0, lineHeight: 1.5 }}>
+                  Reads LMU Shared Memory directly (<code>$rFactor2SMMP_Telemetry$</code>). Requires{" "}
+                  <strong>rFactor2SharedMemoryMapPlugin64.dll</strong> in the LMU Plugins folder.
+                </p>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button
                     type="button"
                     onClick={toggleTelemetry}
@@ -648,10 +661,22 @@ export default function App() {
                     <MonitorPlay size={12} strokeWidth={2} />
                     {overlayVisible ? "Hide overlay" : "Show overlay"}
                   </button>
+                  {telemetryActive && (
+                    <button
+                      type="button"
+                      onClick={toggleRecording}
+                      className={`btn ${recordingId ? "btn-danger" : "btn-ghost"}`}
+                      style={{ gap: 6 }}
+                    >
+                      <RadioTower size={12} strokeWidth={2} />
+                      {recordingId ? "Stop recording" : "Record session"}
+                    </button>
+                  )}
                 </div>
                 {telemetryActive && (
                   <p style={{ fontSize: 10, color: "var(--green)", margin: 0 }}>
-                    Listening on UDP port {telemetryPort}…
+                    Reading LMU shared memory…
+                    {recordingId && <span style={{ color: "var(--red)", marginLeft: 8 }}>● Recording</span>}
                   </p>
                 )}
               </div>

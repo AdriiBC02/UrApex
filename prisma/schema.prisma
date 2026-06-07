@@ -236,7 +236,8 @@ model Session {
   notes        SessionNote[]
   insights     SessionInsight[]
   setups       SessionSetup[]
-  replays      Replay[]
+  replays              Replay[]
+  telemetryRecording   TelemetryRecording?
 
   @@index([userId])
   @@index([trackId])
@@ -636,6 +637,26 @@ model PasswordResetToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// ─── TELEMETRY RECORDING ─────────────────────────────────────────────────────
+
+/// Stores a compressed telemetry recording captured by the companion app
+/// during a live session (sampled at ~10 Hz from rF2 Shared Memory).
+model TelemetryRecording {
+  id        String  @id @default(cuid())
+  sessionId String  @unique
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  /// JSON array of TelemetrySample objects (sampled at sampleHz)
+  frames      Json
+  totalFrames Int?
+  sampleHz    Float?   @default(10.0)
+  durationSec Int?
+
+  uploadedAt DateTime @default(now())
+
+  @@index([sessionId])
 }
 
 // ─── REPLAYS ─────────────────────────────────────────────────────────────────

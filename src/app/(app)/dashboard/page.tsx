@@ -239,33 +239,39 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
           {
-            label: "Sessions", icon: Flag, accent: true,
+            label: "Sessions", icon: Flag,       iconBg: "bg-cyan-500/10",    iconColor: "text-cyan-400",
             value: profile?.totalSessions ?? 0,
             sub: weekDelta > 0 ? `+${weekDelta} this week` : thisWeekCount > 0 ? `${thisWeekCount} this week` : undefined,
+            valueColor: "text-cyan-400",
           },
-          { label: "Laps",       icon: TrendingUp, value: (profile?.totalLaps ?? 0).toLocaleString(), mono: true },
-          { label: "Drive time", icon: Clock,       value: formatDriveTime(profile?.totalDriveTimeSec ?? 0), sub: "on track" },
-          { label: "Circuits",   icon: Map,         value: profile?.uniqueTracks ?? 0 },
-          { label: "Cars",       icon: Car,         value: profile?.uniqueCars ?? 0 },
-        ].map(({ label, icon: Icon, value, accent, mono, sub }) => (
+          {
+            label: "Laps",       icon: TrendingUp, iconBg: "bg-green-500/10",   iconColor: "text-green-400",
+            value: (profile?.totalLaps ?? 0).toLocaleString(), mono: true, valueColor: "text-zinc-100",
+          },
+          {
+            label: "Drive time", icon: Clock,       iconBg: "bg-purple-500/10",  iconColor: "text-purple-400",
+            value: formatDriveTime(profile?.totalDriveTimeSec ?? 0), sub: "on track", valueColor: "text-zinc-100",
+          },
+          {
+            label: "Circuits",   icon: Map,         iconBg: "bg-orange-500/10",  iconColor: "text-orange-400",
+            value: profile?.uniqueTracks ?? 0, valueColor: "text-zinc-100",
+          },
+          {
+            label: "Cars",       icon: Car,         iconBg: "bg-amber-500/10",   iconColor: "text-amber-400",
+            value: profile?.uniqueCars ?? 0, valueColor: "text-zinc-100",
+          },
+        ].map(({ label, icon: Icon, iconBg, iconColor, value, mono, sub, valueColor }) => (
           <div
             key={label}
-            className={`relative rounded-xl border px-4 py-3.5 overflow-hidden hover:border-zinc-700 transition-all duration-200 group backdrop-blur-sm ${
-              accent ? "border-cyan-800/40 bg-zinc-900/50" : "border-zinc-800/60 bg-zinc-900/50"
-            }`}
+            className="relative rounded-xl border border-zinc-800/60 bg-zinc-900/50 px-4 py-3.5 overflow-hidden hover:border-zinc-700 transition-all duration-200 group backdrop-blur-sm"
           >
-            {accent && (
-              <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
-            )}
             <div className="flex items-center justify-between mb-2.5">
               <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">{label}</span>
-              <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${
-                accent ? "bg-cyan-500/10" : "bg-zinc-800 group-hover:bg-zinc-700/60"
-              }`}>
-                <Icon className={`w-3.5 h-3.5 ${accent ? "text-cyan-400" : "text-zinc-500"}`} />
+              <div className={`w-6 h-6 rounded-md flex items-center justify-center ${iconBg}`}>
+                <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
               </div>
             </div>
-            <div className={`text-2xl font-black leading-none tracking-tight ${mono ? "font-mono" : ""} ${accent ? "text-cyan-400" : "text-zinc-100"}`}>
+            <div className={`text-2xl font-black leading-none tracking-tight ${mono ? "font-mono" : ""} ${valueColor}`}>
               {value}
             </div>
             {sub && (
@@ -281,38 +287,49 @@ export default async function DashboardPage() {
 
       {/* ── Driver rating card (full width) ── */}
       <div className="relative rounded-2xl border border-zinc-800/60 bg-zinc-900/40 backdrop-blur-md overflow-hidden">
-        {/* Gradient bg */}
-        <div className="absolute inset-0 bg-gradient-to-r from-zinc-900/60 via-transparent to-transparent pointer-events-none" />
+        {/* Background glow matching rating color */}
         {ratingInfo && (
-          <div
-            className="absolute right-0 top-0 bottom-0 w-64 pointer-events-none"
-            style={{ background: `radial-gradient(ellipse at right center, ${ratingInfo.stroke}08 0%, transparent 70%)` }}
-          />
+          <>
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{ background: `radial-gradient(ellipse 60% 80% at 0% 50%, ${ratingInfo.stroke}06 0%, transparent 70%)` }}
+            />
+            <div
+              className="absolute right-0 top-0 bottom-0 w-80 pointer-events-none"
+              style={{ background: `radial-gradient(ellipse at right center, ${ratingInfo.stroke}05 0%, transparent 70%)` }}
+            />
+          </>
+        )}
+        {/* Top accent line */}
+        {ratingInfo && (
+          <div className="h-[2px] w-full" style={{ background: `linear-gradient(to right, ${ratingInfo.stroke}60, ${ratingInfo.stroke}20, transparent)` }} />
         )}
 
-        <div className="relative flex items-center gap-8 px-8 py-6">
+        <div className="relative flex items-center gap-6 sm:gap-10 px-6 sm:px-8 py-6">
           {/* Left: overall rating */}
-          <div className="shrink-0 text-center">
+          <div className="shrink-0 text-center min-w-[72px]">
             {rating != null ? (
               <>
-                <div className={`text-5xl font-black tabular-nums leading-none ${ratingInfo?.text}`}>
+                <div className={`text-6xl font-black tabular-nums leading-none ${ratingInfo?.text}`}
+                  style={{ textShadow: ratingInfo ? `0 0 32px ${ratingInfo.stroke}50` : undefined }}
+                >
                   {rating.toFixed(0)}
                 </div>
-                <div className={`text-xs font-bold mt-1 uppercase tracking-widest ${ratingInfo?.text} opacity-70`}>
+                <div className={`text-xs font-black mt-1.5 uppercase tracking-[0.2em] ${ratingInfo?.text} opacity-60`}>
                   {ratingInfo?.grade}
                 </div>
               </>
             ) : (
-              <div className="text-4xl font-black text-zinc-800">—</div>
+              <div className="text-5xl font-black text-zinc-800">—</div>
             )}
-            <p className="text-[10px] text-zinc-600 mt-2 uppercase tracking-widest font-semibold">Driver Rating</p>
+            <p className="text-[10px] text-zinc-600 mt-2 uppercase tracking-widest font-semibold">Rating</p>
           </div>
 
           {/* Divider */}
-          <div className="w-px self-stretch bg-zinc-700/40 shrink-0" />
+          <div className="w-px self-stretch bg-zinc-800 shrink-0" />
 
-          {/* Score rings — always show 4 core; add Racecraft/Qualifying if available */}
-          <div className="flex items-center gap-5 flex-1 justify-around flex-wrap">
+          {/* Score rings */}
+          <div className="flex items-center gap-4 sm:gap-6 flex-1 justify-around flex-wrap">
             <ScoreRing value={profile?.consistencyScore} label="Consistency" size="lg" />
             <ScoreRing value={profile?.safetyScore}      label="Safety"      size="lg" />
             <ScoreRing value={profile?.paceScore}        label="Pace"        size="lg" />
@@ -325,11 +342,10 @@ export default async function DashboardPage() {
             )}
           </div>
 
-          {/* Right: hint */}
           {!hasData && (
-            <div className="shrink-0 max-w-[180px] text-right">
+            <div className="shrink-0 max-w-[160px] text-right hidden sm:block">
               <p className="text-xs text-zinc-600 leading-relaxed">
-                Import sessions to calculate your driver scores
+                Import sessions to calculate your scores
               </p>
             </div>
           )}

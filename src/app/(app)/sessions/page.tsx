@@ -160,95 +160,99 @@ export default async function SessionsPage({
         />
       ) : (
         <>
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden overflow-x-auto">
-            <table className="w-full text-sm min-w-[680px]">
-              <thead>
-                <tr className="border-b border-zinc-800 bg-zinc-900/60">
-                  {[
-                    { label: "Date",     w: "" },
-                    { label: "Track",    w: "" },
-                    { label: "Car",      w: "" },
-                    { label: "Type",     w: "w-24" },
-                    { label: "Pos",      w: "w-12" },
-                    { label: "Laps",     w: "w-12" },
-                    { label: "Best lap", w: "w-24" },
-                    { label: "Cons.",    w: "w-14" },
-                    { label: "Safety",   w: "w-14" },
-                    { label: "replay",   w: "w-6" },
-                    { label: "compare",  w: "w-10" },
-                  ].map(({ label, w }) => (
-                    <th key={label} className={`text-left px-4 py-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider ${w}`}>
-                      {["replay", "compare"].includes(label) ? "" : label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sessions.map((s, i) => {
-                  const tc = TYPE_COLORS[s.sessionType]
-                  return (
-                    <tr
-                      key={s.id}
-                      className={`border-b border-zinc-800/50 hover:bg-zinc-800/40 transition-colors group ${i === sessions.length - 1 ? "border-b-0" : ""}`}
-                    >
-                      <td className="px-4 py-3 text-zinc-500 whitespace-nowrap text-xs">
-                        <Link href={`/sessions/${s.id}`} className="hover:text-zinc-300 transition-colors font-medium">
-                          {new Date(s.sessionDate).toLocaleDateString("en-GB", {
-                            day: "2-digit", month: "short", year: "2-digit",
-                          })}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Link href={`/tracks/${s.track.slug}`} className="font-medium text-zinc-200 hover:text-cyan-400 transition-colors">
-                          {s.track.name}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-zinc-400 max-w-32 truncate">
-                        <Link href={`/cars/${s.car.slug}`} className="hover:text-cyan-400 transition-colors text-xs">
-                          {s.car.name}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-md ${tc?.bg ?? "bg-zinc-800"} ${tc?.text ?? "text-zinc-400"}`}>
-                          <span className={`w-1 h-1 rounded-full shrink-0 ${tc?.dot ?? "bg-zinc-500"}`} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {sessions.map((s) => {
+              const tc   = TYPE_COLORS[s.sessionType]
+              const date = new Date(s.sessionDate)
+              const posColor =
+                s.finalPosition === 1 ? "text-yellow-400" :
+                s.finalPosition != null && s.finalPosition <= 3 ? "text-orange-400" : "text-zinc-200"
+
+              return (
+                <Link
+                  key={s.id}
+                  href={`/sessions/${s.id}`}
+                  className="group rounded-xl border border-zinc-800 bg-zinc-900 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all overflow-hidden"
+                >
+                  {/* Top accent */}
+                  <div className={`h-[2px] w-full ${
+                    s.sessionType === "RACE"       ? "bg-orange-500/50" :
+                    s.sessionType === "QUALIFYING" ? "bg-cyan-500/50"   :
+                    s.sessionType === "HOTLAP" || s.sessionType === "TIME_TRIAL" ? "bg-purple-500/50" :
+                    "bg-zinc-700/40"
+                  }`} />
+
+                  <div className="p-4">
+                    {/* Row 1: type badge + date + position */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md ${tc?.bg ?? "bg-zinc-800"} ${tc?.text ?? "text-zinc-400"}`}>
+                          <span className={`w-1 h-1 rounded-full ${tc?.dot ?? "bg-zinc-500"}`} />
                           {SESSION_TYPE_LABELS[s.sessionType] ?? s.sessionType}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-zinc-300 font-mono text-xs">
-                        {s.finalPosition != null ? <span className="font-semibold">P{s.finalPosition}</span> : <span className="text-zinc-700">—</span>}
-                      </td>
-                      <td className="px-4 py-3 text-zinc-400 font-mono text-xs">{s.totalLaps}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-zinc-200 text-xs tabular-nums">{formatLapTime(s.bestLapMs)}</span>
-                          {s.isNewPB && (
-                            <span className="text-[10px] font-bold text-cyan-400 bg-cyan-500/10 px-1 py-0.5 rounded">PB</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3"><ScoreCell value={s.consistencyScore} /></td>
-                      <td className="px-4 py-3"><ScoreCell value={s.safetyScore} /></td>
-                      <td className="px-4 py-3">
-                        {s._count.replays > 0 && (
-                          <Link href={`/sessions/${s.id}`} title={`${s._count.replays} replay${s._count.replays > 1 ? "s" : ""}`}>
-                            <Film className="w-3.5 h-3.5 text-zinc-500 hover:text-cyan-400 transition-colors" />
-                          </Link>
+                        {s.isNewPB && (
+                          <span className="text-[10px] font-bold text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded">PB</span>
                         )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Link
-                          href={`/sessions/compare?a=${s.id}`}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-600 hover:text-cyan-400"
-                          title="Compare"
-                        >
-                          <GitCompare className="w-3.5 h-3.5" />
-                        </Link>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                        {s.dnf && (
+                          <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">DNF</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {s.finalPosition != null && (
+                          <span className={`font-mono text-sm font-bold tabular-nums ${posColor}`}>
+                            P{s.finalPosition}
+                          </span>
+                        )}
+                        <span className="text-xs text-zinc-600">
+                          {date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Row 2: track name */}
+                    <div className="font-bold text-zinc-100 text-base leading-tight mb-1 group-hover:text-white transition-colors">
+                      {s.track.name}
+                    </div>
+                    <div className="text-xs text-zinc-500 mb-3 truncate">{s.car.name}</div>
+
+                    {/* Row 3: stats strip */}
+                    <div className="flex items-center justify-between pt-3 border-t border-zinc-800/60">
+                      <div className="flex items-center gap-4">
+                        {/* Best lap */}
+                        <div>
+                          <div className="text-[10px] text-zinc-600 mb-0.5">Best lap</div>
+                          <div className="font-mono text-sm font-semibold text-zinc-200 tabular-nums">
+                            {formatLapTime(s.bestLapMs)}
+                          </div>
+                        </div>
+                        {/* Consistency */}
+                        {s.consistencyScore != null && (
+                          <div>
+                            <div className="text-[10px] text-zinc-600 mb-0.5">Cons.</div>
+                            <ScoreCell value={s.consistencyScore} size="sm" />
+                          </div>
+                        )}
+                        {/* Safety */}
+                        {s.safetyScore != null && (
+                          <div>
+                            <div className="text-[10px] text-zinc-600 mb-0.5">Safety</div>
+                            <ScoreCell value={s.safetyScore} size="sm" />
+                          </div>
+                        )}
+                      </div>
+                      {/* Right: laps + replay + compare */}
+                      <div className="flex items-center gap-3 text-zinc-600">
+                        <span className="text-xs tabular-nums">{s.totalLaps}L</span>
+                        {s._count.replays > 0 && (
+                          <Film className="w-3 h-3 text-zinc-600" />
+                        )}
+                        <GitCompare className="w-3.5 h-3.5 opacity-0 group-hover:opacity-60 transition-opacity" />
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
           </div>
 
           {totalPages > 1 && (
@@ -282,12 +286,12 @@ export default async function SessionsPage({
   )
 }
 
-function ScoreCell({ value }: { value: number | null }) {
+function ScoreCell({ value, size = "md" }: { value: number | null; size?: "sm" | "md" }) {
   if (value === null) return <span className="text-zinc-700 text-xs">—</span>
   const color =
     value >= 90 ? "text-green-400" :
     value >= 75 ? "text-lime-400" :
     value >= 60 ? "text-yellow-400" :
     value >= 40 ? "text-orange-400" : "text-red-400"
-  return <span className={`font-mono text-xs font-semibold ${color}`}>{value.toFixed(0)}</span>
+  return <span className={`font-mono font-semibold ${color} ${size === "sm" ? "text-sm" : "text-xs"}`}>{value.toFixed(0)}</span>
 }

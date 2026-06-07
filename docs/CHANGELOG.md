@@ -8,7 +8,25 @@
 
 ## [Unreleased]
 
-> Next up: diag log cleanup, real LMU test (CA-016), AN-018 CSV export Race Grid, deploy Vercel, in-game overlay (CA-014).
+> Next up: compile + test on Windows (CA-016) — verify SHM offsets against real LMU session, associate telemetry recording with session, upload recording to web app.
+
+---
+
+## [Unreleased — 0.34.0]
+
+> Native Shared Memory telemetry + telemetry recording + overlay redesign.
+
+### Added
+- **Native Shared Memory telemetry (CA-017)** — replaced UDP with direct rF2 Shared Memory API (`$rFactor2SMMP_Telemetry$` + `$rFactor2SMMP_Scoring$`); requires `rFactor2SharedMemoryMapPlugin64.dll` in LMU Plugins; zero packet loss, ~1 ms latency
+- **Expanded TelemetryFrame** — now includes tire temps (L/C/R per wheel), tire wear %, tire pressure (kPa), brake temps, sector times (current/best/last with deltas), gap ahead/to leader, flags (game phase / FCY / SC / per-vehicle), engine oil & water temps, steering, pit limiter
+- **Telemetry recorder** — records live data at 10 Hz into companion SQLite (`telemetry_recordings` + `telemetry_samples` tables, db v7 migration); start/stop via Settings overlay section
+- **Overlay redesign** — 6 panels: speed/gear/position + flag indicator · RPM bar with shift glow · throttle/brake/steering · lap time + sectors with delta · 4-wheel tyre grid (temp colour, wear, brake temp, pressure) · fuel bar + gaps + engine temps
+- **`windows` crate** — added as Windows-only dependency for `OpenFileMappingW` / `MapViewOfFile`
+- **Web app: TelemetryRecording model** — Prisma migration `20260607000000_telemetry_recording`; `POST /api/sessions/[id]/telemetry` for companion upload; session detail page shows Telemetry tab with final tyre wear + speed trace
+
+### Changed
+- `start_telemetry` command no longer takes a `port` parameter
+- Settings overlay section: UDP port field removed; replaced with SHM plugin requirement notice + Record session button
 
 ---
 

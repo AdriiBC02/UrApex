@@ -3,7 +3,9 @@ mod db;
 mod metrics;
 mod metrics_snapshot;
 mod parser;
+mod shared_memory;
 mod telemetry;
+mod telemetry_recorder;
 mod uploader;
 mod watcher;
 
@@ -31,6 +33,11 @@ fn diag(msg: &str) {
 pub struct WatcherState(pub Mutex<Option<watcher::WatcherHandle>>);
 pub struct TelemetryState(pub Mutex<Option<telemetry::TelemetryHandle>>);
 pub struct DbState(pub Arc<Mutex<rusqlite::Connection>>);
+
+/// Shared latest telemetry frame — written by the telemetry thread, read by the recorder.
+pub struct LiveFrameState(pub Arc<Mutex<Option<telemetry::TelemetryFrame>>>);
+/// Active telemetry recording handle.
+pub struct RecorderState(pub Mutex<Option<telemetry_recorder::RecorderHandle>>);
 
 // ── Watcher ───────────────────────────────────────────────────────────────────
 
@@ -108,13 +115,13 @@ async fn import_all_files(
 
 #[tauri::command]
 async fn start_telemetry(
-    port: Option<u16>,
-    app: AppHandle,
-    state: State<'_, TelemetryState>,
+    app:         AppHandle,
+    state:       State<'_, TelemetryState>,
+    frame_state: State<'_, LiveFrameState>,
 ) -> Result<(), String> {
     let mut g = state.0.lock().map_err(|e| e.to_string())?;
     if let Some(h) = g.take() { h.stop(); }
-    *g = Some(telemetry::start(port.unwrap_or(4444), app).map_err(|e| e.to_string())?);
+    *g = Some(telemetry::start(app, Arc::clone(&frame_state.0)).map_err(|e| e.to_string())?);
     Ok(())
 }
 
@@ -123,6 +130,60 @@ async fn stop_telemetry(state: State<'_, TelemetryState>) -> Result<(), String> 
     let mut g = state.0.lock().map_err(|e| e.to_string())?;
     if let Some(h) = g.take() { h.stop(); }
     Ok(())
+}
+
+// ── Telemetry recorder ────────────────────────────────────────────────────────
+
+#[tauri::command]
+async fn start_recording(
+    track_name:   String,
+    session_type: String,
+    db_state:     State<'_, DbState>,
+    rec_state:    State<'_, RecorderState>,
+    frame_state:  State<'_, LiveFrameState>,
+) -> Result<String, String> {
+    let mut g = rec_state.0.lock().map_err(|e| e.to_string())?;
+    if let Some(h) = g.take() { h.stop(); }
+    let handle = telemetry_recorder::begin_recording(
+        Arc::clone(&db_state.0),
+        track_name,
+        session_type,
+        Arc::clone(&frame_state.0),
+    )?;
+    let id = handle.recording_id().to_string();
+    *g = Some(handle);
+    Ok(id)
+}
+
+#[tauri::command]
+async fn stop_recording(rec_state: State<'_, RecorderState>) -> Result<(), String> {
+    let mut g = rec_state.0.lock().map_err(|e| e.to_string())?;
+    if let Some(h) = g.take() { h.stop(); }
+    Ok(())
+}
+
+#[tauri::command]
+fn list_recordings(db_state: State<'_, DbState>) -> Result<Vec<telemetry_recorder::RecordingSummary>, String> {
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    telemetry_recorder::list_recordings(&conn)
+}
+
+#[tauri::command]
+fn get_recording_samples(recording_id: String, db_state: State<'_, DbState>) -> Result<Vec<telemetry_recorder::TelemetrySample>, String> {
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    telemetry_recorder::get_samples(&conn, &recording_id)
+}
+
+#[tauri::command]
+fn associate_recording(recording_id: String, session_id: String, db_state: State<'_, DbState>) -> Result<(), String> {
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    telemetry_recorder::associate_recording(&conn, &recording_id, &session_id)
+}
+
+#[tauri::command]
+fn delete_recording(recording_id: String, db_state: State<'_, DbState>) -> Result<(), String> {
+    let conn = db_state.0.lock().map_err(|e| e.to_string())?;
+    telemetry_recorder::delete_recording(&conn, &recording_id)
 }
 
 // ── Overlay ───────────────────────────────────────────────────────────────────
@@ -523,6 +584,8 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(WatcherState(Mutex::new(None)))
         .manage(TelemetryState(Mutex::new(None)))
+        .manage(LiveFrameState(Arc::new(Mutex::new(None))))
+        .manage(RecorderState(Mutex::new(None)))
         .setup(|app| {
             diag("setup: started");
 
@@ -634,6 +697,9 @@ pub fn run() {
             get_replays, add_replay, match_replay, delete_replay,
             get_tracks, get_cars, import_all_replays, reassign_player,
             start_telemetry, stop_telemetry,
+            start_recording, stop_recording,
+            list_recordings, get_recording_samples,
+            associate_recording, delete_recording,
             show_overlay, hide_overlay,
             quit_app,
         ])
