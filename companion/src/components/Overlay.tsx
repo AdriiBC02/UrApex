@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, memo, useCallback } from "react"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { type OverlayConfig, DEFAULT_OVERLAY_CONFIG } from "./OverlaySettings"
 
@@ -129,7 +129,7 @@ function getFlag(frame: TelemetryFrame): FlagInfo | null {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function Bar({ value, color, height = 5, glow = false }: {
+const Bar = memo(function Bar({ value, color, height = 5, glow = false }: {
   value: number; color: string; height?: number; glow?: boolean
 }) {
   return (
@@ -142,7 +142,7 @@ function Bar({ value, color, height = 5, glow = false }: {
       }} />
     </div>
   )
-}
+})
 
 // ─── Rolling input trace ──────────────────────────────────────────────────────
 
@@ -214,7 +214,7 @@ function InputTrace({ history }: { history: Array<[number, number]> }) {
 
 // ─── Vertical input bar ───────────────────────────────────────────────────────
 
-function VertInputBar({ value, color, height = 48, label }: {
+const VertInputBar = memo(function VertInputBar({ value, color, height = 48, label }: {
   value: number; color: string; height?: number; label: string
 }) {
   const pct = Math.max(0, Math.min(100, value * 100))
@@ -231,11 +231,11 @@ function VertInputBar({ value, color, height = 48, label }: {
       <span style={{ fontSize: 7, color: "rgba(255,255,255,0.2)" }}>{label}</span>
     </div>
   )
-}
+})
 
 // ─── Circular gear + RPM gauge ────────────────────────────────────────────────
 
-function CircularGauge({ gear, rpmPct, rpmColor }: {
+const CircularGauge = memo(function CircularGauge({ gear, rpmPct, rpmColor }: {
   gear: number; rpmPct: number; rpmColor: string
 }) {
   const SIZE = 72, R = 28, cx = 36, cy = 36
@@ -283,13 +283,13 @@ function CircularGauge({ gear, rpmPct, rpmColor }: {
       </div>
     </div>
   )
-}
+})
 
 // ─── Tire cell ────────────────────────────────────────────────────────────────
 
 const WHEEL_LABELS = ["FL", "FR", "RL", "RR"]
 
-function TireCell({ label, tempC, wear, pres, brakeT }: {
+const TireCell = memo(function TireCell({ label, tempC, wear, pres, brakeT }: {
   label: string; tempC: number; wear: number; pres: number; brakeT: number
 }) {
   const tc = tireTempColor(tempC)
@@ -322,11 +322,11 @@ function TireCell({ label, tempC, wear, pres, brakeT }: {
       </div>
     </div>
   )
-}
+})
 
 // ─── Sector row ───────────────────────────────────────────────────────────────
 
-function SectorRow({ label, cur, best, last }: {
+const SectorRow = memo(function SectorRow({ label, cur, best, last }: {
   label: string; cur: number; best: number; last: number
 }) {
   const active  = cur > 0
@@ -349,7 +349,7 @@ function SectorRow({ label, cur, best, last }: {
       )}
     </div>
   )
-}
+})
 
 // ─── Idle defaults ────────────────────────────────────────────────────────────
 
@@ -372,11 +372,14 @@ const IDLE: TelemetryFrame = {
 // ─── Main overlay ─────────────────────────────────────────────────────────────
 
 export function OverlayApp() {
-  const [data, setData]     = useState<TelemetryFrame>(IDLE)
-  const [live, setLive]     = useState(false)
-  const [idleTimer, setIdleTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
-  const [cfg, setCfg]       = useState<OverlayConfig>(DEFAULT_OVERLAY_CONFIG)
-  const historyRef = useRef<Array<[number, number]>>([])
+  const [data, setData] = useState<TelemetryFrame>(IDLE)
+  const [live, setLive] = useState(false)
+  const [cfg, setCfg]   = useState<OverlayConfig>(DEFAULT_OVERLAY_CONFIG)
+  const historyRef  = useRef<Array<[number, number]>>([])
+  // Ref-based idle timer — avoids one extra setState per telemetry frame
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Track connected state to skip redundant setLive(true) calls on every frame
+  const connectedRef = useRef(false)
 
   useEffect(() => {
     document.documentElement.style.background = "transparent"
@@ -385,23 +388,29 @@ export function OverlayApp() {
     const unlisten: Array<() => void> = []
     import("@tauri-apps/api/event").then(({ listen }) => {
       listen<TelemetryFrame>("telemetry", (e) => {
-        // Update history before setData so it's ready when the component re-renders
         historyRef.current.push([e.payload.throttle, e.payload.brake])
         if (historyRef.current.length > HISTORY_LEN) historyRef.current.shift()
 
         setData(e.payload)
-        setLive(e.payload.connected)
-        setIdleTimer((prev) => {
-          if (prev) clearTimeout(prev)
-          return setTimeout(() => setLive(false), 3000)
-        })
+
+        // Only update live state when connected status actually changes
+        if (e.payload.connected !== connectedRef.current) {
+          connectedRef.current = e.payload.connected
+          setLive(e.payload.connected)
+        }
+
+        // Reset the idle timer without touching React state
+        if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+        idleTimerRef.current = setTimeout(() => {
+          connectedRef.current = false
+          setLive(false)
+        }, 3000)
       }).then((fn) => unlisten.push(fn))
 
       listen<OverlayConfig>("overlay-config", (e) => {
         setCfg(e.payload)
       }).then((fn) => unlisten.push(fn))
 
-      // Global shortcut toggled a specific panel from within the game
       listen<string>("overlay-panel-toggle", (e) => {
         const key = e.payload as keyof OverlayConfig
         setCfg((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -409,11 +418,11 @@ export function OverlayApp() {
     })
     return () => {
       unlisten.forEach((fn) => fn())
-      setIdleTimer((prev) => { if (prev) clearTimeout(prev); return null })
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
     }
   }, [])
 
-  async function close() { await getCurrentWindow().hide() }
+  const close = useCallback(async () => { await getCurrentWindow().hide() }, [])
 
   const rpmPct   = data.max_rpm > 0 ? Math.min(data.rpm / data.max_rpm, 1) : 0
   const rpmColor = rpmPct > 0.92 ? "#ef4444" : rpmPct > 0.78 ? "#f59e0b" : "#06b6d4"
@@ -464,7 +473,12 @@ export function OverlayApp() {
             }} />
           )}
           {!data.connected && (
-            <span style={{ marginLeft: 7, fontSize: 8, color: "#f59e0b" }}>NO SHM</span>
+            <span
+              title="No telemetry data. Start telemetry in UrApex Settings. Also make sure LMU runs in Borderless Windowed mode."
+              style={{ marginLeft: 7, fontSize: 8, color: "#f59e0b", cursor: "help" }}
+            >
+              NO SHM · Borderless mode required
+            </span>
           )}
           {flag && (
             <span style={{

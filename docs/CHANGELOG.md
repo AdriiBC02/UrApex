@@ -12,6 +12,23 @@
 
 ---
 
+## [Unreleased — 0.36.0] · Companion v0.5.0
+
+> Performance pass + borderless mode notice.
+
+### Performance
+- **Telemetry emit rate**: 60 Hz → 30 Hz (33 ms loop) — halves IPC and WebView2 CPU overhead while remaining visually smooth
+- **Overlay React**: removed `idleTimer` from component state (was causing one extra re-render per telemetry frame); replaced with `useRef` + direct `clearTimeout/setTimeout`; added `connectedRef` to skip redundant `setLive(true)` calls every frame
+- **`React.memo`** on all stable overlay sub-components: `Bar`, `CircularGauge`, `VertInputBar`, `TireCell`, `SectorRow` — prevents re-renders when props haven't changed
+- **`useCallback`** on the overlay `close` handler
+- **WebView2 flags**: added `--disable-extensions --disable-background-networking` to both main and overlay windows; overlay window keeps GPU enabled (required for transparent compositing)
+
+### UX
+- **Borderless windowed warning** in Settings → In-game overlay: amber notice explaining that the overlay requires LMU in Borderless Windowed mode to appear on top of the game
+- **Overlay title bar**: "NO SHM" label now includes "· Borderless mode required" hint with a tooltip
+
+---
+
 ## [Unreleased — 0.35.0] · Companion v0.5.0
 
 > Overlay configurability, companion dashboard enhancements, web overlay settings panel.

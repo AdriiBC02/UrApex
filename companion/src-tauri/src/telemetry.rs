@@ -160,8 +160,12 @@ pub fn start(
     let stop2 = Arc::clone(&stop);
 
     std::thread::spawn(move || {
+        // SHM is read at 30 Hz — enough for smooth overlay display and ~3× less IPC
+        // than 60 Hz; the recorder decimates independently to 10 Hz.
+        const EMIT_MS: u64 = 33;
+
         while !stop2.load(Ordering::Relaxed) {
-            std::thread::sleep(std::time::Duration::from_millis(16)); // ~60 Hz
+            std::thread::sleep(std::time::Duration::from_millis(EMIT_MS));
 
             let sm    = read_shared_memory();
             let frame = if sm.connected {
@@ -170,7 +174,6 @@ pub fn start(
                 TelemetryFrame::default()
             };
 
-            // Update the shared frame for the recorder
             if let Ok(mut g) = live_frame.lock() {
                 *g = Some(frame.clone());
             }

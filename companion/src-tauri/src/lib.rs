@@ -715,7 +715,11 @@ pub fn run() {
             .resizable(true)
             .decorations(false)
             .center()
-            .additional_browser_args("--js-flags=--max-old-space-size=128")
+            .additional_browser_args(
+                "--disable-extensions \
+                 --disable-background-networking \
+                 --js-flags=--max-old-space-size=128"
+            )
             .build()
             .map_err(|e| { diag(&format!("window build failed: {e}")); e })?;
 
@@ -746,6 +750,8 @@ pub fn run() {
             .always_on_top(true)
             .skip_taskbar(true)
             .visible(false)
+            // GPU must stay enabled for transparent compositing; only disable background overhead
+            .additional_browser_args("--disable-extensions --disable-background-networking")
             .build()
             .map_err(|e| { diag(&format!("overlay build failed: {e}")); e })?;
 

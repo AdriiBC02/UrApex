@@ -679,6 +679,19 @@ export default function App() {
                   Reads LMU Shared Memory directly (<code>$rFactor2SMMP_Telemetry$</code>). Requires{" "}
                   <strong>rFactor2SharedMemoryMapPlugin64.dll</strong> in the LMU Plugins folder.
                 </p>
+                <div style={{
+                  display: "flex", alignItems: "flex-start", gap: 8,
+                  padding: "8px 10px", borderRadius: 7,
+                  background: "rgba(245,158,11,0.07)",
+                  border: "1px solid rgba(245,158,11,0.2)",
+                }}>
+                  <span style={{ fontSize: 12, lineHeight: 1, marginTop: 1, flexShrink: 0 }}>⚠</span>
+                  <p style={{ fontSize: 10, color: "rgba(245,158,11,0.85)", margin: 0, lineHeight: 1.5 }}>
+                    The overlay only appears on top of LMU when the game runs in{" "}
+                    <strong>Borderless Windowed</strong> mode. In exclusive fullscreen, Windows
+                    blocks external windows — switch in LMU → Settings → Display.
+                  </p>
+                </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button type="button" onClick={toggleTelemetry}
                     className={`btn ${telemetryActive ? "btn-danger" : "btn-ghost"}`} style={{ gap: 6 }}>
