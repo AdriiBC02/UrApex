@@ -34,8 +34,9 @@ yarn-error.log*
 .env*
 !.env.example
 
-# personal task list
+# personal task list / strategy docs — never commit
 PENDING.md
+STRATEGY.md
 
 # vercel
 .vercel
