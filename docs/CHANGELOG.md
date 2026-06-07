@@ -12,7 +12,7 @@
 
 ---
 
-## [Unreleased — 0.35.0]
+## [Unreleased — 0.35.0] · Companion v0.5.0
 
 > Overlay configurability, companion dashboard enhancements, web overlay settings panel.
 
@@ -23,8 +23,12 @@
 - **Companion Dashboard: Recent Achievements widget** — shows up to 3 most-recently unlocked achievements with emoji icon, name, rarity colour, and unlock date; fetches via `get_achievements` Tauri command
 - **Companion Session Detail: best sector mini-stats** — S1 / S2 / S3 best times are computed from valid laps and shown as `MiniStat` tiles below position
 
+### Changed
+- **Companion bumped to v0.5.0** — reflects native SHM telemetry (0.34.0) + overlay redesign + overlay configurability + dashboard enhancements in this batch; previous 0.4.1 build never shipped properly
+
 ### Fixed
 - **Web Dashboard score ring glow** — SVG filter now uses a stable per-label `id` (e.g. `glow-pace`) so duplicate-ID collisions no longer break the glow on pages with multiple rings; filter is applied to the arc `<circle>` only, not the whole SVG
+- **`windows` crate 0.58 compile error** — `MEMORYMAPPEDVIEW` is not a public export; pass `view` (return value of `MapViewOfFile`) directly to `UnmapViewOfFile` instead of reconstructing the struct
 
 ---
 
