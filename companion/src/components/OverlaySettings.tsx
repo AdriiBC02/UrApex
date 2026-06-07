@@ -441,13 +441,14 @@ export function KeybindingsPanel({ config, onChange }: KbProps) {
 
   useEffect(() => {
     if (!recording) return
+    const key = recording // capture narrowed (non-null) value for the closure
     function handler(e: KeyboardEvent) {
       e.preventDefault()
       e.stopPropagation()
       if (e.key === "Escape") { setRecording(null); return }
       const shortcut = captureShortcut(e)
       if (shortcut) {
-        onChange({ ...config, [recording]: shortcut })
+        onChange({ ...config, [key]: shortcut })
         setRecording(null)
       }
     }
