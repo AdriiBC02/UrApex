@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react"
+
 // ─── Overlay configuration ────────────────────────────────────────────────────
 
 export interface OverlayConfig {
@@ -378,6 +380,154 @@ export function OverlaySettingsPanel({ config, onChange }: Props) {
           <span style={{ fontSize: 9, color: "var(--text-dim)" }}>Solid</span>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── Keybindings ─────────────────────────────────────────────────────────────
+
+export interface KeybindingsConfig {
+  toggleOverlay:    string
+  toggleSpeedGear:  string
+  toggleRpmBar:     string
+  toggleInputTrace: string
+  toggleSteering:   string
+  toggleLapTime:    string
+  toggleTyres:      string
+  toggleFuelGaps:   string
+}
+
+export const DEFAULT_KEYBINDINGS: KeybindingsConfig = {
+  toggleOverlay:    "Alt+Shift+O",
+  toggleSpeedGear:  "Alt+Shift+1",
+  toggleRpmBar:     "Alt+Shift+2",
+  toggleInputTrace: "Alt+Shift+3",
+  toggleSteering:   "Alt+Shift+4",
+  toggleLapTime:    "Alt+Shift+5",
+  toggleTyres:      "Alt+Shift+6",
+  toggleFuelGaps:   "Alt+Shift+7",
+}
+
+const KB_ROWS: { key: keyof KeybindingsConfig; label: string }[] = [
+  { key: "toggleOverlay",    label: "Show / hide overlay" },
+  { key: "toggleSpeedGear",  label: "Speed, Gear & Position" },
+  { key: "toggleRpmBar",     label: "RPM Bar" },
+  { key: "toggleInputTrace", label: "Throttle / Brake Trace" },
+  { key: "toggleSteering",   label: "Steering" },
+  { key: "toggleLapTime",    label: "Lap Time & Sectors" },
+  { key: "toggleTyres",      label: "Tyres" },
+  { key: "toggleFuelGaps",   label: "Fuel, Gaps & Engine" },
+]
+
+function captureShortcut(e: KeyboardEvent): string | null {
+  if (["Control", "Alt", "Shift", "Meta", "CapsLock", "Tab"].includes(e.key)) return null
+  const mods: string[] = []
+  if (e.ctrlKey)  mods.push("Ctrl")
+  if (e.altKey)   mods.push("Alt")
+  if (e.shiftKey) mods.push("Shift")
+  if (e.metaKey)  mods.push("Super")
+  if (mods.length === 0) return null // require at least one modifier
+  const key = e.key.length === 1 ? e.key.toUpperCase() : e.key // "o"→"O", "F5"→"F5"
+  return [...mods, key].join("+")
+}
+
+interface KbProps {
+  config:   KeybindingsConfig
+  onChange: (config: KeybindingsConfig) => void
+}
+
+export function KeybindingsPanel({ config, onChange }: KbProps) {
+  const [recording, setRecording] = useState<keyof KeybindingsConfig | null>(null)
+
+  useEffect(() => {
+    if (!recording) return
+    function handler(e: KeyboardEvent) {
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.key === "Escape") { setRecording(null); return }
+      const shortcut = captureShortcut(e)
+      if (shortcut) {
+        onChange({ ...config, [recording]: shortcut })
+        setRecording(null)
+      }
+    }
+    window.addEventListener("keydown", handler, true)
+    return () => window.removeEventListener("keydown", handler, true)
+  }, [recording, config, onChange])
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      {KB_ROWS.map(({ key, label }) => {
+        const isRec = recording === key
+        const value = config[key]
+        return (
+          <div key={key} style={{
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "7px 10px", borderRadius: 8,
+            background: isRec ? "rgba(6,182,212,0.06)" : "var(--surface-2)",
+            border: `1px solid ${isRec ? "rgba(6,182,212,0.25)" : "var(--border-soft)"}`,
+            transition: "all 0.15s",
+          }}>
+            {/* Label */}
+            <span style={{ fontSize: 11, color: "var(--text-muted)", flex: 1 }}>{label}</span>
+
+            {/* Shortcut pill */}
+            <span style={{
+              fontSize: 10, fontFamily: "monospace",
+              padding: "2px 8px", borderRadius: 4, minWidth: 110, textAlign: "center",
+              background: value ? "rgba(255,255,255,0.05)" : "transparent",
+              border: "1px solid var(--border-soft)",
+              color: isRec ? "var(--cyan)" : value ? "rgba(255,255,255,0.55)" : "var(--text-dim)",
+            }}>
+              {isRec ? "Press keys…" : (value || "—")}
+            </span>
+
+            {/* Change */}
+            <button
+              onClick={() => setRecording(isRec ? null : key)}
+              style={{
+                fontSize: 10, padding: "3px 9px", borderRadius: 5, cursor: "pointer",
+                background: isRec ? "var(--cyan)" : "var(--surface-3)",
+                color: isRec ? "#000" : "var(--text-dim)",
+                border: "1px solid var(--border)", transition: "all 0.15s",
+              }}
+            >
+              {isRec ? "Cancel" : "Change"}
+            </button>
+
+            {/* Clear */}
+            {value && !isRec && (
+              <button
+                onClick={() => onChange({ ...config, [key]: "" })}
+                title="Clear shortcut"
+                style={{
+                  fontSize: 12, lineHeight: 1, padding: "2px 5px", borderRadius: 4,
+                  background: "none", color: "rgba(255,255,255,0.2)",
+                  border: "none", cursor: "pointer",
+                }}
+              >×</button>
+            )}
+          </div>
+        )
+      })}
+
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 2 }}>
+        <button
+          onClick={() => onChange(DEFAULT_KEYBINDINGS)}
+          style={{
+            fontSize: 10, padding: "4px 11px", borderRadius: 5,
+            background: "none", color: "var(--text-dim)",
+            border: "1px solid var(--border-soft)", cursor: "pointer",
+          }}
+        >
+          Reset to defaults
+        </button>
+      </div>
+
+      <p style={{ fontSize: 9, color: "var(--text-dim)", lineHeight: 1.5, margin: 0 }}>
+        Requires at least one modifier (Alt, Ctrl, Shift). Esc cancels recording.
+        Works in-game when LMU runs in <strong>borderless windowed</strong> mode.
+      </p>
     </div>
   )
 }

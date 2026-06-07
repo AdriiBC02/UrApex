@@ -400,6 +400,12 @@ export function OverlayApp() {
       listen<OverlayConfig>("overlay-config", (e) => {
         setCfg(e.payload)
       }).then((fn) => unlisten.push(fn))
+
+      // Global shortcut toggled a specific panel from within the game
+      listen<string>("overlay-panel-toggle", (e) => {
+        const key = e.payload as keyof OverlayConfig
+        setCfg((prev) => ({ ...prev, [key]: !prev[key] }))
+      }).then((fn) => unlisten.push(fn))
     })
     return () => {
       unlisten.forEach((fn) => fn())

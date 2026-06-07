@@ -10,10 +10,13 @@ import {
   SlidersHorizontal, Film, Settings, Minus, X,
   FolderOpen, CloudUpload, RotateCcw, Trash2,
   ArrowUpCircle, RefreshCw, Loader2, Download,
-  Map, Car, MonitorPlay, LogOut,
+  Map, Car, MonitorPlay, LogOut, Keyboard,
   type LucideIcon,
 } from "lucide-react"
-import { OverlaySettingsPanel, DEFAULT_OVERLAY_CONFIG, type OverlayConfig } from "./components/OverlaySettings"
+import {
+  OverlaySettingsPanel, DEFAULT_OVERLAY_CONFIG, type OverlayConfig,
+  KeybindingsPanel, DEFAULT_KEYBINDINGS, type KeybindingsConfig,
+} from "./components/OverlaySettings"
 import { SyncLog } from "./components/SyncLog"
 import { StatusDot } from "./components/StatusDot"
 import { SessionList, type SessionSummary } from "./components/SessionList"
@@ -108,18 +111,26 @@ export default function App() {
   const [telemetryActive, setTelemetryActive]   = useState(false)
   const [recordingId, setRecordingId]           = useState<string | null>(null)
   const [overlayConfig, setOverlayConfig]       = useState<OverlayConfig>(DEFAULT_OVERLAY_CONFIG)
+  const [keybindings, setKeybindings]           = useState<KeybindingsConfig>(DEFAULT_KEYBINDINGS)
 
   useEffect(() => {
     load("companion-settings.json", { autoSave: true, defaults: {} }).then(async (s) => {
       store = s
-      const [savedSettings, savedLogs, wasWatching, savedOverlayConfig] = await Promise.all([
+      const [savedSettings, savedLogs, wasWatching, savedOverlayConfig, savedKeybindings] = await Promise.all([
         s.get<Settings>("settings"),
         s.get<Array<LogEntry & { timestamp: string }>>("syncLogs"),
         s.get<boolean>("watchActive"),
         s.get<OverlayConfig>("overlayConfig"),
+        s.get<KeybindingsConfig>("keybindingsConfig"),
       ])
 
       if (savedOverlayConfig) setOverlayConfig(savedOverlayConfig)
+
+      if (savedKeybindings) {
+        setKeybindings(savedKeybindings)
+        // Override the defaults registered in Rust setup with the user's saved shortcuts
+        invoke("register_shortcuts", { bindings: savedKeybindings }).catch(() => {})
+      }
 
       if (savedSettings) setSettings(savedSettings)
 
@@ -292,6 +303,13 @@ export default function App() {
       const { emit } = await import("@tauri-apps/api/event")
       await emit("overlay-config", config)
     } catch { /* overlay may not be open yet */ }
+  }
+
+  async function handleKeybindingsChange(config: KeybindingsConfig) {
+    setKeybindings(config)
+    await store?.set("keybindingsConfig", config)
+    await store?.save()
+    invoke("register_shortcuts", { bindings: config }).catch(() => {})
   }
 
   async function toggleOverlay() {
@@ -701,6 +719,16 @@ export default function App() {
                   Toggle panels and adjust opacity. Changes apply instantly if the overlay is open.
                 </p>
                 <OverlaySettingsPanel config={overlayConfig} onChange={handleOverlayConfigChange} />
+              </div>
+
+              {/* ── Keybindings ── */}
+              <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div className="card-header">
+                  <Keyboard size={13} strokeWidth={2} style={{ color: "var(--text-dim)" }} />
+                  <span style={{ fontWeight: 600, fontSize: 12 }}>Keybindings</span>
+                  <span style={{ fontSize: 10, color: "var(--text-dim)", marginLeft: "auto" }}>In-game shortcuts</span>
+                </div>
+                <KeybindingsPanel config={keybindings} onChange={handleKeybindingsChange} />
               </div>
 
               {/* ── Updates ── */}

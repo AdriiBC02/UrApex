@@ -11,6 +11,7 @@ mod watcher;
 
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager, State};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 fn diag(msg: &str) {
     #[cfg(target_os = "windows")]
@@ -33,6 +34,90 @@ fn diag(msg: &str) {
 pub struct WatcherState(pub Mutex<Option<watcher::WatcherHandle>>);
 pub struct TelemetryState(pub Mutex<Option<telemetry::TelemetryHandle>>);
 pub struct DbState(pub Arc<Mutex<rusqlite::Connection>>);
+
+// ─── Keybindings ─────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KeybindingsConfig {
+    pub toggle_overlay:     Option<String>,
+    pub toggle_speed_gear:  Option<String>,
+    pub toggle_rpm_bar:     Option<String>,
+    pub toggle_input_trace: Option<String>,
+    pub toggle_steering:    Option<String>,
+    pub toggle_lap_time:    Option<String>,
+    pub toggle_tyres:       Option<String>,
+    pub toggle_fuel_gaps:   Option<String>,
+}
+
+impl Default for KeybindingsConfig {
+    fn default() -> Self {
+        Self {
+            toggle_overlay:     Some("Alt+Shift+O".to_string()),
+            toggle_speed_gear:  Some("Alt+Shift+1".to_string()),
+            toggle_rpm_bar:     Some("Alt+Shift+2".to_string()),
+            toggle_input_trace: Some("Alt+Shift+3".to_string()),
+            toggle_steering:    Some("Alt+Shift+4".to_string()),
+            toggle_lap_time:    Some("Alt+Shift+5".to_string()),
+            toggle_tyres:       Some("Alt+Shift+6".to_string()),
+            toggle_fuel_gaps:   Some("Alt+Shift+7".to_string()),
+        }
+    }
+}
+
+/// Registered shortcuts → action names ("toggle_overlay" or a panel key like "showSpeedGear").
+pub struct ShortcutActionMap(pub Arc<Mutex<Vec<(Shortcut, String)>>>);
+
+fn dispatch_shortcut_action(app: &AppHandle, action: &str) {
+    if action == "toggle_overlay" {
+        if let Some(w) = app.get_webview_window("overlay") {
+            match w.is_visible() {
+                Ok(true)  => { let _ = w.hide(); }
+                Ok(false) => { let _ = w.show(); } // no set_focus — keeps game focus
+                Err(_)    => {}
+            }
+        }
+    } else {
+        // panel key — broadcast to overlay window
+        let _ = app.emit("overlay-panel-toggle", action);
+    }
+}
+
+fn apply_keybindings(
+    app:      &AppHandle,
+    bindings: &KeybindingsConfig,
+    map:      &Arc<Mutex<Vec<(Shortcut, String)>>>,
+) {
+    let _ = app.global_shortcut().unregister_all();
+
+    let mut locked = match map.lock() { Ok(g) => g, Err(_) => return };
+    locked.clear();
+
+    let entries: &[(&Option<String>, &str)] = &[
+        (&bindings.toggle_overlay,     "toggle_overlay"),
+        (&bindings.toggle_speed_gear,  "showSpeedGear"),
+        (&bindings.toggle_rpm_bar,     "showRpmBar"),
+        (&bindings.toggle_input_trace, "showInputTrace"),
+        (&bindings.toggle_steering,    "showSteering"),
+        (&bindings.toggle_lap_time,    "showLapTime"),
+        (&bindings.toggle_tyres,       "showTyres"),
+        (&bindings.toggle_fuel_gaps,   "showFuelGaps"),
+    ];
+
+    for (opt, action) in entries {
+        let Some(s) = opt.as_deref().filter(|s| !s.is_empty()) else { continue };
+        match Shortcut::try_from(s) {
+            Ok(shortcut) => {
+                if app.global_shortcut().register(s).is_ok() {
+                    locked.push((shortcut, action.to_string()));
+                } else {
+                    log::warn!("keybindings: failed to register OS shortcut '{s}'");
+                }
+            }
+            Err(e) => log::warn!("keybindings: invalid shortcut '{s}': {e}"),
+        }
+    }
+}
 
 /// Shared latest telemetry frame — written by the telemetry thread, read by the recorder.
 pub struct LiveFrameState(pub Arc<Mutex<Option<telemetry::TelemetryFrame>>>);
@@ -192,8 +277,18 @@ fn delete_recording(recording_id: String, db_state: State<'_, DbState>) -> Resul
 fn show_overlay(app: AppHandle) -> Result<(), String> {
     if let Some(w) = app.get_webview_window("overlay") {
         w.show().map_err(|e| e.to_string())?;
-        w.set_focus().map_err(|e| e.to_string())?;
+        // Do NOT call set_focus() — it steals focus from the game and can minimize it
     }
+    Ok(())
+}
+
+#[tauri::command]
+fn register_shortcuts(
+    bindings: KeybindingsConfig,
+    app:      AppHandle,
+    state:    State<'_, ShortcutActionMap>,
+) -> Result<(), String> {
+    apply_keybindings(&app, &bindings, &state.0);
     Ok(())
 }
 
@@ -566,7 +661,24 @@ pub fn send_notification(app: &AppHandle, title: &str, body: &str) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Arc shared between the global-shortcut handler (before setup) and the managed state.
+    let shortcut_map: Arc<Mutex<Vec<(Shortcut, String)>>> = Arc::new(Mutex::new(Vec::new()));
+    let handler_map  = Arc::clone(&shortcut_map);
+
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(move |app, shortcut, event| {
+                    if event.state() != ShortcutState::Pressed { return; }
+                    // Clone the action string while holding the lock, then release before dispatch.
+                    let action = handler_map.lock().ok()
+                        .and_then(|map| map.iter().find(|(s, _)| s == shortcut).map(|(_, a)| a.clone()));
+                    if let Some(action) = action {
+                        dispatch_shortcut_action(app, &action);
+                    }
+                })
+                .build()
+        )
         .plugin(
             tauri_plugin_log::Builder::new()
                 .target(tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
@@ -586,6 +698,7 @@ pub fn run() {
         .manage(TelemetryState(Mutex::new(None)))
         .manage(LiveFrameState(Arc::new(Mutex::new(None))))
         .manage(RecorderState(Mutex::new(None)))
+        .manage(ShortcutActionMap(shortcut_map))
         .setup(|app| {
             diag("setup: started");
 
@@ -602,10 +715,7 @@ pub fn run() {
             .resizable(true)
             .decorations(false)
             .center()
-            .additional_browser_args(
-                "--disable-gpu --disable-gpu-compositing \
-                 --js-flags=--max-old-space-size=128"
-            )
+            .additional_browser_args("--js-flags=--max-old-space-size=128")
             .build()
             .map_err(|e| { diag(&format!("window build failed: {e}")); e })?;
 
@@ -681,6 +791,12 @@ pub fn run() {
                 .build(app)
                 .map_err(|e| { diag(&format!("tray build failed: {e}")); e })?;
 
+            // Register default keybindings — JS will override with saved values on startup
+            {
+                let map_state = app.state::<ShortcutActionMap>();
+                apply_keybindings(app.handle(), &KeybindingsConfig::default(), &map_state.0);
+            }
+
             diag("setup: complete");
             Ok(())
         })
@@ -701,6 +817,7 @@ pub fn run() {
             list_recordings, get_recording_samples,
             associate_recording, delete_recording,
             show_overlay, hide_overlay,
+            register_shortcuts,
             quit_app,
         ])
         .on_window_event(|window, event| {
