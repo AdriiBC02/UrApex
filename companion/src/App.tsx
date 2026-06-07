@@ -168,6 +168,11 @@ export default function App() {
 
     const unlisteners: Array<() => void> = []
     import("@tauri-apps/api/event").then(({ listen }) => {
+      // Sync overlayVisible when the keybinding toggles the overlay window
+      listen<boolean>("overlay-visibility-changed", (e) => {
+        setOverlayVisible(e.payload)
+      }).then((fn) => unlisteners.push(fn))
+
       listen<{ file: string }>("file-detected", (e) => addLog(e.payload.file, "uploading"))
         .then((fn) => unlisteners.push(fn))
       listen<{ file: string }>("replay-detected", (e) => {
@@ -622,7 +627,7 @@ export default function App() {
                     <FolderOpen size={13} strokeWidth={2} style={{ color: "var(--text-dim)" }} />
                     <span style={{ fontWeight: 600, fontSize: 12 }}>LMU paths</span>
                   </div>
-                  <Field label="Results folder" hint="…\Le Mans Ultimate\UserData\player\Results">
+                  <Field label="Results folder" hint="…\steamapps\common\Le Mans Ultimate\UserData\Log\Results">
                     <div style={{ display: "flex", gap: 6 }}>
                       <input value={settings.watchFolder} onChange={(e) => setSettings((s) => ({ ...s, watchFolder: e.target.value }))} placeholder="Click Browse or paste path" />
                       <BrowseBtn onClick={() => browseFolder("watchFolder", "Select LMU Results folder")} />
@@ -694,7 +699,8 @@ export default function App() {
                 </div>
                 <p style={{ fontSize: 10, color: "var(--text-dim)", margin: 0, lineHeight: 1.5 }}>
                   Reads LMU Shared Memory directly (<code>$rFactor2SMMP_Telemetry$</code>). Requires{" "}
-                  <strong>rFactor2SharedMemoryMapPlugin64.dll</strong> in the LMU Plugins folder.
+                  <strong>rFactor2SharedMemoryMapPlugin64.dll</strong> in{" "}
+                  <code>…\Le Mans Ultimate\Plugins\</code> (Steam install).
                 </p>
                 <div style={{
                   display: "flex", alignItems: "flex-start", gap: 8,

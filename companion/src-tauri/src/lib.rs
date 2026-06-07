@@ -72,14 +72,38 @@ fn dispatch_shortcut_action(app: &AppHandle, action: &str) {
     if action == "toggle_overlay" {
         if let Some(w) = app.get_webview_window("overlay") {
             match w.is_visible() {
-                Ok(true)  => { let _ = w.hide(); }
-                Ok(false) => { let _ = w.show(); } // no set_focus — keeps game focus
-                Err(_)    => {}
+                Ok(true) => {
+                    let _ = w.hide();
+                    // Notify main window so overlayVisible state stays in sync
+                    let _ = app.emit("overlay-visibility-changed", false);
+                }
+                Ok(false) => {
+                    position_overlay_top_right(&w);
+                    let _ = w.show();
+                    let _ = app.emit("overlay-visibility-changed", true);
+                }
+                Err(_) => {}
             }
         }
     } else {
-        // panel key — broadcast to overlay window
-        let _ = app.emit("overlay-panel-toggle", action);
+        // Target overlay window directly — more reliable than app.emit() broadcast
+        if let Some(w) = app.get_webview_window("overlay") {
+            let _ = w.emit("overlay-panel-toggle", action);
+        }
+    }
+}
+
+/// Position the overlay at the top-right corner of the primary monitor.
+fn position_overlay_top_right(w: &tauri::WebviewWindow) {
+    if let Ok(Some(monitor)) = w.primary_monitor() {
+        let pos  = monitor.position();
+        let size = monitor.size();
+        let scale = monitor.scale_factor();
+        let overlay_w = (360.0 * scale) as i32;
+        let margin    = (20.0  * scale) as i32;
+        let x = pos.x + size.width  as i32 - overlay_w - margin;
+        let y = pos.y + margin;
+        let _ = w.set_position(tauri::PhysicalPosition::new(x, y));
     }
 }
 
@@ -276,8 +300,12 @@ fn delete_recording(recording_id: String, db_state: State<'_, DbState>) -> Resul
 #[tauri::command]
 fn show_overlay(app: AppHandle) -> Result<(), String> {
     if let Some(w) = app.get_webview_window("overlay") {
+        // Only reposition if not yet visible (first show); otherwise keep user-dragged position
+        if !w.is_visible().unwrap_or(false) {
+            position_overlay_top_right(&w);
+        }
         w.show().map_err(|e| e.to_string())?;
-        // Do NOT call set_focus() — it steals focus from the game and can minimize it
+        // Do NOT call set_focus() — steals focus from the game
     }
     Ok(())
 }

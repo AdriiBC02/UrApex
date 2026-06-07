@@ -12,6 +12,22 @@
 
 ---
 
+## [Unreleased — 0.40.0] · Companion v0.6.1
+
+> Overlay visibility + keybindings fixes + correct LMU paths.
+
+### Fixed
+- **Overlay positioning** — `show_overlay` and the Alt+Shift+O keybinding now call `position_overlay_top_right()` on first show, placing the overlay at the top-right corner of the primary monitor; previously the window appeared at the OS default position (often off-screen or behind the game)
+- **Panel toggle keybindings** — `dispatch_shortcut_action` now uses `overlay_window.emit("overlay-panel-toggle", action)` instead of `app.emit()` broadcast; targets the overlay window directly for reliable delivery
+- **`overlayVisible` state desync** — when Alt+Shift+O shows/hides the overlay, Rust now emits `overlay-visibility-changed` to the main window so the "Show overlay / Hide overlay" button stays in sync; previously the keybinding and the button could get out of phase
+- **Wrong LMU Results path** — corrected from `…\UserData\player\Results\` to `…\UserData\Log\Results\` (Steam installation layout)
+- **Wrong DLL path hint** — updated to `…\Le Mans Ultimate\Plugins\` in the overlay Settings card
+
+### Changed
+- `PENDING.md` — updated with correct Steam paths and overlay prerequisites (Borderless Windowed mode, DLL location)
+
+---
+
 ## [Unreleased — 0.39.0] · Companion v0.6.0
 
 > Companion: track detail, car detail, Driver DNA, streak — paridad analytics con el web app.

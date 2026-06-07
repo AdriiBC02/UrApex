@@ -170,7 +170,7 @@ export function DashboardView({ onOpenSession, hasFolder, watching }: Props) {
                 Go to <strong style={{ color: "var(--text-muted)" }}>Settings</strong> and paste or browse to:
               </p>
               <code style={{ fontSize: 10, color: "var(--text-dim)", display: "block", marginTop: 4, background: "var(--surface-3)", padding: "3px 7px", borderRadius: 5, fontFamily: "monospace" }}>
-                …\Le Mans Ultimate\UserData\player\Results\
+                …\Le Mans Ultimate\UserData\Log\Results\
               </code>
             </div>
             <FolderOpen size={15} strokeWidth={1.75} style={{ color: folderDone ? "var(--green)" : "var(--text-dim)", flexShrink: 0, marginTop: 3 }} />
