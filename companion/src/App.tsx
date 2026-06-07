@@ -109,6 +109,7 @@ export default function App() {
   const [updateProgress, setUpdateProgress] = useState(0)
   const [updateStatus, setUpdateStatus]   = useState("Up to date")
   const [overlayVisible, setOverlayVisible]     = useState(false)
+  const [shmStatus, setShmStatus]               = useState<{ state: string; connected: boolean; numVehicles: number; gamePhase: number; speedKph: number; position: number } | null>(null)
   const [telemetryActive, setTelemetryActive]   = useState(false)
   const [recordingId, setRecordingId]           = useState<string | null>(null)
   const [overlayConfig, setOverlayConfig]       = useState<OverlayConfig>(DEFAULT_OVERLAY_CONFIG)
@@ -168,9 +169,12 @@ export default function App() {
 
     const unlisteners: Array<() => void> = []
     import("@tauri-apps/api/event").then(({ listen }) => {
-      // Sync overlayVisible when the keybinding toggles the overlay window
       listen<boolean>("overlay-visibility-changed", (e) => {
         setOverlayVisible(e.payload)
+      }).then((fn) => unlisteners.push(fn))
+
+      listen<{ state: string; connected: boolean; numVehicles: number; gamePhase: number; speedKph: number; position: number }>("shm-status", (e) => {
+        setShmStatus(e.payload)
       }).then((fn) => unlisteners.push(fn))
 
       listen<{ file: string }>("file-detected", (e) => addLog(e.payload.file, "uploading"))
@@ -753,6 +757,9 @@ export default function App() {
                 <OverlaySettingsPanel config={overlayConfig} onChange={handleOverlayConfigChange} />
               </div>
 
+              {/* ── Diagnostics ── */}
+              <DiagPanel shmStatus={shmStatus} telemetryActive={telemetryActive} />
+
               {/* ── Keybindings ── */}
               <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div className="card-header">
@@ -919,5 +926,116 @@ function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
         boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
       }} />
     </button>
+  )
+}
+
+// ── Diagnostics panel ─────────────────────────────────────────────────────────
+
+function DiagPanel({ shmStatus, telemetryActive }: {
+  shmStatus: { state: string; connected: boolean; numVehicles: number; gamePhase: number; speedKph: number; position: number } | null
+  telemetryActive: boolean
+}) {
+  const [logs, setLogs] = useState<string[]>([])
+  const [loadingLogs, setLoadingLogs] = useState(false)
+  const [open, setOpen] = useState(false)
+
+  const shmState = !telemetryActive
+    ? { label: "Telemetry off", color: "#52525b" }
+    : !shmStatus
+    ? { label: "Waiting…", color: "#71717a" }
+    : shmStatus.connected
+    ? { label: `Connected · P${shmStatus.position} · ${Math.round(shmStatus.speedKph)} km/h`, color: "#4ade80" }
+    : shmStatus.state.startsWith("no_player")
+    ? { label: `SHM open, no player (${shmStatus.numVehicles} vehicles)`, color: "#f59e0b" }
+    : { label: `SHM failed: ${shmStatus.state}`, color: "#f87171" }
+
+  async function fetchLogs() {
+    setLoadingLogs(true)
+    try {
+      const lines = await invoke<string[]>("get_diag_log", { maxLines: 80 })
+      setLogs(lines)
+    } catch { /* ignore */ }
+    finally { setLoadingLogs(false) }
+  }
+
+  async function clearLogs() {
+    await invoke("clear_diag_log").catch(() => {})
+    setLogs([])
+  }
+
+  return (
+    <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div className="card-header">
+        <span style={{ fontSize: 12 }}>🔍</span>
+        <span style={{ fontWeight: 600, fontSize: 12 }}>Game detection</span>
+      </div>
+
+      {/* SHM status badge */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: shmState.color, flexShrink: 0, boxShadow: shmStatus?.connected ? `0 0 6px ${shmState.color}` : "none" }} />
+        <span style={{ fontSize: 11, color: shmState.color, fontWeight: 600 }}>{shmState.label}</span>
+      </div>
+
+      {shmStatus && !shmStatus.connected && telemetryActive && (
+        <div style={{ fontSize: 10, color: "var(--text-dim)", lineHeight: 1.6, padding: "6px 8px", background: "var(--surface-2)", borderRadius: 6, border: "1px solid var(--border-soft)" }}>
+          {shmStatus.state === "tel_map_failed" && <>
+            <strong style={{ color: "var(--text-muted)" }}>SHM map not found.</strong>
+            {" "}Check that <code>rFactor2SharedMemoryMapPlugin64.dll</code> is in
+            {" "}<code>…\Le Mans Ultimate\Plugins\</code> and that LMU is running.
+          </>}
+          {shmStatus.state.startsWith("no_player") && <>
+            <strong style={{ color: "var(--text-muted)" }}>SHM open but no player vehicle.</strong>
+            {" "}LMU is running but you may be in the menus or a replay.
+            {" "}Get into an active driving session.
+          </>}
+          {shmStatus.state.startsWith("bad_count") && <>
+            <strong style={{ color: "var(--text-muted)" }}>Unexpected vehicle count.</strong>
+            {" "}Game may still be loading. Wait a moment.
+          </>}
+        </div>
+      )}
+
+      {/* Log viewer toggle */}
+      <div style={{ display: "flex", gap: 6 }}>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          style={{ fontSize: 10, padding: "4px 8px", gap: 4 }}
+          onClick={() => { setOpen(v => !v); if (!open) fetchLogs() }}
+        >
+          {open ? "▾" : "▸"} Diagnostic log
+        </button>
+        {open && (
+          <>
+            <button type="button" className="btn btn-ghost" style={{ fontSize: 10, padding: "4px 8px" }} onClick={fetchLogs} disabled={loadingLogs}>
+              Refresh
+            </button>
+            <button type="button" className="btn btn-ghost" style={{ fontSize: 10, padding: "4px 8px", color: "var(--red)" }} onClick={clearLogs}>
+              Clear
+            </button>
+            <span style={{ marginLeft: "auto", fontSize: 9, color: "var(--text-dim)", alignSelf: "center" }}>
+              C:\Users\Public\urapex-diag.log
+            </span>
+          </>
+        )}
+      </div>
+
+      {open && (
+        <div style={{
+          background: "#09090b", border: "1px solid #1c1c1f", borderRadius: 6,
+          padding: "6px 8px", maxHeight: 200, overflow: "auto",
+          fontFamily: "monospace", fontSize: 10, color: "#71717a", lineHeight: 1.6,
+        }}>
+          {logs.length === 0
+            ? <span style={{ color: "#3f3f46" }}>No log entries yet — start telemetry to generate diagnostics.</span>
+            : logs.map((l, i) => (
+              <div key={i} style={{ color: l.includes("FAIL") || l.includes("failed") ? "#f87171" : l.includes("connected") ? "#4ade80" : "#71717a" }}>
+                {l}
+              </div>
+            ))
+          }
+        </div>
+      )}
+    </div>
   )
 }

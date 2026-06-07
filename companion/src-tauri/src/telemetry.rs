@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Emitter};
-use crate::shared_memory::{read_shared_memory, SharedMemFrame};
+use crate::shared_memory::{read_shared_memory_diag, SharedMemFrame, ShmReadResult};
 
 /// Full telemetry frame emitted as "telemetry" Tauri event every ~16 ms.
 /// Wheels order: FL=0, FR=1, RL=2, RR=3.
@@ -142,6 +142,20 @@ impl TelemetryFrame {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Status emitted to the main window as "shm-status" — used for the diagnostic indicator.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShmStatus {
+    /// Human-readable state label.
+    pub state:        String,
+    /// true only when player vehicle is being read successfully.
+    pub connected:    bool,
+    pub num_vehicles: i32,
+    pub game_phase:   u8,
+    pub speed_kph:    f32,
+    pub position:     i32,
+}
+
 pub struct TelemetryHandle {
     stop: Arc<AtomicBool>,
 }
@@ -160,26 +174,84 @@ pub fn start(
     let stop2 = Arc::clone(&stop);
 
     std::thread::spawn(move || {
-        // SHM is read at 30 Hz — enough for smooth overlay display and ~3× less IPC
-        // than 60 Hz; the recorder decimates independently to 10 Hz.
+        // SHM read at 30 Hz; shm-status emitted on state change + every 2 s.
         const EMIT_MS: u64 = 33;
+        const STATUS_INTERVAL: u32 = 60; // ~2 s at 30 Hz
+
+        let mut prev_state  = String::new();
+        let mut tick: u32   = 0;
 
         while !stop2.load(Ordering::Relaxed) {
             std::thread::sleep(std::time::Duration::from_millis(EMIT_MS));
+            tick = tick.wrapping_add(1);
 
-            let sm    = read_shared_memory();
-            let frame = if sm.connected {
-                TelemetryFrame::from_shared(&sm)
-            } else {
-                TelemetryFrame::default()
+            let diag_result = read_shared_memory_diag();
+
+            let (frame, status) = match &diag_result {
+                ShmReadResult::Ok(sm) => {
+                    let f = TelemetryFrame::from_shared(sm);
+                    let s = ShmStatus {
+                        state:        "connected".to_string(),
+                        connected:    true,
+                        num_vehicles: 0, // not directly available here
+                        game_phase:   sm.game_phase,
+                        speed_kph:    (sm.speed_ms * 3.6) as f32,
+                        position:     sm.place as i32,
+                    };
+                    (f, s)
+                }
+                ShmReadResult::NoPlayerVehicle { num_vehicles } => {
+                    let s = ShmStatus {
+                        state:        format!("no_player ({num_vehicles} vehicles)"),
+                        connected:    false,
+                        num_vehicles: *num_vehicles,
+                        game_phase:   0,
+                        speed_kph:    0.0,
+                        position:     0,
+                    };
+                    (TelemetryFrame::default(), s)
+                }
+                ShmReadResult::BadVehicleCount { count } => {
+                    let s = ShmStatus {
+                        state:        format!("bad_count ({count})"),
+                        connected:    false,
+                        num_vehicles: *count,
+                        game_phase:   0,
+                        speed_kph:    0.0,
+                        position:     0,
+                    };
+                    (TelemetryFrame::default(), s)
+                }
+                ShmReadResult::TelMapFailed => {
+                    let s = ShmStatus {
+                        state:        "tel_map_failed".to_string(),
+                        connected:    false,
+                        num_vehicles: 0,
+                        game_phase:   0,
+                        speed_kph:    0.0,
+                        position:     0,
+                    };
+                    (TelemetryFrame::default(), s)
+                }
             };
+
+            // Log + emit status on state change OR every STATUS_INTERVAL ticks
+            let state_changed = status.state != prev_state;
+            if state_changed || tick % STATUS_INTERVAL == 0 {
+                if state_changed {
+                    crate::diag(&format!("SHM state: {} → {}", prev_state, status.state));
+                    prev_state = status.state.clone();
+                }
+                let _ = app.emit("shm-status", &status);
+            }
 
             if let Ok(mut g) = live_frame.lock() {
                 *g = Some(frame.clone());
             }
-
             let _ = app.emit("telemetry", &frame);
         }
+
+        crate::diag("telemetry thread stopped");
     });
 
     Ok(TelemetryHandle { stop })

@@ -62,6 +62,20 @@ pub struct SharedMemFrame {
     pub track_temp:        f64,
 }
 
+/// Detailed result returned by `read_shared_memory_diag()` — tells us exactly
+/// what succeeded and what failed so we can surface diagnostics to the UI.
+#[derive(Debug, Clone)]
+pub enum ShmReadResult {
+    /// `$rFactor2SMMP_Telemetry$` map could not be opened — DLL probably not loaded.
+    TelMapFailed,
+    /// Map opened but vehicle count out of range (header corrupt or game just starting).
+    BadVehicleCount { count: i32 },
+    /// Maps opened, vehicles found, but none has `mIsPlayer = 1` (game in menus / replay).
+    NoPlayerVehicle { num_vehicles: i32 },
+    /// Everything OK — returns the frame.
+    Ok(SharedMemFrame),
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Safe read helpers operating on a byte slice
 // ─────────────────────────────────────────────────────────────────────────────
@@ -191,14 +205,22 @@ mod windows_impl {
     }
 
     pub fn read_shared_memory() -> SharedMemFrame {
+        match read_shared_memory_diag() {
+            ShmReadResult::Ok(f) => f,
+            ShmReadResult::NoPlayerVehicle { .. } => SharedMemFrame { connected: true, ..Default::default() },
+            _ => SharedMemFrame::default(),
+        }
+    }
+
+    pub fn read_shared_memory_diag() -> ShmReadResult {
         // ── Telemetry region ──────────────────────────────────────────────────
         let Some(tel) = read_map_to_vec(MAP_TELEMETRY, TEL_MAP_SIZE) else {
-            return SharedMemFrame::default();
+            return ShmReadResult::TelMapFailed;
         };
 
         let num_vehicles = ri32(&tel, 12);
         if !(1..=128).contains(&num_vehicles) {
-            return SharedMemFrame::default();
+            return ShmReadResult::BadVehicleCount { count: num_vehicles };
         }
 
         // Find player vehicle
@@ -208,7 +230,7 @@ mod windows_impl {
         });
 
         let Some(pb) = player_offset else {
-            return SharedMemFrame { connected: true, ..Default::default() };
+            return ShmReadResult::NoPlayerVehicle { num_vehicles };
         };
 
         let v = &tel[pb..]; // vehicle slice
@@ -275,7 +297,7 @@ mod windows_impl {
                 (0u8, -1i8, [0i8; 3], 0.0, 0.0)
             };
 
-        SharedMemFrame {
+        ShmReadResult::Ok(SharedMemFrame {
             connected: true,
             speed_ms, gear, total_laps, sector, place, in_pits, num_pitstops,
             time_behind_next, time_behind_leader,
@@ -289,7 +311,7 @@ mod windows_impl {
             wheels,
             game_phase, yellow_flag_state, sector_flags,
             ambient_temp, track_temp,
-        }
+        })
     }
 }
 
@@ -298,6 +320,7 @@ mod windows_impl {
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[cfg(not(target_os = "windows"))]
-pub fn read_shared_memory() -> SharedMemFrame {
-    SharedMemFrame::default()
-}
+pub fn read_shared_memory() -> SharedMemFrame { SharedMemFrame::default() }
+
+#[cfg(not(target_os = "windows"))]
+pub fn read_shared_memory_diag() -> ShmReadResult { ShmReadResult::TelMapFailed }

@@ -13,13 +13,15 @@ use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
-fn diag(msg: &str) {
+pub const DIAG_LOG_PATH: &str = "C:\\Users\\Public\\urapex-diag.log";
+
+pub fn diag(msg: &str) {
     #[cfg(target_os = "windows")]
     {
         use std::io::Write;
         if let Ok(mut f) = std::fs::OpenOptions::new()
             .create(true).append(true)
-            .open("C:\\Users\\Public\\urapex-diag.log")
+            .open(DIAG_LOG_PATH)
         {
             let ts = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -139,11 +141,16 @@ fn apply_keybindings(
             Ok(shortcut) => {
                 if app.global_shortcut().register(s).is_ok() {
                     locked.push((shortcut, action.to_string()));
+                    diag(&format!("keybinding registered: '{s}' → {action}"));
                 } else {
+                    diag(&format!("keybinding FAILED to register: '{s}' → {action}"));
                     log::warn!("keybindings: failed to register OS shortcut '{s}'");
                 }
             }
-            Err(e) => log::warn!("keybindings: invalid shortcut '{s}': {e}"),
+            Err(e) => {
+                diag(&format!("keybinding invalid: '{s}' ({e})"));
+                log::warn!("keybindings: invalid shortcut '{s}': {e}");
+            }
         }
     }
 }
@@ -227,15 +234,43 @@ async fn import_all_files(
 
 // ── Telemetry ─────────────────────────────────────────────────────────────────
 
+/// Read the last `max_lines` lines from the diagnostic log file.
+#[tauri::command]
+fn get_diag_log(max_lines: Option<usize>) -> Vec<String> {
+    let n = max_lines.unwrap_or(60);
+    #[cfg(target_os = "windows")]
+    {
+        use std::io::{BufRead, BufReader};
+        if let Ok(f) = std::fs::File::open(DIAG_LOG_PATH) {
+            let lines: Vec<String> = BufReader::new(f)
+                .lines()
+                .filter_map(|l| l.ok())
+                .collect();
+            let skip = lines.len().saturating_sub(n);
+            return lines[skip..].to_vec();
+        }
+    }
+    vec![]
+}
+
+/// Delete the diagnostic log file (start fresh).
+#[tauri::command]
+fn clear_diag_log() {
+    #[cfg(target_os = "windows")]
+    { let _ = std::fs::remove_file(DIAG_LOG_PATH); }
+}
+
 #[tauri::command]
 async fn start_telemetry(
     app:         AppHandle,
     state:       State<'_, TelemetryState>,
     frame_state: State<'_, LiveFrameState>,
 ) -> Result<(), String> {
+    diag("start_telemetry: starting SHM reader");
     let mut g = state.0.lock().map_err(|e| e.to_string())?;
     if let Some(h) = g.take() { h.stop(); }
     *g = Some(telemetry::start(app, Arc::clone(&frame_state.0)).map_err(|e| e.to_string())?);
+    diag("start_telemetry: thread spawned");
     Ok(())
 }
 
@@ -319,12 +354,15 @@ fn push_overlay_config(config: serde_json::Value, app: AppHandle) -> Result<(), 
 #[tauri::command]
 fn show_overlay(app: AppHandle) -> Result<(), String> {
     if let Some(w) = app.get_webview_window("overlay") {
-        // Only reposition if not yet visible (first show); otherwise keep user-dragged position
-        if !w.is_visible().unwrap_or(false) {
+        let was_visible = w.is_visible().unwrap_or(false);
+        if !was_visible {
             position_overlay_top_right(&w);
         }
         w.show().map_err(|e| e.to_string())?;
+        diag(&format!("show_overlay: shown (was_visible={was_visible})"));
         // Do NOT call set_focus() — steals focus from the game
+    } else {
+        diag("show_overlay: overlay window not found!");
     }
     Ok(())
 }
@@ -814,6 +852,8 @@ pub fn run() {
         .manage(RecorderState(Mutex::new(None)))
         .manage(ShortcutActionMap(shortcut_map))
         .setup(|app| {
+            diag(&format!("=== UrApex companion v{} started ===", env!("CARGO_PKG_VERSION")));
+            diag(&format!("log path: {DIAG_LOG_PATH}"));
             diag("setup: started");
 
             // Create the main window here (not in tauri.conf.json) so we can
@@ -933,6 +973,7 @@ pub fn run() {
             get_setups, create_setup, toggle_setup_favorite, update_setup_notes, delete_setup,
             get_replays, add_replay, match_replay, delete_replay,
             get_tracks, get_cars, get_track_detail, get_car_detail, get_driver_dna, get_pb_session_id_for,
+            get_diag_log, clear_diag_log,
             import_all_replays, reassign_player,
             start_telemetry, stop_telemetry,
             start_recording, stop_recording,
