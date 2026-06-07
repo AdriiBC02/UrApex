@@ -92,9 +92,9 @@ pub use windows_impl::read_shared_memory;
 #[cfg(target_os = "windows")]
 mod windows_impl {
     use super::*;
-    use windows::Win32::Foundation::{CloseHandle, HANDLE};
+    use windows::Win32::Foundation::CloseHandle;
     use windows::Win32::System::Memory::{
-        MapViewOfFile, MEMORYMAPPEDVIEW, OpenFileMappingW, UnmapViewOfFile, FILE_MAP_READ,
+        MapViewOfFile, OpenFileMappingW, UnmapViewOfFile, FILE_MAP_READ,
     };
     use windows::core::PCWSTR;
 
@@ -184,7 +184,7 @@ mod windows_impl {
         unsafe { std::ptr::copy_nonoverlapping(ptr, buf.as_mut_ptr(), size); }
 
         unsafe {
-            let _ = UnmapViewOfFile(MEMORYMAPPEDVIEW { Value: view.Value });
+            let _ = UnmapViewOfFile(view);
             let _ = CloseHandle(h);
         }
         Some(buf)
