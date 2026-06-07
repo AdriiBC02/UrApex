@@ -6,6 +6,7 @@ import { ProfileForm } from "@/features/auth/ProfileForm"
 import { SimDriverForm } from "@/features/auth/SimDriverForm"
 import { ApiKeyForm } from "@/features/auth/ApiKeyForm"
 import { PrivacyForm } from "@/features/auth/PrivacyForm"
+import { OverlaySettingsPanel } from "@/features/overlay/OverlaySettingsPanel"
 
 export default async function SettingsPage() {
   const session = await auth()
@@ -115,6 +116,9 @@ export default async function SettingsPage() {
           <PrivacyForm initialPublicProfile={profile?.isPublic ?? false} />
         </div>
       </div>
+
+      {/* Overlay layout */}
+      <OverlaySettingsPanel />
 
       {/* Account */}
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden">

@@ -144,7 +144,7 @@
 
 ## Phase 5 — Desktop Sync Agent
 
-**Status:** 🔄 In progress (core features complete; pending: Windows test, hash dedup, upload queue)
+**Status:** 🔄 In progress (overlay + telemetry complete; pending: Windows test on real hardware)
 **Estimated duration:** 3–4 weeks
 **Goal:** Eliminate manual uploads by auto-detecting and syncing sessions.
 
@@ -161,14 +161,18 @@
 - [x] Sync log in UI (uploading / success / duplicate / error per file)
 - [x] GitHub Actions CI build (`.exe` + `.msi` artifacts on every push to `main`)
 - [x] Real app icon (1254×1254 UA logo)
-- [ ] Test on real Windows machine (requires `rustup`)
+- [x] In-game overlay window (transparent always-on-top, draggable)
+- [x] Native SHM telemetry — rF2 Shared Memory API (`windows` crate); replaces UDP
+- [x] Overlay: speed/gear/position, RPM bar, throttle/brake trace, steering, lap time/sectors, tyres, fuel/gaps/engine
+- [x] Telemetry recorder (10 Hz, SQLite `telemetry_recordings` + `telemetry_samples`)
+- [x] Overlay panel configuration (7 toggles + opacity slider, persisted + live-emitted)
+- [x] Overlay settings panel in web app Settings page
+- [x] Dashboard: active goals widget + recent achievements widget
+- [x] Session Detail: best S1/S2/S3 sector mini-stats
+- [ ] Test on real Windows machine with LMU running (verify SHM offsets)
+- [ ] Associate telemetry recording with session in web app
+- [ ] Upload telemetry recording to web app
 - [ ] Duplicate prevention via local hash check (avoid redundant upload)
-- [ ] Upload queue with retry logic
-- [ ] Persistent sync history across restarts
-- [ ] "Sync historical files" option
-- [ ] Windows startup on boot option
-- [ ] In-game overlay window (transparent always-on-top)
-- [ ] UDP telemetry listener (LMU port 4444) for overlay data
 
 ### Completion Criterion
 > A user finishes a session, and within 10 seconds it appears in their UrApex dashboard — without any manual action.

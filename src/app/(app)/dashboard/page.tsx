@@ -45,11 +45,9 @@ function ScoreRing({
   const C   = 2 * Math.PI * R
   const pct = value != null ? Math.min(100, value) / 100 : 0
   const sc  = value != null ? scoreColor(value) : null
-
-  // CSS drop-shadow on the SVG arc — follows the circle shape, no box
-  const glowFilter = sc && pct > 0 && size === "lg"
-    ? `drop-shadow(0 0 6px ${sc.glowColor})`
-    : undefined
+  // Stable filter id derived from the label — no spaces/special chars
+  const filterId = `glow-${label.replace(/\s+/g, "-").toLowerCase()}`
+  const showGlow = Boolean(sc && pct > 0 && size === "lg")
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -58,8 +56,19 @@ function ScoreRing({
           width={dim} height={dim}
           viewBox={`0 0 ${dim} ${dim}`}
           className="-rotate-90"
-          style={glowFilter ? { filter: glowFilter } : undefined}
         >
+          {showGlow && (
+            <defs>
+              {/* Glow applied only to the arc, not the whole SVG */}
+              <filter id={filterId} x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+          )}
           <circle cx={dim/2} cy={dim/2} r={R} fill="none" stroke="#27272a" strokeWidth={sw} />
           {pct > 0 && (
             <circle
@@ -69,6 +78,7 @@ function ScoreRing({
               strokeWidth={sw}
               strokeLinecap="round"
               strokeDasharray={`${pct * C} ${C}`}
+              filter={showGlow ? `url(#${filterId})` : undefined}
             />
           )}
         </svg>

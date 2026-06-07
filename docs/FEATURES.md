@@ -393,8 +393,14 @@
 | VCR replay file tracking (folder watcher) | P2 | 5 | ✅ |
 | Companion Replays tab (list + delete) | P2 | 5 | ✅ |
 | Replay folder selection in Settings | P2 | 5 | ✅ |
-| In-game overlay window | P2 | 5 | 🔲 |
-| UDP telemetry listener (LMU port 4444) | P2 | 5 | 🔲 |
+| In-game overlay window (transparent always-on-top) | P2 | 5 | ✅ |
+| Native SHM telemetry (rF2 Shared Memory API) | P2 | 5 | ✅ |
+| Telemetry recorder (SQLite, 10 Hz) | P2 | 5 | ✅ |
+| Overlay panel configuration (toggle + opacity) | P2 | 5 | ✅ |
+| Overlay settings panel in web app (Settings page) | P2 | 5 | ✅ |
+| Dashboard: Active Goals widget | P2 | 5 | ✅ |
+| Dashboard: Recent Achievements widget | P2 | 5 | ✅ |
+| Session Detail: best sector mini-stats (S1/S2/S3) | P2 | 5 | ✅ |
 | macOS support | P3 | 6+ | 🔲 |
 
 ---

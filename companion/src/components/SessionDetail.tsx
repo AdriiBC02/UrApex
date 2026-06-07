@@ -5,7 +5,7 @@ import type { SessionSummary } from "./SessionList"
 import {
   ArrowLeft, GitCompare, Timer, TrendingUp, BarChart3,
   List, Users, FileText, Thermometer, Wind, Droplets,
-  MapPin, Plus, Trash2, ExternalLink, Server, type LucideIcon,
+  MapPin, Plus, Trash2, ExternalLink, Server, Zap, type LucideIcon,
 } from "lucide-react"
 
 interface LapRow {
@@ -124,6 +124,11 @@ export function SessionDetailView({ session: s, allSessions, onBack, onCompare }
   const [loadingDriverIds, setLoadingDriverIds]   = useState<Set<string>>(new Set())
 
   const best = s.bestLapMs
+
+  const validSectorLaps = s.laps.filter((l) => l.isValid)
+  const bestS1 = validSectorLaps.reduce<number | null>((m, l) => l.sector1Ms != null ? (m == null || l.sector1Ms < m ? l.sector1Ms : m) : m, null)
+  const bestS2 = validSectorLaps.reduce<number | null>((m, l) => l.sector2Ms != null ? (m == null || l.sector2Ms < m ? l.sector2Ms : m) : m, null)
+  const bestS3 = validSectorLaps.reduce<number | null>((m, l) => l.sector3Ms != null ? (m == null || l.sector3Ms < m ? l.sector3Ms : m) : m, null)
 
   useEffect(() => {
     invoke<Participant[]>("get_participants", { sessionId: s.id }).then(setParticipants).catch(console.error)
@@ -298,6 +303,14 @@ export function SessionDetailView({ session: s, allSessions, onBack, onCompare }
           {s.finalPosition != null
             ? <MiniStat icon={BarChart3} label="Position" value={`P${s.finalPosition}`} />
             : <div />}
+          {/* Best sectors */}
+          {(bestS1 != null || bestS2 != null || bestS3 != null) && (
+            <>
+              <MiniStat icon={Zap} label="Best S1" value={formatLapTime(bestS1)} />
+              <MiniStat icon={Zap} label="Best S2" value={formatLapTime(bestS2)} />
+              <MiniStat icon={Zap} label="Best S3" value={formatLapTime(bestS3)} />
+            </>
+          )}
         </div>
 
         {/* Sub-tabs */}

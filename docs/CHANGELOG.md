@@ -12,6 +12,22 @@
 
 ---
 
+## [Unreleased — 0.35.0]
+
+> Overlay configurability, companion dashboard enhancements, web overlay settings panel.
+
+### Added
+- **Overlay panel configuration (companion)** — new `OverlaySettings` tab in the companion Settings page lets users toggle each of the 7 overlay panels on/off (Speed/Gear/Position, RPM Bar, Throttle/Brake Trace, Steering, Lap Time & Sectors, Tyres, Fuel/Gaps/Engine) and adjust background opacity (40–98%); config persists to plugin-store and is pushed live to the overlay window via `overlay-config` Tauri event
+- **Overlay settings panel (web app)** — mirrors the companion config in Settings → Overlay layout; saves to `localStorage`; shows each panel's mini-preview thumbnail; displays active-panel count
+- **Companion Dashboard: Active Goals widget** — shows up to 3 active goals with name, optional track scope, and a progress bar (colour turns green on completion); fetches via `get_goals` Tauri command
+- **Companion Dashboard: Recent Achievements widget** — shows up to 3 most-recently unlocked achievements with emoji icon, name, rarity colour, and unlock date; fetches via `get_achievements` Tauri command
+- **Companion Session Detail: best sector mini-stats** — S1 / S2 / S3 best times are computed from valid laps and shown as `MiniStat` tiles below position
+
+### Fixed
+- **Web Dashboard score ring glow** — SVG filter now uses a stable per-label `id` (e.g. `glow-pace`) so duplicate-ID collisions no longer break the glow on pages with multiple rings; filter is applied to the arc `<circle>` only, not the whole SVG
+
+---
+
 ## [Unreleased — 0.34.0]
 
 > Native Shared Memory telemetry + telemetry recording + overlay redesign.

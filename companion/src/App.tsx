@@ -13,6 +13,7 @@ import {
   Map, Car, MonitorPlay, LogOut,
   type LucideIcon,
 } from "lucide-react"
+import { OverlaySettingsPanel, DEFAULT_OVERLAY_CONFIG, type OverlayConfig } from "./components/OverlaySettings"
 import { SyncLog } from "./components/SyncLog"
 import { StatusDot } from "./components/StatusDot"
 import { SessionList, type SessionSummary } from "./components/SessionList"
@@ -106,15 +107,19 @@ export default function App() {
   const [overlayVisible, setOverlayVisible]     = useState(false)
   const [telemetryActive, setTelemetryActive]   = useState(false)
   const [recordingId, setRecordingId]           = useState<string | null>(null)
+  const [overlayConfig, setOverlayConfig]       = useState<OverlayConfig>(DEFAULT_OVERLAY_CONFIG)
 
   useEffect(() => {
     load("companion-settings.json", { autoSave: true, defaults: {} }).then(async (s) => {
       store = s
-      const [savedSettings, savedLogs, wasWatching] = await Promise.all([
+      const [savedSettings, savedLogs, wasWatching, savedOverlayConfig] = await Promise.all([
         s.get<Settings>("settings"),
         s.get<Array<LogEntry & { timestamp: string }>>("syncLogs"),
         s.get<boolean>("watchActive"),
+        s.get<OverlayConfig>("overlayConfig"),
       ])
+
+      if (savedOverlayConfig) setOverlayConfig(savedOverlayConfig)
 
       if (savedSettings) setSettings(savedSettings)
 
@@ -278,6 +283,17 @@ export default function App() {
     } catch { /* ignore */ }
   }
 
+  async function handleOverlayConfigChange(config: OverlayConfig) {
+    setOverlayConfig(config)
+    await store?.set("overlayConfig", config)
+    await store?.save()
+    // Push live config to the overlay window
+    try {
+      const { emit } = await import("@tauri-apps/api/event")
+      await emit("overlay-config", config)
+    } catch { /* overlay may not be open yet */ }
+  }
+
   async function toggleOverlay() {
     try {
       if (overlayVisible) {
@@ -286,6 +302,9 @@ export default function App() {
       } else {
         await invoke("show_overlay")
         setOverlayVisible(true)
+        // Send current config so the overlay initialises with saved preferences
+        const { emit } = await import("@tauri-apps/api/event")
+        await emit("overlay-config", overlayConfig)
       }
     } catch { /* ignore */ }
   }
@@ -632,7 +651,7 @@ export default function App() {
               </form>
 
               {/* ── Overlay & Telemetry ── */}
-              <div className="card" style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 0 }}>
+              <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 0 }}>
                 <div className="card-header">
                   <MonitorPlay size={13} strokeWidth={2} style={{ color: "var(--text-dim)" }} />
                   <span style={{ fontWeight: 600, fontSize: 12 }}>In-game overlay</span>
@@ -643,31 +662,19 @@ export default function App() {
                   <strong>rFactor2SharedMemoryMapPlugin64.dll</strong> in the LMU Plugins folder.
                 </p>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    onClick={toggleTelemetry}
-                    className={`btn ${telemetryActive ? "btn-danger" : "btn-ghost"}`}
-                    style={{ gap: 6 }}
-                  >
+                  <button type="button" onClick={toggleTelemetry}
+                    className={`btn ${telemetryActive ? "btn-danger" : "btn-ghost"}`} style={{ gap: 6 }}>
                     <RadioTower size={12} strokeWidth={2} />
                     {telemetryActive ? "Stop telemetry" : "Start telemetry"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={toggleOverlay}
-                    className={`btn ${overlayVisible ? "btn-primary" : "btn-ghost"}`}
-                    style={{ gap: 6 }}
-                  >
+                  <button type="button" onClick={toggleOverlay}
+                    className={`btn ${overlayVisible ? "btn-primary" : "btn-ghost"}`} style={{ gap: 6 }}>
                     <MonitorPlay size={12} strokeWidth={2} />
                     {overlayVisible ? "Hide overlay" : "Show overlay"}
                   </button>
                   {telemetryActive && (
-                    <button
-                      type="button"
-                      onClick={toggleRecording}
-                      className={`btn ${recordingId ? "btn-danger" : "btn-ghost"}`}
-                      style={{ gap: 6 }}
-                    >
+                    <button type="button" onClick={toggleRecording}
+                      className={`btn ${recordingId ? "btn-danger" : "btn-ghost"}`} style={{ gap: 6 }}>
                       <RadioTower size={12} strokeWidth={2} />
                       {recordingId ? "Stop recording" : "Record session"}
                     </button>
@@ -679,6 +686,21 @@ export default function App() {
                     {recordingId && <span style={{ color: "var(--red)", marginLeft: 8 }}>● Recording</span>}
                   </p>
                 )}
+              </div>
+
+              {/* ── Overlay layout customisation ── */}
+              <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div className="card-header">
+                  <MonitorPlay size={13} strokeWidth={2} style={{ color: "var(--text-dim)" }} />
+                  <span style={{ fontWeight: 600, fontSize: 12 }}>Overlay layout</span>
+                  <span style={{ fontSize: 10, color: "var(--text-dim)", marginLeft: "auto" }}>
+                    {Object.values(overlayConfig).filter((v) => v === true).length} / 7 panels active
+                  </span>
+                </div>
+                <p style={{ fontSize: 10, color: "var(--text-dim)", margin: 0, lineHeight: 1.5 }}>
+                  Toggle panels and adjust opacity. Changes apply instantly if the overlay is open.
+                </p>
+                <OverlaySettingsPanel config={overlayConfig} onChange={handleOverlayConfigChange} />
               </div>
 
               {/* ── Updates ── */}

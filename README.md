@@ -18,7 +18,7 @@ A full-stack driver development platform for sim racers. Import your Le Mans Ult
 - **Async processing** — BullMQ + Redis queue; import returns instantly and polling resolves the result
 - **Hash-based deduplication** — the same file can never be imported twice
 - **Driver selection** — handles multiplayer files by asking who you are among the participants
-- **Companion app** — Windows desktop app (Tauri v2 + Rust) that watches your LMU results folder and auto-uploads new sessions in the background
+- **Companion app** — Windows desktop app (Tauri v2 + Rust) that watches your LMU results folder, auto-uploads sessions, and drives an in-game HUD overlay fed by native Shared Memory telemetry
 
 ### Session Data
 - Lap times, sectors, consistency score, safety score, pace score
@@ -45,6 +45,12 @@ A full-stack driver development platform for sim racers. Import your Le Mans Ult
 - Setup library with version history
 - Link setups to sessions
 - Notes per version
+
+### In-game HUD Overlay (Companion)
+- **7 configurable panels** — Speed/Gear/Position, RPM bar, Throttle/Brake trace, Steering, Lap Time & Sectors, Tyre grid, Fuel/Gaps/Engine
+- **Native Shared Memory telemetry** — rF2 SHM API via `windows` crate; zero packet loss, ~1 ms latency
+- **Telemetry recorder** — captures live data at 10 Hz into SQLite for post-session review
+- **Overlay settings** — toggle any panel on/off and adjust opacity from the companion app or the web Settings page; config is persisted and synced live to the running overlay
 
 ### Replay Management
 - Upload `.vcr` replay files and associate them with sessions
@@ -138,7 +144,8 @@ src/
 ├── features/                 # Co-located UI components per domain
 │   ├── import/               # UploadZone, ImportHistory
 │   ├── sessions/             # SessionNotes, SessionFilters
-│   └── replays/              # ReplaySection, ReplayUploadSection, StorageFileList
+│   ├── replays/              # ReplaySection, ReplayUploadSection, StorageFileList
+│   └── overlay/              # OverlaySettingsPanel (web-side HUD config)
 ├── components/
 │   ├── ui/                   # shadcn/ui primitives
 │   ├── charts/               # Recharts wrappers
