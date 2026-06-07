@@ -320,11 +320,8 @@ export default function App() {
     setOverlayConfig(config)
     await store?.set("overlayConfig", config)
     await store?.save()
-    // Push live config to the overlay window
-    try {
-      const { emit } = await import("@tauri-apps/api/event")
-      await emit("overlay-config", config)
-    } catch { /* overlay may not be open yet */ }
+    // Push via Rust eval() — frontend emit() only reaches the backend, not other windows
+    invoke("push_overlay_config", { config }).catch(() => {})
   }
 
   async function handleKeybindingsChange(config: KeybindingsConfig) {
@@ -342,9 +339,8 @@ export default function App() {
       } else {
         await invoke("show_overlay")
         setOverlayVisible(true)
-        // Send current config so the overlay initialises with saved preferences
-        const { emit } = await import("@tauri-apps/api/event")
-        await emit("overlay-config", overlayConfig)
+        // Push config via Rust eval() — frontend emit() doesn't cross window boundaries
+        await invoke("push_overlay_config", { config: overlayConfig })
       }
     } catch { /* ignore */ }
   }

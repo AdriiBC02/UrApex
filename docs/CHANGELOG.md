@@ -12,6 +12,24 @@
 
 ---
 
+## [Unreleased — 0.41.0] · Companion v0.6.2
+
+> Overlay panel toggles via eval() + F1-F7 defaults + config push fix.
+
+### Fixed
+- **Panel toggle keybindings** — `dispatch_shortcut_action` now uses `w.eval("window.__togglePanel(...)")` instead of `w.emit()`. Tauri v2 events between windows have delivery issues; `eval()` executes JS directly in the overlay WebView2 — guaranteed to work if the window is loaded
+- **Overlay config not reaching overlay** — `emit("overlay-config")` from the frontend JS only reaches the Rust backend, not other windows. Replaced with a new `push_overlay_config` Tauri command that does `w.eval("window.__setOverlayConfig(...)")` from Rust — works in all cases
+- **`window.__togglePanel` / `window.__setOverlayConfig`** exposed on the overlay window's global scope via a `useEffect` in `OverlayApp` so Rust can call them with `w.eval()`
+- **Removed `--disable-background-networking`** from overlay WebView2 args — kept only `--disable-extensions`; added `shadow(false)` to overlay window
+- **"NO SHM" badge** now renders as a bright amber pill (solid background, bold text) so the user can confirm the overlay window IS visible even when LMU SHM isn't connected
+
+### Changed
+- **Default panel keybindings**: F1–F7 (no Alt+Shift) — avoids keyboard layout issues (Spanish layout maps Shift+digits to `!`, `"`, etc.)
+- **`DEFAULT_KEYBINDINGS`** in `OverlaySettings.tsx` updated to match
+- Overlay keybindings reset ("Reset to defaults") now also resets to F1–F7
+
+---
+
 ## [Unreleased — 0.40.0] · Companion v0.6.1
 
 > Overlay visibility + keybindings fixes + correct LMU paths.

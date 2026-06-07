@@ -399,13 +399,13 @@ export interface KeybindingsConfig {
 
 export const DEFAULT_KEYBINDINGS: KeybindingsConfig = {
   toggleOverlay:    "Alt+Shift+O",
-  toggleSpeedGear:  "Alt+Shift+1",
-  toggleRpmBar:     "Alt+Shift+2",
-  toggleInputTrace: "Alt+Shift+3",
-  toggleSteering:   "Alt+Shift+4",
-  toggleLapTime:    "Alt+Shift+5",
-  toggleTyres:      "Alt+Shift+6",
-  toggleFuelGaps:   "Alt+Shift+7",
+  toggleSpeedGear:  "F1",
+  toggleRpmBar:     "F2",
+  toggleInputTrace: "F3",
+  toggleSteering:   "F4",
+  toggleLapTime:    "F5",
+  toggleTyres:      "F6",
+  toggleFuelGaps:   "F7",
 }
 
 const KB_ROWS: { key: keyof KeybindingsConfig; label: string }[] = [

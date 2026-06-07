@@ -385,6 +385,18 @@ export function OverlayApp() {
     document.documentElement.style.background = "transparent"
     document.body.style.background            = "transparent"
 
+    // Expose direct JS functions so Rust can call them via w.eval() — bypasses event delivery issues
+    ;(window as unknown as Record<string, unknown>).__setOverlayConfig = (c: OverlayConfig) => setCfg(c)
+    ;(window as unknown as Record<string, unknown>).__togglePanel = (key: string) => {
+      if (Object.prototype.hasOwnProperty.call(DEFAULT_OVERLAY_CONFIG, key)) {
+        const k = key as keyof OverlayConfig
+        setCfg((prev) => {
+          if (typeof prev[k] === "boolean") return { ...prev, [k]: !prev[k] }
+          return prev
+        })
+      }
+    }
+
     const unlisten: Array<() => void> = []
     import("@tauri-apps/api/event").then(({ listen }) => {
       listen<TelemetryFrame>("telemetry", (e) => {
@@ -474,10 +486,15 @@ export function OverlayApp() {
           )}
           {!data.connected && (
             <span
-              title="No telemetry data. Start telemetry in UrApex Settings. Also make sure LMU runs in Borderless Windowed mode."
-              style={{ marginLeft: 7, fontSize: 8, color: "#f59e0b", cursor: "help" }}
+              title="Overlay visible but no telemetry. Start telemetry in Settings. LMU must run in Borderless Windowed mode."
+              style={{
+                marginLeft: 6, fontSize: 8, fontWeight: 700,
+                color: "#000", background: "#f59e0b",
+                padding: "1px 6px", borderRadius: 3, cursor: "help",
+                letterSpacing: "0.05em",
+              }}
             >
-              NO SHM · Borderless mode required
+              ⚡ NO SHM
             </span>
           )}
           {flag && (

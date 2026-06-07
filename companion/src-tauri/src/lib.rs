@@ -54,13 +54,13 @@ impl Default for KeybindingsConfig {
     fn default() -> Self {
         Self {
             toggle_overlay:     Some("Alt+Shift+O".to_string()),
-            toggle_speed_gear:  Some("Alt+Shift+1".to_string()),
-            toggle_rpm_bar:     Some("Alt+Shift+2".to_string()),
-            toggle_input_trace: Some("Alt+Shift+3".to_string()),
-            toggle_steering:    Some("Alt+Shift+4".to_string()),
-            toggle_lap_time:    Some("Alt+Shift+5".to_string()),
-            toggle_tyres:       Some("Alt+Shift+6".to_string()),
-            toggle_fuel_gaps:   Some("Alt+Shift+7".to_string()),
+            toggle_speed_gear:  Some("F1".to_string()),
+            toggle_rpm_bar:     Some("F2".to_string()),
+            toggle_input_trace: Some("F3".to_string()),
+            toggle_steering:    Some("F4".to_string()),
+            toggle_lap_time:    Some("F5".to_string()),
+            toggle_tyres:       Some("F6".to_string()),
+            toggle_fuel_gaps:   Some("F7".to_string()),
         }
     }
 }
@@ -86,9 +86,14 @@ fn dispatch_shortcut_action(app: &AppHandle, action: &str) {
             }
         }
     } else {
-        // Target overlay window directly — more reliable than app.emit() broadcast
+        // Use eval() — bypasses event delivery issues entirely, executes JS directly in WebView2
         if let Some(w) = app.get_webview_window("overlay") {
-            let _ = w.emit("overlay-panel-toggle", action);
+            // Sanitize action (only alphanumeric) before interpolating into JS
+            if action.chars().all(|c| c.is_alphanumeric()) {
+                let _ = w.eval(&format!(
+                    "if(typeof window.__togglePanel==='function')window.__togglePanel('{action}')"
+                ));
+            }
         }
     }
 }
@@ -296,6 +301,20 @@ fn delete_recording(recording_id: String, db_state: State<'_, DbState>) -> Resul
 }
 
 // ── Overlay ───────────────────────────────────────────────────────────────────
+
+/// Push overlay config from main window to the overlay WebView via eval().
+/// The frontend emit() API only reaches Rust, not other windows.
+#[tauri::command]
+fn push_overlay_config(config: serde_json::Value, app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("overlay") {
+        if let Ok(json) = serde_json::to_string(&config) {
+            let _ = w.eval(&format!(
+                "if(typeof window.__setOverlayConfig==='function')window.__setOverlayConfig({json})"
+            ));
+        }
+    }
+    Ok(())
+}
 
 #[tauri::command]
 fn show_overlay(app: AppHandle) -> Result<(), String> {
@@ -844,9 +863,10 @@ pub fn run() {
             .transparent(true)
             .always_on_top(true)
             .skip_taskbar(true)
+            .shadow(false)
             .visible(false)
-            // GPU must stay enabled for transparent compositing; only disable background overhead
-            .additional_browser_args("--disable-extensions --disable-background-networking")
+            // Keep GPU enabled for transparent compositing; no extra flags that could break WebView2 IPC
+            .additional_browser_args("--disable-extensions")
             .build()
             .map_err(|e| { diag(&format!("overlay build failed: {e}")); e })?;
 
@@ -918,7 +938,7 @@ pub fn run() {
             start_recording, stop_recording,
             list_recordings, get_recording_samples,
             associate_recording, delete_recording,
-            show_overlay, hide_overlay,
+            show_overlay, hide_overlay, push_overlay_config,
             register_shortcuts,
             quit_app,
         ])
