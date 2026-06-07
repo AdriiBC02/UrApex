@@ -188,7 +188,7 @@ pub fn start(
             let diag_result = read_shared_memory_diag();
 
             let (frame, status) = match &diag_result {
-                ShmReadResult::Ok(sm) => {
+                ShmReadResult::Ok(ref sm) => {
                     let f = TelemetryFrame::from_shared(sm);
                     let s = ShmStatus {
                         state:        "connected".to_string(),
@@ -204,7 +204,7 @@ pub fn start(
                     let s = ShmStatus {
                         state:        format!("no_player ({num_vehicles} vehicles)"),
                         connected:    false,
-                        num_vehicles: *num_vehicles,
+                        num_vehicles,
                         game_phase:   0,
                         speed_kph:    0.0,
                         position:     0,
@@ -215,7 +215,7 @@ pub fn start(
                     let s = ShmStatus {
                         state:        format!("bad_count ({count})"),
                         connected:    false,
-                        num_vehicles: *count,
+                        num_vehicles: count,
                         game_phase:   0,
                         speed_kph:    0.0,
                         position:     0,

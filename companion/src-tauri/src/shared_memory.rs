@@ -101,7 +101,8 @@ fn rbool(d: &[u8], o: usize) -> bool { d.get(o).copied().unwrap_or(0) != 0 }
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[cfg(target_os = "windows")]
-pub use windows_impl::read_shared_memory;
+#[allow(unused_imports)]
+pub use windows_impl::{read_shared_memory, read_shared_memory_diag};
 
 #[cfg(target_os = "windows")]
 mod windows_impl {
