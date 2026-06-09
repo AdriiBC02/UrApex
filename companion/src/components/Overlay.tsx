@@ -385,7 +385,7 @@ export function OverlayApp() {
     document.documentElement.style.background = "transparent"
     document.body.style.background            = "transparent"
 
-    // Expose direct JS functions so Rust can call them via w.eval() — bypasses event delivery issues
+    // Expose direct JS functions so Rust can call them via w.eval()
     ;(window as unknown as Record<string, unknown>).__setOverlayConfig = (c: OverlayConfig) => setCfg(c)
     ;(window as unknown as Record<string, unknown>).__togglePanel = (key: string) => {
       if (Object.prototype.hasOwnProperty.call(DEFAULT_OVERLAY_CONFIG, key)) {
@@ -396,6 +396,11 @@ export function OverlayApp() {
         })
       }
     }
+
+    // Tell Rust that React has mounted and the overlay is ready
+    import("@tauri-apps/api/event").then(({ emit }) => {
+      emit("overlay-ready", { ts: Date.now() }).catch(() => {})
+    })
 
     const unlisten: Array<() => void> = []
     import("@tauri-apps/api/event").then(({ listen }) => {

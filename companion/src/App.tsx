@@ -726,6 +726,13 @@ export default function App() {
                     <MonitorPlay size={12} strokeWidth={2} />
                     {overlayVisible ? "Hide overlay" : "Show overlay"}
                   </button>
+                  <button type="button"
+                    onClick={() => invoke("locate_overlay").catch(() => {})}
+                    className="btn btn-ghost" style={{ gap: 6 }}
+                    title="Move overlay to centre of screen — useful if it's hidden off-screen">
+                    <MonitorPlay size={12} strokeWidth={2} />
+                    Locate
+                  </button>
                   {telemetryActive && (
                     <button type="button" onClick={toggleRecording}
                       className={`btn ${recordingId ? "btn-danger" : "btn-ghost"}`} style={{ gap: 6 }}>

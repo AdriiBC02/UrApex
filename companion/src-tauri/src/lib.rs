@@ -337,6 +337,30 @@ fn delete_recording(recording_id: String, db_state: State<'_, DbState>) -> Resul
 
 // ── Overlay ───────────────────────────────────────────────────────────────────
 
+/// Move overlay to the centre of the primary monitor — useful when it's off-screen.
+#[tauri::command]
+fn locate_overlay(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("overlay") {
+        if let Ok(Some(monitor)) = w.primary_monitor() {
+            let pos   = monitor.position();
+            let size  = monitor.size();
+            let scale = monitor.scale_factor();
+            let ow = (360.0 * scale) as i32;
+            let oh = (180.0 * scale) as i32;
+            let x  = pos.x + (size.width  as i32 - ow) / 2;
+            let y  = pos.y + (size.height as i32 - oh) / 2;
+            let _ = w.set_position(tauri::PhysicalPosition::new(x, y));
+            diag(&format!("locate_overlay: moved to ({x},{y}) on monitor {}×{}", size.width, size.height));
+        } else {
+            diag("locate_overlay: primary_monitor() returned None");
+        }
+        if !w.is_visible().unwrap_or(false) { let _ = w.show(); }
+    } else {
+        diag("locate_overlay: overlay window not found!");
+    }
+    Ok(())
+}
+
 /// Push overlay config from main window to the overlay WebView via eval().
 /// The frontend emit() API only reaches Rust, not other windows.
 #[tauri::command]
@@ -958,6 +982,19 @@ pub fn run() {
                 apply_keybindings(app.handle(), &KeybindingsConfig::default(), &map_state.0);
             }
 
+            // Listen for the overlay-ready event emitted by OverlayApp on mount
+            let ah = app.handle().clone();
+            app.listen("overlay-ready", move |e| {
+                diag(&format!("overlay-ready received: {:?}", e.payload()));
+                // Re-apply keybindings so shortcuts are fresh
+                if let Some(w) = ah.get_webview_window("overlay") {
+                    diag(&format!(
+                        "overlay window exists: visible={:?} always_on_top={:?}",
+                        w.is_visible(), w.is_always_on_top()
+                    ));
+                }
+            });
+
             diag("setup: complete");
             Ok(())
         })
@@ -979,7 +1016,7 @@ pub fn run() {
             start_recording, stop_recording,
             list_recordings, get_recording_samples,
             associate_recording, delete_recording,
-            show_overlay, hide_overlay, push_overlay_config,
+            show_overlay, hide_overlay, push_overlay_config, locate_overlay,
             register_shortcuts,
             quit_app,
         ])
