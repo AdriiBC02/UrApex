@@ -496,6 +496,11 @@ export default async function SessionDetailPage({
                 )}
                 {s.dnf && <span className="text-[11px] font-bold px-2.5 py-1 rounded-md bg-red-500/10 text-red-400">DNF</span>}
                 {s.dq  && <span className="text-[11px] font-bold px-2.5 py-1 rounded-md bg-red-500/10 text-red-400">DQ</span>}
+                {s.sessionType === "RACE" && (
+                  s.isOnline
+                    ? <span className="text-[11px] font-bold px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">🌐 Multiplayer</span>
+                    : <span className="text-[11px] font-bold px-2.5 py-1 rounded-md bg-zinc-800/60 text-zinc-500 border border-zinc-700/40">🤖 vs AI</span>
+                )}
               </div>
 
               {/* Track name */}

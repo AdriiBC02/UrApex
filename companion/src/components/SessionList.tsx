@@ -16,12 +16,21 @@ export interface SessionSummary {
   syncedToServer:   boolean
   finalPosition:    number | null
   serverName:       string | null
+  isOnline:         boolean
 }
 
 const TYPE: Record<string, { label: string; color: string }> = {
   RACE:       { label: "Race",     color: "var(--orange)" },
   QUALIFYING: { label: "Quali",    color: "var(--cyan)"   },
   PRACTICE:   { label: "Practice", color: "var(--text-muted)" },
+}
+
+// Badge for AI vs Online — only meaningful for RACE sessions
+function OnlineBadge({ isOnline, sessionType }: { isOnline: boolean; sessionType: string }) {
+  if (sessionType !== "RACE") return null
+  return isOnline
+    ? <span style={{ fontSize: 8, fontWeight: 700, color: "#60a5fa", background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", padding: "0 5px", borderRadius: 4, letterSpacing: "0.04em" }}>MP</span>
+    : <span style={{ fontSize: 8, fontWeight: 700, color: "#a1a1aa", background: "rgba(161,161,170,0.1)", border: "1px solid rgba(161,161,170,0.2)", padding: "0 5px", borderRadius: 4, letterSpacing: "0.04em" }}>AI</span>
 }
 
 interface Props {
@@ -77,6 +86,7 @@ export function SessionList({ sessions, selectedId, onSelect, onDelete }: Props)
                   DNF
                 </span>
               )}
+              <OnlineBadge isOnline={s.isOnline} sessionType={s.sessionType} />
               {s.finalPosition != null && !s.dnf && (
                 <span style={{
                   fontSize: 8, fontWeight: 800,

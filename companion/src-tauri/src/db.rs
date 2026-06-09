@@ -21,6 +21,7 @@ pub struct SessionSummary {
     pub synced_to_server:  bool,
     pub final_position:    Option<i32>,
     pub server_name:       Option<String>,
+    pub is_online:         bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -564,7 +565,7 @@ pub fn get_sessions(conn: &Connection) -> Result<Vec<SessionSummary>, String> {
         "SELECT id, track_name, car_name, session_type, session_date,
                 total_laps, valid_laps, best_lap_ms, consistency_score,
                 is_new_pb, dnf, synced_to_server,
-                final_position, server_name
+                final_position, server_name, is_online
          FROM sessions ORDER BY session_date DESC LIMIT 200"
     ).map_err(|e| e.to_string())?;
 
@@ -583,6 +584,7 @@ pub fn get_sessions(conn: &Connection) -> Result<Vec<SessionSummary>, String> {
         synced_to_server:  row.get::<_, i32>(11)? != 0,
         final_position:    row.get(12)?,
         server_name:       row.get(13)?,
+        is_online:         row.get::<_, i32>(14)? != 0,
     })).map_err(|e| e.to_string())?;
 
     rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())

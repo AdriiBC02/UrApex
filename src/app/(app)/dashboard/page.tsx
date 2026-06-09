@@ -451,6 +451,11 @@ export default async function DashboardPage() {
                           <span className={`text-[11px] font-semibold uppercase tracking-wide ${st.label}`}>
                             {SESSION_TYPE_LABELS[s.sessionType] ?? s.sessionType}
                           </span>
+                          {s.sessionType === "RACE" && (
+                            s.isOnline
+                              ? <span className="text-[9px] font-bold text-blue-400/70 px-1 py-0.5 rounded bg-blue-500/8 border border-blue-500/15">MP</span>
+                              : <span className="text-[9px] font-bold text-zinc-600 px-1 py-0.5 rounded bg-zinc-800/50 border border-zinc-700/30">AI</span>
+                          )}
                           <span className="text-zinc-700 text-[11px]">·</span>
                           <span className="text-xs text-zinc-600 truncate">{s.car.name}</span>
                         </div>

@@ -196,6 +196,11 @@ export default async function SessionsPage({
                         {s.dnf && (
                           <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">DNF</span>
                         )}
+                        {s.sessionType === "RACE" && (
+                          s.isOnline
+                            ? <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded">MP</span>
+                            : <span className="text-[10px] font-bold text-zinc-500 bg-zinc-800/60 border border-zinc-700/40 px-1.5 py-0.5 rounded">AI</span>
+                        )}
                       </div>
                       <div className="flex items-center gap-3">
                         {s.finalPosition != null && (

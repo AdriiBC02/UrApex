@@ -340,6 +340,7 @@ export default async function TrackDetailPage({ params }: { params: Promise<{ sl
                       <div className="flex items-center gap-1.5">
                         <span className="font-mono text-zinc-200 text-sm tabular-nums">{formatLapTime(s.bestLapMs)}</span>
                         {s.isNewPB && <span className="text-[10px] font-bold text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded">PB</span>}
+                        {s.sessionType === "RACE" && (s.isOnline ? <span className="text-[9px] font-bold text-blue-400/70 px-1 rounded border border-blue-500/15">MP</span> : <span className="text-[9px] font-bold text-zinc-600 px-1 rounded border border-zinc-700/30">AI</span>)}
                       </div>
                     </td>
                     <td className="px-3 py-2.5"><ScoreBadge value={s.consistencyScore} size="sm" /></td>
