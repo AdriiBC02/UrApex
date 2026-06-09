@@ -615,11 +615,11 @@ pub fn get_session_detail(conn: &Connection, id: &str) -> Result<Option<SessionD
                 synced_to_server:  row.get::<_, i32>(11)? != 0,
                 final_position:    row.get(12)?,
                 server_name:       row.get(13)?,
+                is_online:         row.get::<_, i32>(17)? != 0,
             },
             row.get::<_, Option<String>>(14)?,   // car_class
             row.get::<_, Option<i32>>(15)?,      // grid_position
             row.get::<_, Option<i32>>(16)?,      // duration_sec
-            row.get::<_, i32>(17)? != 0,         // is_online
             row.get::<_, Option<f64>>(18)?,      // avg_lap_ms
             row.get::<_, Option<i32>>(19)?,      // ideal_lap_ms
             row.get::<_, Option<String>>(20)?,   // weather
