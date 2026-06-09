@@ -10,7 +10,7 @@ mod uploader;
 mod watcher;
 
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Listener, Manager, State};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 pub const DIAG_LOG_PATH: &str = "C:\\Users\\Public\\urapex-diag.log";
