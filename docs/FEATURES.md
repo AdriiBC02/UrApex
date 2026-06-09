@@ -147,6 +147,8 @@
 | Session sorting | P1 | 1 | ✅ |
 | Session filters (date, track, car, PB) | P1 | 3 | ✅ |
 | Session search | P2 | 3 | 🔲 |
+| AI vs Multiplayer badge | P1 | 2 | ✅ |
+| Filter sessions by AI/Online | P1 | 2 | ✅ |
 | Session export (CSV) | P2 | 3 | ✅ |
 | Share session (public link) | P2 | 7 | 🔲 |
 | Session insights (rule-based) | P1 | 2 | ✅ |
@@ -402,6 +404,9 @@
 | Dashboard: Recent Achievements widget | P2 | 5 | ✅ |
 | Session Detail: best sector mini-stats (S1/S2/S3) | P2 | 5 | ✅ |
 | Global keybindings (overlay toggle + per-panel, configurable) | P2 | 5 | ✅ |
+| Overlay-ready diagnostic + locate button | P2 | 5 | ✅ |
+| Game detection indicator + diagnostic log viewer | P2 | 5 | ✅ |
+| Session filter bar in companion (type + AI/MP chips) | P1 | 5 | ✅ |
 | macOS support | P3 | 6+ | 🔲 |
 
 ---

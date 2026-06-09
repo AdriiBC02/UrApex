@@ -1,5 +1,8 @@
 import Link from "next/link"
-import { ChevronRight, BarChart2, Target, Zap, Shield, Trophy, TrendingUp, ArrowRight,  Clock } from "lucide-react"
+import {
+  ChevronRight, BarChart2, Target, Zap, Shield, Trophy, TrendingUp,
+  ArrowRight, Clock, MonitorPlay, GitCompare, Map, Cpu,
+} from "lucide-react"
 
 export default function LandingPage() {
   return (
@@ -18,10 +21,7 @@ export default function LandingPage() {
             </span>
           </Link>
           <div className="flex items-center gap-2">
-            <Link
-              href="/login"
-              className="px-4 py-1.5 text-sm text-zinc-400 hover:text-zinc-100 transition-colors"
-            >
+            <Link href="/login" className="px-4 py-1.5 text-sm text-zinc-400 hover:text-zinc-100 transition-colors">
               Sign in
             </Link>
             <Link
@@ -36,7 +36,6 @@ export default function LandingPage() {
 
       {/* ── Hero ── */}
       <section className="relative overflow-hidden">
-        {/* Background grid */}
         <div
           className="absolute inset-0 opacity-[0.035]"
           style={{
@@ -44,19 +43,15 @@ export default function LandingPage() {
             backgroundSize: "48px 48px",
           }}
         />
-        {/* Gradient blobs */}
         <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute top-20 -right-40 w-[400px] h-[400px] bg-cyan-400/4 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative max-w-6xl mx-auto px-6 pt-24 pb-20 text-center">
-          {/* Badge */}
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-500/8 border border-cyan-500/20 text-cyan-400 text-xs font-medium mb-8">
             <Zap className="w-3 h-3" />
-            Le Mans Ultimate · More sims coming
-            <span className="w-1 h-1 rounded-full bg-cyan-400/60" />
+            Le Mans Ultimate · Companion app · In-game overlay
           </div>
 
-          {/* Headline */}
           <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-[0.95] mb-6">
             <span className="text-zinc-100">Your apex</span>
             <br />
@@ -65,12 +60,12 @@ export default function LandingPage() {
             </span>
           </h1>
 
-          <p className="text-lg md:text-xl text-zinc-400 max-w-xl mx-auto mb-10 leading-relaxed">
-            Import your sessions, understand your data, drive faster.
+          <p className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
             UrApex turns raw lap times into a complete picture of how you drive.
+            Auto-sync sessions, analyse every stint, and watch live telemetry
+            directly in-game — all in one platform.
           </p>
 
-          {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               href="/register"
@@ -87,9 +82,8 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          {/* Trust badges */}
           <div className="flex flex-wrap items-center justify-center gap-6 mt-12 text-xs text-zinc-600 font-medium">
-            {["Free to use", "No setup required", "Import in seconds", "Privacy first"].map((t) => (
+            {["Free to use", "No credit card", "Windows companion app", "Privacy first"].map((t) => (
               <span key={t} className="flex items-center gap-1.5">
                 <span className="w-1 h-1 rounded-full bg-zinc-700" />
                 {t}
@@ -103,10 +97,10 @@ export default function LandingPage() {
       <section className="border-y border-zinc-800/60 bg-zinc-900/40">
         <div className="max-w-6xl mx-auto px-6 py-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           {[
-            { value: "9 types", label: "Goal types tracked" },
-            { value: "3 scores", label: "Per-session analysis" },
-            { value: "7 sims", label: "Planned simulators" },
-            { value: "∞ laps", label: "No import limits" },
+            { value: "6 scores",  label: "Driver dimensions tracked" },
+            { value: "31",        label: "Unlockable achievements" },
+            { value: "7 panels",  label: "In-game HUD overlay" },
+            { value: "∞ laps",    label: "No import limits" },
           ].map(({ value, label }) => (
             <div key={label}>
               <div className="text-2xl font-black text-zinc-100 mb-0.5 tracking-tight">{value}</div>
@@ -152,8 +146,52 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── How it works ── */}
+      {/* ── Companion callout ── */}
       <section className="border-t border-zinc-800/60 bg-zinc-900/30">
+        <div className="max-w-6xl mx-auto px-6 py-20">
+          <div className="rounded-2xl border border-cyan-800/40 bg-cyan-950/10 p-8 md:p-12 flex flex-col md:flex-row gap-8 items-center">
+            <div className="flex-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold mb-4">
+                <MonitorPlay className="w-3 h-3" />
+                Windows companion app
+              </div>
+              <h2 className="text-2xl md:text-3xl font-black tracking-tight text-zinc-100 mb-3">
+                Zero manual uploads.
+                <br />
+                <span className="text-cyan-400">Live data while you race.</span>
+              </h2>
+              <p className="text-zinc-400 leading-relaxed max-w-lg">
+                The companion app watches your LMU results folder and syncs every session
+                automatically — no drag and drop required. It also reads the rF2 Shared Memory
+                API to power a transparent in-game HUD overlay with 7 configurable panels:
+                speed, RPM, inputs, lap times, tyres, gaps and fuel.
+              </p>
+              <div className="flex flex-wrap gap-3 mt-6">
+                {[
+                  "Auto-sync sessions",
+                  "In-game HUD overlay",
+                  "Live telemetry recording",
+                  "F1–F7 panel shortcuts",
+                  "Session history offline",
+                ].map((f) => (
+                  <span key={f} className="text-xs font-medium text-cyan-400/80 bg-cyan-500/8 border border-cyan-500/15 px-2.5 py-1 rounded-lg">
+                    {f}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="shrink-0 text-center">
+              <div className="w-32 h-32 rounded-2xl bg-zinc-900 border border-zinc-700 flex items-center justify-center mx-auto mb-3">
+                <Cpu className="w-14 h-14 text-cyan-500/60" />
+              </div>
+              <p className="text-xs text-zinc-600">Windows · Tauri v2 · Free</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── How it works ── */}
+      <section className="border-t border-zinc-800/60">
         <div className="max-w-6xl mx-auto px-6 py-24">
           <div className="text-center mb-14">
             <h2 className="text-3xl md:text-4xl font-black tracking-tight text-zinc-100 mb-3">
@@ -168,9 +206,6 @@ export default function LandingPage() {
                 <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-700 flex items-center justify-center mb-4 text-xl font-black text-cyan-400">
                   {step}
                 </div>
-                {i < steps.length - 1 && (
-                  <div className="hidden md:block absolute" />
-                )}
                 <h3 className="font-bold text-zinc-100 mb-1.5">{title}</h3>
                 <p className="text-sm text-zinc-500 max-w-xs leading-relaxed">{description}</p>
               </div>
@@ -180,7 +215,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Final CTA ── */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden border-t border-zinc-800/60">
         <div className="absolute inset-0 bg-gradient-to-b from-zinc-950 via-cyan-950/10 to-zinc-950 pointer-events-none" />
         <div className="relative max-w-2xl mx-auto px-6 py-28 text-center">
           <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-zinc-100 mb-5">
@@ -220,39 +255,57 @@ export default function LandingPage() {
 
 const features = [
   {
-    icon: BarChart2,
-    title: "Import in seconds",
-    description: "Drop your XML result file and get a full breakdown instantly. Lap times, sectors, consistency — all calculated automatically.",
+    icon: Zap,
+    title: "Auto-sync companion app",
+    description: "Install the Windows companion, point it at your LMU results folder and every session uploads automatically — no drag and drop ever again.",
     accent: true,
   },
   {
+    icon: MonitorPlay,
+    title: "In-game HUD overlay",
+    description: "7 configurable panels — speed, RPM bar, throttle/brake trace, steering, lap times, tyres and fuel — rendered transparently on top of LMU via native Shared Memory.",
+    accent: true,
+  },
+  {
+    icon: BarChart2,
+    title: "Full race analytics",
+    description: "Race Grid with per-driver lap data, stint breakdowns, compound strategies and pit stop timelines. Understand the full picture of every race.",
+    accent: false,
+  },
+  {
     icon: TrendingUp,
-    title: "Know your weaknesses",
-    description: "Consistency Score, Safety Score, and Pace Score give you an honest read on how you drive and where to focus your training.",
+    title: "6 driver scores",
+    description: "Consistency, Safety, Pace, Improvement, Racecraft and Qualifying — each calculated from real session data and visualised as a radar chart on your profile.",
+    accent: false,
+  },
+  {
+    icon: GitCompare,
+    title: "Session comparison",
+    description: "Side-by-side metrics, lap overlay charts and sector deltas between any two sessions. One-click 'Compare vs my PB' shortcut.",
+    accent: false,
+  },
+  {
+    icon: Map,
+    title: "Track & car analytics",
+    description: "PB evolution, lap distribution, best sectors, ideal lap, consistency trend and session type breakdown — per circuit and per car.",
     accent: false,
   },
   {
     icon: Target,
-    title: "Set meaningful goals",
-    description: "Target a specific lap time, clean lap count, or consistency score. Goals auto-update as you import new sessions.",
+    title: "Goals & 31 achievements",
+    description: "Set targets by lap time, consistency or session count. Earn rarity-tiered achievements across Volume, Pace, Consistency, Endurance, Race Craft and Exploration.",
     accent: false,
   },
   {
     icon: Trophy,
-    title: "Unlock achievements",
-    description: "Century Driver, Consistency King, Endurance Pilot — milestones that reward real progress, not grinding.",
-    accent: false,
-  },
-  {
-    icon: Clock,
-    title: "PB evolution tracking",
-    description: "See every time you broke your personal best, per circuit and car combination. Your improvement, visualized.",
+    title: "Setup manager",
+    description: "Library of car setups with version history, session linking, conditions tagging, notes and a favorites system.",
     accent: false,
   },
   {
     icon: Shield,
-    title: "Multi-sim ready",
-    description: "LMU supported now. ACC, iRacing, rFactor 2 and more on the roadmap. One platform for all your sims.",
+    title: "AI vs Multiplayer",
+    description: "Sessions are automatically tagged as AI or Multiplayer races. Filter your history to see only competitive online sessions or practice runs against AI.",
     accent: false,
   },
 ]
@@ -261,16 +314,16 @@ const steps = [
   {
     step: "1",
     title: "Create your account",
-    description: "Sign up in seconds. No credit card, no setup wizard, no BS.",
+    description: "Sign up in seconds. No credit card, no setup wizard.",
   },
   {
     step: "2",
-    title: "Import a session",
-    description: "Drag and drop your XML result file from Le Mans Ultimate. Done.",
+    title: "Import or auto-sync",
+    description: "Drag and drop an XML file, or install the companion app to sync every session automatically.",
   },
   {
     step: "3",
-    title: "Analyze and improve",
-    description: "See your lap breakdown, scores, and PB evolution immediately.",
+    title: "Analyse and improve",
+    description: "Scores, PB evolution, race grid, driver DNA radar — your data, instantly.",
   },
 ]

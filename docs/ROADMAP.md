@@ -166,12 +166,17 @@
 - [x] Overlay settings panel in web app Settings page
 - [x] Dashboard: active goals widget + recent achievements widget
 - [x] Session Detail: best S1/S2/S3 sector mini-stats
-- [x] Global keybindings (Alt+Shift+O + Alt+Shift+1–7, configurable in Settings)
+- [x] Global keybindings (F1–F7 for panels, Alt+Shift+O for toggle; configurable in Settings)
 - [x] Overlay focus-steal fix + WebView2 GPU compositing fix
-- [ ] Test on real Windows machine with LMU running (verify SHM offsets)
+- [x] Panel toggle via `w.eval()` — bypasses Tauri cross-window event delivery issues
+- [x] `push_overlay_config` via eval — config correctly reaches overlay from main window
+- [x] Overlay-ready event + locate button — diagnostics confirm React mount + centre-screen
+- [x] Game detection indicator — ShmStatus events, contextual help, diagnostic log
+- [x] Session filter bar in companion — type chips + AI/MP chips
+- [x] AI vs Multiplayer badge on all session lists
+- [ ] Test on real Windows machine with LMU running (verify SHM offsets + overlay)
 - [ ] Associate telemetry recording with session in web app
 - [ ] Upload telemetry recording to web app
-- [ ] Duplicate prevention via local hash check (avoid redundant upload)
 
 ### Completion Criterion
 > A user finishes a session, and within 10 seconds it appears in their UrApex dashboard — without any manual action.

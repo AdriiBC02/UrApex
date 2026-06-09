@@ -134,6 +134,11 @@
 | AN-022 | Profile: Driver DNA radar chart | P1 | ✅ | Recharts RadarChart con 6 dimensiones |
 | AN-023 | Compare: "Compare vs my PB" shortcut | P1 | ✅ | Auto-selects PB session at same track+car in slot B |
 | AN-024 | Telemetría auto-asociada tras XML import | P1 | ✅ | Companion poll → sessionId → upload frames → associate local |
+| AN-025 | AI vs Multiplayer badge en todas las listas de sesiones | P1 | ✅ | Badge MP/AI en web + companion; filtro ?online=1/0 |
+| AN-026 | Filtros AI/MP en companion SessionList | P1 | ✅ | Chips All/Race/Quali/Practice + All races/Online/AI client-side |
+| CA-028 | Overlay-ready event + locate_overlay command | P2 | ✅ | Diagnostics: React mount confirmation + centre-screen button |
+| CA-029 | Game detection indicator + diagnostic log viewer | P2 | ✅ | ShmStatus events + diag log en Settings |
+| CA-030 | Overlay panel toggle via eval() + F1-F7 defaults | P1 | ✅ | Bypasses Tauri event delivery issues; push_overlay_config via eval |
 
 ---
 

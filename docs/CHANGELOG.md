@@ -12,6 +12,33 @@
 
 ---
 
+## [Unreleased — 0.44.0] · Companion v0.6.6
+
+> AI/MP badge + session filters.
+
+### Added
+- **AI vs Multiplayer badge** — all session lists (web: sessions, session detail, dashboard, track detail, car detail; companion: SessionList) show `🌐 MP` (blue) for online races and `🤖 AI` (zinc) for AI races; distinction comes directly from `<Setting>` field in LMU XML
+- **Session filters — web app** — new chips `All races · 🌐 Online · 🤖 AI` added to `SessionFilters`; server-side `isOnline` filter via `?online=1/0` searchParam; counts as active filter
+- **Session filters — companion** — filter bar in `SessionList` with type chips (All / Race / Quali / Practice) + online chips (All races / 🌐 Online / 🤖 AI); live count "N/total"; client-side filtering
+- **`is_online` field in companion `SessionSummary`** — added to struct, SQL query, and TypeScript interface
+
+---
+
+## [Unreleased — 0.43.0] · Companion v0.6.5 (skipped — internal bump)
+
+---
+
+## [Unreleased — 0.42.0] · Companion v0.6.4
+
+> Overlay-ready diagnostic + locate button.
+
+### Added
+- **`overlay-ready` event** — `OverlayApp` emits to Rust on mount; Rust logs visibility and `always_on_top` state, confirming React is running in the overlay window
+- **`locate_overlay` command** — moves overlay to centre of primary monitor and shows it; logs monitor dimensions; useful when overlay is off-screen
+- **"Locate" button** in Settings → In-game overlay, next to "Show overlay"
+
+---
+
 ## [Unreleased — 0.41.0] · Companion v0.6.2
 
 > Overlay panel toggles via eval() + F1-F7 defaults + config push fix.
