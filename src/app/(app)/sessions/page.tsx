@@ -18,6 +18,7 @@ interface SearchParams {
   from?: string
   to?: string
   page?: string
+  online?: string
 }
 
 const PER_PAGE = 20
@@ -51,15 +52,16 @@ export default async function SessionsPage({
   const userId = session.user.id
   const page = Math.max(1, parseInt(params.page ?? "1"))
 
-  const typeFilter  = params.type as SessionType | undefined
-  const sortParam   = params.sort
-  const trackSlug   = params.track
-  const carSlug     = params.car
-  const pbOnly      = params.pb === "1"
-  const fromDate    = params.from ? new Date(params.from) : undefined
-  const toDate      = params.to   ? new Date(params.to + "T23:59:59Z") : undefined
+  const typeFilter   = params.type as SessionType | undefined
+  const sortParam    = params.sort
+  const trackSlug    = params.track
+  const carSlug      = params.car
+  const pbOnly       = params.pb === "1"
+  const fromDate     = params.from ? new Date(params.from) : undefined
+  const toDate       = params.to   ? new Date(params.to + "T23:59:59Z") : undefined
+  const onlineFilter = params.online // "1" = online only, "0" = AI only, undefined = all
 
-  const activeFilters = [typeFilter, trackSlug, carSlug, pbOnly || undefined, fromDate, toDate].filter(Boolean).length
+  const activeFilters = [typeFilter, trackSlug, carSlug, pbOnly || undefined, fromDate, toDate, onlineFilter].filter(Boolean).length
 
   const where: Prisma.SessionWhereInput = {
     userId,
@@ -69,6 +71,8 @@ export default async function SessionsPage({
     ...(fromDate || toDate ? { sessionDate: { gte: fromDate, lte: toDate } } : {}),
     ...(trackSlug ? { track: { slug: trackSlug } } : {}),
     ...(carSlug   ? { car:   { slug: carSlug } }   : {}),
+    ...(onlineFilter === "1" ? { isOnline: true }  : {}),
+    ...(onlineFilter === "0" ? { isOnline: false } : {}),
   }
 
   const [sessions, total, userTracks, userCars] = await Promise.all([
@@ -102,13 +106,14 @@ export default async function SessionsPage({
   const totalPages = Math.ceil(total / PER_PAGE)
 
   const paginationBase = new URLSearchParams({
-    ...(typeFilter ? { type: typeFilter } : {}),
-    ...(sortParam ? { sort: sortParam } : {}),
-    ...(trackSlug ? { track: trackSlug } : {}),
-    ...(carSlug ? { car: carSlug } : {}),
-    ...(pbOnly ? { pb: "1" } : {}),
-    ...(params.from ? { from: params.from } : {}),
-    ...(params.to ? { to: params.to } : {}),
+    ...(typeFilter    ? { type: typeFilter }      : {}),
+    ...(sortParam     ? { sort: sortParam }       : {}),
+    ...(trackSlug     ? { track: trackSlug }      : {}),
+    ...(carSlug       ? { car: carSlug }          : {}),
+    ...(pbOnly        ? { pb: "1" }              : {}),
+    ...(params.from   ? { from: params.from }    : {}),
+    ...(params.to     ? { to: params.to }        : {}),
+    ...(onlineFilter  ? { online: onlineFilter } : {}),
   }).toString()
 
   return (
@@ -136,13 +141,14 @@ export default async function SessionsPage({
         tracks={userTracks.map((t) => ({ value: t.slug, label: t.name }))}
         cars={userCars.map((c) => ({ value: c.slug, label: c.name }))}
         current={{
-          type: typeFilter,
-          sort: sortParam,
-          track: trackSlug,
-          car: carSlug,
-          pb: params.pb,
-          from: params.from,
-          to: params.to,
+          type:   typeFilter,
+          sort:   sortParam,
+          track:  trackSlug,
+          car:    carSlug,
+          pb:     params.pb,
+          from:   params.from,
+          to:     params.to,
+          online: onlineFilter,
         }}
         totalActive={activeFilters}
       />

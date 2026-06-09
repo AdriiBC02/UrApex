@@ -17,6 +17,7 @@ interface SessionFiltersProps {
     pb?: string
     from?: string
     to?: string
+    online?: string
   }
   totalActive: number
 }
@@ -89,6 +90,33 @@ export function SessionFilters({ tracks, cars, current, totalActive }: SessionFi
           <Trophy className="w-3 h-3" />
           PB sessions
         </button>
+
+        <div className="h-4 w-px bg-zinc-800 mx-1" />
+
+        {/* Online / AI filter chips */}
+        {(
+          [
+            { value: "",  label: "All races" },
+            { value: "1", label: "🌐 Online" },
+            { value: "0", label: "🤖 AI" },
+          ] as const
+        ).map((o) => (
+          <button
+            key={o.value}
+            onClick={() => update("online", o.value)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+              (current.online ?? "") === o.value
+                ? o.value === "1"
+                  ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
+                  : o.value === "0"
+                    ? "bg-zinc-800 text-zinc-400 border-zinc-600"
+                    : "bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
+                : "bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
 
         {totalActive > 0 && (
           <button

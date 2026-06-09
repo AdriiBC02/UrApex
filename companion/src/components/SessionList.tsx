@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Trash2 } from "lucide-react"
 import { formatLapTime } from "../lib/time"
 
@@ -40,7 +41,48 @@ interface Props {
   onDelete:   (id: string) => void
 }
 
+type TypeFilter   = "ALL" | "RACE" | "QUALIFYING" | "PRACTICE"
+type OnlineFilter = "ALL" | "ONLINE" | "AI"
+
+const TYPE_CHIPS: { value: TypeFilter; label: string }[] = [
+  { value: "ALL",        label: "All"      },
+  { value: "RACE",       label: "Race"     },
+  { value: "QUALIFYING", label: "Quali"    },
+  { value: "PRACTICE",   label: "Practice" },
+]
+
+const ONLINE_CHIPS: { value: OnlineFilter; label: string }[] = [
+  { value: "ALL",    label: "All races" },
+  { value: "ONLINE", label: "🌐 Online" },
+  { value: "AI",     label: "🤖 AI"    },
+]
+
 export function SessionList({ sessions, selectedId, onSelect, onDelete }: Props) {
+  const [typeFilter, setTypeFilter]     = useState<TypeFilter>("ALL")
+  const [onlineFilter, setOnlineFilter] = useState<OnlineFilter>("ALL")
+
+  const hasRaces = sessions.some(s => s.sessionType === "RACE")
+
+  const filtered = sessions.filter(s => {
+    if (typeFilter !== "ALL" && s.sessionType !== typeFilter) return false
+    if (onlineFilter !== "ALL" && s.sessionType === "RACE") {
+      if (onlineFilter === "ONLINE" && !s.isOnline) return false
+      if (onlineFilter === "AI"     &&  s.isOnline) return false
+    }
+    return true
+  })
+
+  const chipStyle = (active: boolean, accent?: "blue" | "zinc"): React.CSSProperties => ({
+    padding: "3px 9px", borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: "pointer",
+    border: "none", letterSpacing: "0.02em",
+    background: active
+      ? accent === "blue" ? "rgba(96,165,250,0.15)" : accent === "zinc" ? "rgba(161,161,170,0.15)" : "rgba(6,182,212,0.12)"
+      : "transparent",
+    color: active
+      ? accent === "blue" ? "#60a5fa" : accent === "zinc" ? "#a1a1aa" : "var(--cyan)"
+      : "var(--text-dim)",
+  })
+
   if (sessions.length === 0) {
     return (
       <div style={{ padding: "32px 16px", textAlign: "center", color: "var(--text-dim)" }}>
@@ -51,8 +93,44 @@ export function SessionList({ sessions, selectedId, onSelect, onDelete }: Props)
   }
 
   return (
-    <div>
-      {sessions.map((s) => {
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      {/* Filter bar */}
+      <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border-soft)", display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 }}>
+        {/* Type chips */}
+        <div style={{ display: "flex", gap: 2 }}>
+          {TYPE_CHIPS.map(c => (
+            <button key={c.value} onClick={() => setTypeFilter(c.value)} style={chipStyle(typeFilter === c.value)}>
+              {c.label}
+            </button>
+          ))}
+          <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-dim)", alignSelf: "center" }}>
+            {filtered.length}/{sessions.length}
+          </span>
+        </div>
+        {/* Online/AI chips — shown when races exist and type filter allows races */}
+        {hasRaces && (typeFilter === "ALL" || typeFilter === "RACE") && (
+          <div style={{ display: "flex", gap: 2 }}>
+            {ONLINE_CHIPS.map(c => (
+              <button
+                key={c.value}
+                onClick={() => setOnlineFilter(c.value)}
+                style={chipStyle(onlineFilter === c.value, c.value === "ONLINE" ? "blue" : c.value === "AI" ? "zinc" : undefined)}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Session list */}
+      <div style={{ flex: 1, overflow: "auto" }}>
+      {filtered.length === 0 && (
+        <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--text-dim)", fontSize: 11 }}>
+          No sessions match the current filters.
+        </div>
+      )}
+      {filtered.map((s) => {
         const type    = TYPE[s.sessionType] ?? { label: s.sessionType, color: "var(--text-muted)" }
         const active  = selectedId === s.id
 
@@ -145,6 +223,7 @@ export function SessionList({ sessions, selectedId, onSelect, onDelete }: Props)
           </div>
         )
       })}
+      </div>
     </div>
   )
 }

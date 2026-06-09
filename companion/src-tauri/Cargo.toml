@@ -1,6 +1,6 @@
 [package]
 name = "urapex"
-version = "0.6.5"
+version = "0.6.6"
 edition = "2021"
 description = "UrApex — auto-syncs LMU session files"
 authors = ["UrApex"]
