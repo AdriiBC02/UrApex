@@ -41,11 +41,10 @@ pub struct LapRow {
 #[serde(rename_all = "camelCase")]
 pub struct SessionDetail {
     #[serde(flatten)]
-    pub summary:        SessionSummary,
+    pub summary:        SessionSummary,   // includes is_online via flatten
     pub car_class:      Option<String>,
     pub grid_position:  Option<i32>,
     pub duration_sec:   Option<i32>,
-    pub is_online:      bool,
     pub avg_lap_ms:     Option<f64>,
     pub ideal_lap_ms:   Option<i32>,
     pub weather:        Option<String>,
@@ -630,7 +629,7 @@ pub fn get_session_detail(conn: &Connection, id: &str) -> Result<Option<SessionD
         )),
     );
 
-    let Ok((summary, car_class, grid_position, duration_sec, is_online,
+    let Ok((summary, car_class, grid_position, duration_sec,
             avg_lap_ms, ideal_lap_ms, weather, temp_ambient, temp_track, humidity, track_length_m)) = summary else {
         return Ok(None);
     };
@@ -653,7 +652,7 @@ pub fn get_session_detail(conn: &Connection, id: &str) -> Result<Option<SessionD
        .collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
 
     Ok(Some(SessionDetail {
-        summary, car_class, grid_position, duration_sec, is_online,
+        summary, car_class, grid_position, duration_sec,
         avg_lap_ms, ideal_lap_ms, weather, temp_ambient, temp_track, humidity, track_length_m,
         laps,
     }))
