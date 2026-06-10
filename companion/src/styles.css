@@ -169,8 +169,20 @@ select:focus { border-color: var(--cyan-dim); }
   animation: fade-in 0.15s ease-out;
 }
 
-/* Session list row */
+/* Session list row (legacy) */
 .session-row:hover { background: rgba(255,255,255,0.025) !important; }
+
+/* Session cards */
+.session-grid-card:hover    { border-color: rgba(255,255,255,0.09) !important; background: var(--surface-3) !important; }
+.session-compact-card:hover { background: rgba(255,255,255,0.025) !important; }
+
+/* Inline badge pill used by session cards */
+.badge-pill {
+  display: inline-flex; align-items: center;
+  font-size: 8px; font-weight: 800; letter-spacing: 0.04em;
+  padding: 1px 5px; border-radius: 4px; border: 1px solid transparent;
+  flex-shrink: 0; line-height: 1.4;
+}
 
 /* Quickstart steps */
 .step { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; }

@@ -101,8 +101,14 @@ fn dispatch_shortcut_action(app: &AppHandle, action: &str) {
 }
 
 /// Position the overlay at the top-right corner of the primary monitor.
-fn position_overlay_top_right(w: &tauri::WebviewWindow) {
-    if let Ok(Some(monitor)) = w.primary_monitor() {
+/// Uses the main window (always visible) for monitor detection — the overlay window
+/// may be hidden at call time, causing primary_monitor() to return None on Windows.
+fn position_overlay_top_right(app: &AppHandle, overlay: &tauri::WebviewWindow) {
+    let monitor = app
+        .get_webview_window("main")
+        .and_then(|m| m.primary_monitor().ok().flatten())
+        .or_else(|| overlay.primary_monitor().ok().flatten());
+    if let Some(monitor) = monitor {
         let pos  = monitor.position();
         let size = monitor.size();
         let scale = monitor.scale_factor();
@@ -110,7 +116,7 @@ fn position_overlay_top_right(w: &tauri::WebviewWindow) {
         let margin    = (20.0  * scale) as i32;
         let x = pos.x + size.width  as i32 - overlay_w - margin;
         let y = pos.y + margin;
-        let _ = w.set_position(tauri::PhysicalPosition::new(x, y));
+        let _ = overlay.set_position(tauri::PhysicalPosition::new(x, y));
     }
 }
 
@@ -341,7 +347,11 @@ fn delete_recording(recording_id: String, db_state: State<'_, DbState>) -> Resul
 #[tauri::command]
 fn locate_overlay(app: AppHandle) -> Result<(), String> {
     if let Some(w) = app.get_webview_window("overlay") {
-        if let Ok(Some(monitor)) = w.primary_monitor() {
+        let monitor = app
+            .get_webview_window("main")
+            .and_then(|m| m.primary_monitor().ok().flatten())
+            .or_else(|| w.primary_monitor().ok().flatten());
+        if let Some(monitor) = monitor {
             let pos   = monitor.position();
             let size  = monitor.size();
             let scale = monitor.scale_factor();
@@ -352,7 +362,7 @@ fn locate_overlay(app: AppHandle) -> Result<(), String> {
             let _ = w.set_position(tauri::PhysicalPosition::new(x, y));
             diag(&format!("locate_overlay: moved to ({x},{y}) on monitor {}×{}", size.width, size.height));
         } else {
-            diag("locate_overlay: primary_monitor() returned None");
+            diag("locate_overlay: primary_monitor() returned None (all sources exhausted)");
         }
         if !w.is_visible().unwrap_or(false) { let _ = w.show(); }
     } else {
@@ -380,7 +390,7 @@ fn show_overlay(app: AppHandle) -> Result<(), String> {
     if let Some(w) = app.get_webview_window("overlay") {
         let was_visible = w.is_visible().unwrap_or(false);
         if !was_visible {
-            position_overlay_top_right(&w);
+            position_overlay_top_right(&app, &w);
         }
         w.show().map_err(|e| e.to_string())?;
         diag(&format!("show_overlay: shown (was_visible={was_visible})"));

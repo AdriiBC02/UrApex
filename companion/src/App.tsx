@@ -589,15 +589,13 @@ export default function App() {
 
           {tab === "sessions" && (
             <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
-              <div style={{ width: selectedId ? 210 : "100%", borderRight: selectedId ? "1px solid var(--border)" : "none", overflow: "auto", flexShrink: 0 }}>
-                <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center" }}>
-                  <p style={{ fontWeight: 700, fontSize: 13 }}>Sessions</p>
-                  <span style={{ fontSize: 11, color: "var(--text-dim)", marginLeft: 8 }}>{sessions.length}</span>
-                  <button onClick={loadSessions} style={{ marginLeft: "auto", color: "var(--text-dim)", padding: "2px 6px" }}>
-                    <RotateCcw size={12} strokeWidth={2} />
-                  </button>
-                </div>
-                <SessionList sessions={sessions} selectedId={selectedId} onSelect={openSession} onDelete={handleDeleteSession} />
+              <div style={{ width: selectedId ? 250 : "100%", borderRight: selectedId ? "1px solid var(--border)" : "none", display: "flex", flexDirection: "column", overflow: "hidden", flexShrink: 0 }}>
+                {selectedId && (
+                  <div style={{ padding: "10px 14px 9px", borderBottom: "1px solid var(--border-soft)", display: "flex", alignItems: "center", flexShrink: 0 }}>
+                    <p style={{ fontWeight: 700, fontSize: 12, color: "var(--text-muted)" }}>Sessions</p>
+                  </div>
+                )}
+                <SessionList sessions={sessions} selectedId={selectedId} onSelect={openSession} onDelete={handleDeleteSession} onRefresh={loadSessions} compact={!!selectedId} />
               </div>
               {selectedId && (
                 <div style={{ flex: 1, overflow: "hidden" }}>
