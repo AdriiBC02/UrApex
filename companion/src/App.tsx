@@ -13,6 +13,7 @@ import {
   Map, Car, MonitorPlay, LogOut, Keyboard,
   type LucideIcon,
 } from "lucide-react"
+import logoUrl from "./assets/logo.png"
 import {
   OverlaySettingsPanel, DEFAULT_OVERLAY_CONFIG, type OverlayConfig,
   KeybindingsPanel, DEFAULT_KEYBINDINGS, type KeybindingsConfig,
@@ -851,8 +852,10 @@ function TitleBar({ watching, pendingUpdate, onUpdateClick }: { watching: boolea
         borderBottom: "1px solid var(--border-soft)",
       }}
     >
-      <span style={{ fontSize: 15, lineHeight: 1, pointerEvents: "none" }}>⚡</span>
-      <span style={{ fontWeight: 800, fontSize: 12, letterSpacing: "0.03em", color: "var(--text)", marginLeft: 7, pointerEvents: "none" }}>UrApex</span>
+      <img src={logoUrl} alt="UrApex" style={{ width: 20, height: 20, borderRadius: 4, flexShrink: 0, pointerEvents: "none" }} />
+      <span style={{ fontWeight: 800, fontSize: 12, letterSpacing: "0.02em", color: "var(--text)", marginLeft: 6, pointerEvents: "none" }}>
+        <span style={{ color: "var(--cyan)" }}>Ur</span>Apex
+      </span>
 
       {watching && (
         <div style={{
