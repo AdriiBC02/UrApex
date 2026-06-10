@@ -183,7 +183,7 @@ export function SessionList({ sessions, selectedId, onSelect, onDelete, onRefres
 
       {/* ── Session grid / list ── */}
       <div style={{
-        flex: 1, overflow: "auto",
+        flex: 1, minHeight: 0, overflowY: "auto",
         padding: compact ? "8px 8px" : "14px 14px",
         display: compact ? "flex" : "grid",
         flexDirection: compact ? "column" : undefined,

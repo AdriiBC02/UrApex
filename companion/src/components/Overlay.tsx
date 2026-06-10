@@ -461,9 +461,8 @@ export function OverlayApp() {
     >
       <div style={{
         background: `rgba(9,9,11,${cfg.opacity})`,
-        border: `1px solid ${live ? "rgba(6,182,212,0.3)" : "rgba(255,255,255,0.07)"}`,
+        border: `1px solid ${live ? "rgba(6,182,212,0.3)" : "rgba(255,255,255,0.1)"}`,
         borderRadius: 12,
-        backdropFilter: "blur(12px)",
         width: "100%",
         overflow: "hidden",
         fontFamily: "'SF Mono','JetBrains Mono','Fira Mono',monospace",

@@ -1,7 +1,7 @@
 {
   "productName": "UrApex",
   "identifier": "com.urapex.companion",
-  "version": "0.6.9",
+  "version": "0.6.10",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
