@@ -285,6 +285,10 @@ function GridCard({ session: s, active, onSelect, onDelete }: {
 }) {
   const cfg = TYPE_CFG[s.sessionType] ?? TYPE_CFG.PRACTICE
 
+  const gradientBg = active
+    ? "linear-gradient(105deg, rgba(6,182,212,0.07) 0%, #18181b 55%)"
+    : `linear-gradient(105deg, ${cfg.bg} 0%, #18181b 55%)`
+
   return (
     <div
       className="session-grid-card"
@@ -292,21 +296,14 @@ function GridCard({ session: s, active, onSelect, onDelete }: {
       style={{
         borderRadius: 10,
         border: `1px solid ${active ? "rgba(6,182,212,0.45)" : "var(--border-soft)"}`,
-        background: active ? "rgba(6,182,212,0.04)" : "var(--surface-2)",
+        background: gradientBg,
         borderLeft: `3px solid ${active ? "var(--cyan)" : cfg.color}`,
         cursor: "pointer",
         transition: "all 0.15s",
         overflow: "hidden",
-        position: "relative",
       }}
     >
-      {/* Gradient wash */}
-      <div style={{
-        position: "absolute", inset: 0, pointerEvents: "none",
-        background: `linear-gradient(110deg, ${active ? "rgba(6,182,212,0.05)" : cfg.bg} 0%, transparent 60%)`,
-      }} />
-
-      <div style={{ padding: "12px 13px 11px", position: "relative" }}>
+      <div style={{ padding: "12px 13px 11px" }}>
 
         {/* Row 1: type + badges + date + delete */}
         <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 9 }}>

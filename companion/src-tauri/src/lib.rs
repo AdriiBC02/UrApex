@@ -101,22 +101,28 @@ fn dispatch_shortcut_action(app: &AppHandle, action: &str) {
 }
 
 /// Position the overlay at the top-right corner of the primary monitor.
-/// Uses the main window (always visible) for monitor detection — the overlay window
-/// may be hidden at call time, causing primary_monitor() to return None on Windows.
+/// Tries three sources in order so it works even when the overlay window is hidden.
 fn position_overlay_top_right(app: &AppHandle, overlay: &tauri::WebviewWindow) {
     let monitor = app
         .get_webview_window("main")
         .and_then(|m| m.primary_monitor().ok().flatten())
-        .or_else(|| overlay.primary_monitor().ok().flatten());
+        .or_else(|| overlay.primary_monitor().ok().flatten())
+        .or_else(|| overlay.available_monitors().ok().and_then(|v| v.into_iter().next()));
+
     if let Some(monitor) = monitor {
-        let pos  = monitor.position();
-        let size = monitor.size();
+        let pos   = monitor.position();
+        let size  = monitor.size();
         let scale = monitor.scale_factor();
         let overlay_w = (360.0 * scale) as i32;
         let margin    = (20.0  * scale) as i32;
-        let x = pos.x + size.width  as i32 - overlay_w - margin;
+        let x = pos.x + size.width as i32 - overlay_w - margin;
         let y = pos.y + margin;
         let _ = overlay.set_position(tauri::PhysicalPosition::new(x, y));
+        diag(&format!("position_overlay: ({x},{y}) scale={scale:.1} monitor={}×{}", size.width, size.height));
+    } else {
+        // Hard fallback — place it somewhere visible so the user can drag it
+        let _ = overlay.set_position(tauri::PhysicalPosition::new(100i32, 100i32));
+        diag("position_overlay: monitor detection failed, placed at (100,100)");
     }
 }
 
@@ -350,7 +356,9 @@ fn locate_overlay(app: AppHandle) -> Result<(), String> {
         let monitor = app
             .get_webview_window("main")
             .and_then(|m| m.primary_monitor().ok().flatten())
-            .or_else(|| w.primary_monitor().ok().flatten());
+            .or_else(|| w.primary_monitor().ok().flatten())
+            .or_else(|| w.available_monitors().ok().and_then(|v| v.into_iter().next()));
+
         if let Some(monitor) = monitor {
             let pos   = monitor.position();
             let size  = monitor.size();
@@ -362,7 +370,8 @@ fn locate_overlay(app: AppHandle) -> Result<(), String> {
             let _ = w.set_position(tauri::PhysicalPosition::new(x, y));
             diag(&format!("locate_overlay: moved to ({x},{y}) on monitor {}×{}", size.width, size.height));
         } else {
-            diag("locate_overlay: primary_monitor() returned None (all sources exhausted)");
+            let _ = w.set_position(tauri::PhysicalPosition::new(100i32, 100i32));
+            diag("locate_overlay: monitor detection failed, placed at (100,100)");
         }
         if !w.is_visible().unwrap_or(false) { let _ = w.show(); }
     } else {
