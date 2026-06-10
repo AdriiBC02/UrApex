@@ -80,7 +80,7 @@ fn dispatch_shortcut_action(app: &AppHandle, action: &str) {
                     let _ = app.emit("overlay-visibility-changed", false);
                 }
                 Ok(false) => {
-                    position_overlay_top_right(&w);
+                    position_overlay_top_right(&app, &w);
                     let _ = w.show();
                     let _ = app.emit("overlay-visibility-changed", true);
                 }
