@@ -25,7 +25,7 @@
 
 ### Fixed
 - `TrendChart` "Functions cannot be passed directly to Client Components" — removed `formatter` arrow function prop from 4 Server Components; changed TrendChart default to `toFixed(0)`
-- Certificate hero background width fill — switched from `<img>` to CSS `backgroundImage` on container; reliable in satori
+- Certificate hero background repeating — pre-resized all 14 track backgrounds from 11520×2160 (ultra-wide panoramic) to 1600×900 via sharp; satori could not apply `objectFit: "cover"` to the extreme 5.33:1 source, causing the image to tile vertically in the hero
 - Hydration error on certificate page — `pageUrl`/`hasShare` initialized server-safe, updated in `useEffect`
 - satori "u is not iterable" — converted 14 WebP track backgrounds to JPEG (satori 0.26 does not support WebP)
 - OG metadata now generated for all sessions regardless of `isPublic` flag
