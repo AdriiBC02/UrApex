@@ -9,6 +9,7 @@ import { SessionPrivacyToggle } from "@/features/sessions/SessionPrivacyToggle"
 import { SessionDetailTabs } from "@/features/sessions/SessionDetailTabs"
 import { TelemetryCharts, type SpeedPoint, type LapPoint } from "@/features/telemetry/TelemetryCharts"
 import { ReplaySection } from "@/features/replays/ReplaySection"
+import { ShareCertificateButton } from "@/features/sessions/ShareCertificateButton"
 import {
   Flag, Clock, Map, Car, Trophy, AlertTriangle,
   ArrowLeft, TrendingUp, Gauge, Timer, Activity, StickyNote,
@@ -463,6 +464,7 @@ export default async function SessionDetailPage({
           Sessions
         </Link>
         <div className="flex items-center gap-2">
+          <ShareCertificateButton sessionId={s.id} />
           <SessionPrivacyToggle sessionId={s.id} initialIsPublic={s.isPublic} />
           <Link
             href={`/sessions/compare?a=${s.id}`}
