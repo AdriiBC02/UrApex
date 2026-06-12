@@ -155,21 +155,18 @@ export function buildCertificateJSX(d: CertificateData, format: CertFormat = "po
   )
 
   // ── Hero ──────────────────────────────────────────────────────────────────────
-  // inset (top/left/bottom/right: 0) is the satori-safe stretch-to-fill pattern.
-  // Explicit width/height on position:absolute doesn't always fill correctly in satori.
-  // backgroundSize:"cover" also not supported (tiles instead).
+  // Width/height must be HTML attributes on <img> (not CSS style) for satori to
+  // use them as the layout box. objectFit:"cover" then fills that box correctly.
   const hero = h("div", {
-    style: {
-      display: "flex", position: "relative", width: W, height: s.hero, flexShrink: 0,
-      backgroundColor: "#0d0d10",
-    },
+    style: { display: "flex", position: "relative", height: s.hero, flexShrink: 0 },
   },
     d.trackBgB64
-      ? h("img", { src: d.trackBgB64, style: { position: "absolute", top: 0, left: 0, bottom: 0, right: 0, objectFit: "cover" } })
-      : null,
-    h("div", { style: abs({ bottom: 0, left: 0, width: W, height: 220,
+      ? h("img", { src: d.trackBgB64, width: W, height: s.hero,
+          style: { objectFit: "cover", position: "absolute", top: 0, left: 0 } })
+      : h("div", { style: abs({ inset: 0, backgroundColor: "#0d0d10" }) }),
+    h("div", { style: abs({ bottom: 0, left: 0, right: 0, height: 220,
       background: `linear-gradient(to bottom, transparent, ${DARK})` }) }),
-    h("div", { style: abs({ top: 0, left: 0, width: W, height: 80,
+    h("div", { style: abs({ top: 0, left: 0, right: 0, height: 80,
       background: `linear-gradient(to bottom, #0d0d0f, transparent)` }) }),
     h("div", { style: abs({ top: 0, left: 0, width: 240, height: s.hero,
       background: `linear-gradient(to right, rgba(10,10,11,0.55), transparent)` }) }),
