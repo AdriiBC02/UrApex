@@ -103,9 +103,7 @@ export async function GET(
     ],
   })
 
-  const resvg = new Resvg(svg, {
-    fitTo: { mode: "width", value: 800 },
-  })
+  const resvg = new Resvg(svg, { fitTo: { mode: "width", value: 800 } })
   const png = resvg.render().asPng()
 
   const slug = `${trackSlug}-${session.sessionType.toLowerCase()}-${session.sessionDate.toISOString().slice(0, 10)}`
