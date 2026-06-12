@@ -245,7 +245,6 @@ export default async function CarDetailPage({ params }: { params: Promise<{ slug
               data={consistencyTrend}
               color="#4ade80"
               domain={[0, 100]}
-              formatter={(v) => v.toFixed(0)}
               label="Consistency"
               height={140}
             />
@@ -257,7 +256,6 @@ export default async function CarDetailPage({ params }: { params: Promise<{ slug
               data={paceTrend}
               color="#06b6d4"
               domain={[0, 100]}
-              formatter={(v) => v.toFixed(0)}
               label="Pace"
               height={140}
             />

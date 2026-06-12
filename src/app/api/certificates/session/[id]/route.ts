@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import satori from "satori"
 import { Resvg } from "@resvg/resvg-js"
+import fs from "fs"
+import path from "path"
+import { createRequire } from "module"
 import { formatLapTime } from "@/lib/time"
 import {
   getTrackBackground,
@@ -12,7 +14,24 @@ import {
   getLmuLogo,
   loadFont,
 } from "@/lib/lmu-assets"
-import { buildCertificateJSX } from "@/lib/certificate-template"
+import { buildCertificateJSX, CERT_DIMS, type CertFormat } from "@/lib/certificate-template"
+
+const _require = createRequire(import.meta.url)
+
+// Force CJS build of satori/standalone — avoids ESM/WASM TLA issues in Next.js
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let satoriReady: Promise<any> | null = null
+function getSatori() {
+  if (!satoriReady) {
+    satoriReady = (async () => {
+      const m = _require("satori/standalone")
+      const satori = m.default ?? m
+      await m.init(fs.readFileSync(path.join(process.cwd(), "node_modules/satori/yoga.wasm")))
+      return satori
+    })()
+  }
+  return satoriReady
+}
 
 function formatDuration(sec: number | null): string {
   if (!sec) return "—"
@@ -31,43 +50,45 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
+    return await handler(req, params)
+  } catch (e) {
+    console.error("[cert] unhandled:", e)
+    return NextResponse.json({ error: "unhandled", detail: String(e) }, { status: 500 })
+  }
+}
+
+async function handler(req: NextRequest, params: Promise<{ id: string }>) {
   const { id } = await params
+  const sp = req.nextUrl.searchParams
+
+  const format  = (sp.get("format") ?? "portrait") as CertFormat
+  const isDownload = sp.get("dl") === "1"
 
   const session = await db.session.findUnique({
     where: { id },
     include: {
-      track:     { select: { name: true, slug: true } },
-      car:       { select: { name: true } },
-      carClass:  { select: { name: true } },
-      _count:    { select: { participants: true, pitStops: true, incidents: true } },
+      track:    { select: { name: true, slug: true } },
+      car:      { select: { name: true } },
+      carClass: { select: { name: true } },
+      _count:   { select: { participants: true, pitStops: true, incidents: true } },
     },
   })
 
   if (!session) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  // Certificates are accessible to anyone with the link — session IDs are CUIDs (not guessable).
+  // The privacy flag applies to the full session detail page, not to the certificate card.
 
-  // Auth: private sessions require being the owner
-  if (!session.isPublic) {
-    const authSession = await auth()
-    if (!session.userId || authSession?.user?.id !== session.userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-  }
-
-  // Load fonts
   const antonioFont = loadFont("Antonio-SemiBold.ttf")
   const lexendFont  = loadFont("Lexend-Black.ttf")
   const heeboFont   = loadFont("Heebo-Regular.ttf")
   const heeboBold   = loadFont("Heebo-Bold.ttf")
 
-  if (!antonioFont || !lexendFont || !heeboFont || !heeboBold) {
+  if (!antonioFont || !lexendFont || !heeboFont || !heeboBold)
     return NextResponse.json({ error: "Font assets missing" }, { status: 500 })
-  }
-
-  const trackSlug = session.track.slug
-  const carName   = session.car.name
 
   const finishStatus = session.dq ? "DQ" : session.dnf ? "DNF" : "Finished Normally"
-
+  const trackSlug    = session.track.slug
   const data = {
     sessionType:       session.sessionType,
     sessionDate:       formatDate(session.sessionDate),
@@ -81,9 +102,9 @@ export async function GET(
     totalParticipants: session._count.participants,
     bestLap:           formatLapTime(session.bestLapMs),
     totalLaps:         session.totalLaps,
-    carName,
+    carName:           session.car.name,
     carClass:          session.carClass?.name ?? null,
-    manufacturerB64:   getManufacturerLogo(carName),
+    manufacturerB64:   getManufacturerLogo(session.car.name),
     consistency:       session.consistencyScore,
     pitStops:          session._count.pitStops,
     incidents:         session._count.incidents,
@@ -92,26 +113,44 @@ export async function GET(
     lmuLogoB64:        getLmuLogo(),
   }
 
-  const svg = await satori(buildCertificateJSX(data), {
-    width:  800,
-    height: 1420,
-    fonts: [
-      { name: "Antonio", data: antonioFont, weight: 600, style: "normal" },
-      { name: "Lexend",  data: lexendFont,  weight: 900, style: "normal" },
-      { name: "Heebo",   data: heeboFont,   weight: 400, style: "normal" },
-      { name: "Heebo",   data: heeboBold,   weight: 700, style: "normal" },
-    ],
-  })
+  const { w, h } = CERT_DIMS[format]
+  const satori   = await getSatori()
 
-  const resvg = new Resvg(svg, { fitTo: { mode: "width", value: 800 } })
-  const png = resvg.render().asPng()
+  let svg: string
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    svg = await satori(buildCertificateJSX(data, format) as any, {
+      width: w, height: h,
+      fonts: [
+        { name: "Antonio", data: antonioFont, weight: 600, style: "normal" },
+        { name: "Lexend",  data: lexendFont,  weight: 900, style: "normal" },
+        { name: "Heebo",   data: heeboFont,   weight: 400, style: "normal" },
+        { name: "Heebo",   data: heeboBold,   weight: 700, style: "normal" },
+      ],
+    })
+  } catch (e) {
+    console.error("[cert] satori:", e)
+    return NextResponse.json({ error: "satori", detail: String(e) }, { status: 500 })
+  }
 
-  const slug = `${trackSlug}-${session.sessionType.toLowerCase()}-${session.sessionDate.toISOString().slice(0, 10)}`
+  let png: Uint8Array
+  try {
+    // Render at 2× for crisp retina output
+    const resvg = new Resvg(svg, { fitTo: { mode: "width", value: w * 2 } })
+    png = resvg.render().asPng()
+  } catch (e) {
+    console.error("[cert] resvg:", e)
+    return NextResponse.json({ error: "resvg", detail: String(e) }, { status: 500 })
+  }
+
+  const slug = `${trackSlug}-${session.sessionType.toLowerCase()}-${session.sessionDate.toISOString().slice(0, 10)}-${format}`
 
   return new NextResponse(png.buffer as ArrayBuffer, {
     headers: {
       "Content-Type":        "image/png",
-      "Content-Disposition": `attachment; filename="urapex-${slug}.png"`,
+      "Content-Disposition": isDownload
+        ? `attachment; filename="urapex-${slug}.png"`
+        : "inline",
       "Cache-Control":       "public, max-age=3600",
     },
   })

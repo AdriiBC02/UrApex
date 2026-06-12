@@ -21,7 +21,7 @@ export function TrendChart({
   color = "#06b6d4",
   height = 140,
   domain,
-  formatter = (v) => v.toFixed(1),
+  formatter = (v) => v.toFixed(0),
   label = "Value",
 }: TrendChartProps) {
   if (data.length < 2) return null

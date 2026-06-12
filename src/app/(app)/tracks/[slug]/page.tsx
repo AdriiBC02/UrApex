@@ -266,7 +266,6 @@ export default async function TrackDetailPage({ params }: { params: Promise<{ sl
             data={consistencyTrend}
             color="#4ade80"
             domain={[0, 100]}
-            formatter={(v) => v.toFixed(0)}
             label="Consistency"
             height={140}
           />

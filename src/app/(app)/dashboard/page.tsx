@@ -691,7 +691,6 @@ export default async function DashboardPage() {
                     data={consistencyTrend}
                     color="#4ade80"
                     domain={[0, 100]}
-                    formatter={(v) => v.toFixed(0)}
                     label="Consistency"
                     height={120}
                   />

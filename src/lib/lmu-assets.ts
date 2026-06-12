@@ -68,7 +68,6 @@ function readAsBase64(filePath: string): string | null {
     const buf = fs.readFileSync(filePath)
     const ext = path.extname(filePath).slice(1).toLowerCase()
     const mime =
-      ext === "webp" ? "image/webp" :
       ext === "png"  ? "image/png"  :
       ext === "svg"  ? "image/svg+xml" :
       ext === "jpg" || ext === "jpeg" ? "image/jpeg" :
@@ -82,7 +81,7 @@ function readAsBase64(filePath: string): string | null {
 export function getTrackBackground(trackSlug: string): string | null {
   const key = TRACK_SLUG_MAP[trackSlug]
   if (!key) return null
-  return readAsBase64(path.join(ASSETS, "tracks", "backgrounds", `${key}.webp`))
+  return readAsBase64(path.join(ASSETS, "tracks", "backgrounds", `${key}.jpg`))
 }
 
 export function getTrackLogo(trackSlug: string): string | null {

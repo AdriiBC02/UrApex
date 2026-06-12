@@ -4,7 +4,7 @@ import { db } from "@/lib/db"
 import { formatLapTime } from "@/lib/time"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { Badge } from "@/components/ui/badge"
-import { Target, CheckCircle2, Clock, Plus, TrendingUp, XCircle } from "lucide-react"
+import { Target, CheckCircle2, Clock, Plus, TrendingUp, XCircle, Map, Car } from "lucide-react"
 import type { GoalType, GoalStatus } from "@prisma/client"
 import Link from "next/link"
 import { GoalActions } from "@/features/goals/GoalActions"
@@ -33,18 +33,32 @@ export default async function GoalsPage() {
     db.goal.findMany({
       where: { userId, status: "ACTIVE" },
       orderBy: { createdAt: "desc" },
+      select: { id: true, name: true, type: true, status: true, targetValue: true, currentValue: true, unit: true, deadline: true, completedAt: true, trackId: true, carId: true },
     }),
     db.goal.findMany({
       where: { userId, status: "COMPLETED" },
       orderBy: { completedAt: "desc" },
       take: 5,
+      select: { id: true, name: true, type: true, status: true, targetValue: true, currentValue: true, unit: true, deadline: true, completedAt: true, trackId: true, carId: true },
     }),
     db.goal.findMany({
       where: { userId, status: "ABANDONED" },
       orderBy: { updatedAt: "desc" },
       take: 5,
+      select: { id: true, name: true, type: true, status: true, targetValue: true, currentValue: true, unit: true, deadline: true, completedAt: true, trackId: true, carId: true },
     }),
   ])
+
+  // Resolve track/car names for scoped goals
+  const allGoals = [...active, ...completed, ...abandoned]
+  const trackIds = [...new Set(allGoals.map(g => g.trackId).filter((id): id is string => !!id))]
+  const carIds   = [...new Set(allGoals.map(g => g.carId).filter((id): id is string => !!id))]
+  const [goalTracks, goalCars] = await Promise.all([
+    trackIds.length ? db.track.findMany({ where: { id: { in: trackIds } }, select: { id: true, name: true } }) : [],
+    carIds.length   ? db.car.findMany({ where: { id: { in: carIds } }, select: { id: true, name: true } }) : [],
+  ])
+  const trackNameById = Object.fromEntries(goalTracks.map(t => [t.id, t.name]))
+  const carNameById   = Object.fromEntries(goalCars.map(c => [c.id, c.name]))
 
   const hasGoals = active.length > 0 || completed.length > 0 || abandoned.length > 0
 
@@ -91,7 +105,7 @@ export default async function GoalsPage() {
               <p className="text-sm text-zinc-700 italic">No active goals. <Link href="/goals/new" className="text-cyan-500 hover:text-cyan-400 not-italic">Create one →</Link></p>
             ) : (
               <div className="grid sm:grid-cols-2 gap-3">
-                {active.map((goal) => <GoalCard key={goal.id} goal={goal} />)}
+                {active.map((goal) => <GoalCard key={goal.id} goal={goal} trackName={goal.trackId ? trackNameById[goal.trackId] : undefined} carName={goal.carId ? carNameById[goal.carId] : undefined} />)}
               </div>
             )}
           </section>
@@ -104,7 +118,7 @@ export default async function GoalsPage() {
                 <span className="text-xs text-zinc-700 font-mono">{completed.length}</span>
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
-                {completed.map((goal) => <GoalCard key={goal.id} goal={goal} />)}
+                {completed.map((goal) => <GoalCard key={goal.id} goal={goal} trackName={goal.trackId ? trackNameById[goal.trackId] : undefined} carName={goal.carId ? carNameById[goal.carId] : undefined} />)}
               </div>
             </section>
           )}
@@ -117,7 +131,7 @@ export default async function GoalsPage() {
                 <span className="text-xs text-zinc-700 font-mono">{abandoned.length}</span>
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
-                {abandoned.map((goal) => <GoalCard key={goal.id} goal={goal} />)}
+                {abandoned.map((goal) => <GoalCard key={goal.id} goal={goal} trackName={goal.trackId ? trackNameById[goal.trackId] : undefined} carName={goal.carId ? carNameById[goal.carId] : undefined} />)}
               </div>
             </section>
           )}
@@ -129,6 +143,8 @@ export default async function GoalsPage() {
 
 function GoalCard({
   goal,
+  trackName,
+  carName,
 }: {
   goal: {
     id: string
@@ -141,6 +157,8 @@ function GoalCard({
     deadline: Date | null
     completedAt: Date | null
   }
+  trackName?: string
+  carName?: string
 }) {
   const { status } = goal
   const isCompleted = status === "COMPLETED"
@@ -207,6 +225,20 @@ function GoalCard({
             <div className="min-w-0">
               <p className="text-sm font-medium text-zinc-200 leading-snug">{goal.name}</p>
               <p className="text-xs text-zinc-500 mt-0.5">{GOAL_TYPE_LABELS[goal.type]}</p>
+              {(trackName || carName) && (
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {trackName && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-zinc-500 bg-zinc-800/60 border border-zinc-700/40 rounded px-1.5 py-0.5">
+                      <Map className="w-2.5 h-2.5" />{trackName}
+                    </span>
+                  )}
+                  {carName && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-zinc-500 bg-zinc-800/60 border border-zinc-700/40 rounded px-1.5 py-0.5">
+                      <Car className="w-2.5 h-2.5" />{carName}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
