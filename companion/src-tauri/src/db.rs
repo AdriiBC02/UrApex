@@ -22,6 +22,7 @@ pub struct SessionSummary {
     pub final_position:    Option<i32>,
     pub server_name:       Option<String>,
     pub is_online:         bool,
+    pub web_session_id:    Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -478,10 +479,25 @@ fn migrate(conn: &Connection) -> Result<(), String> {
         set_schema_version(conn, 7);
     }
 
+    if v < 8 {
+        conn.execute_batch("
+            ALTER TABLE sessions ADD COLUMN web_session_id TEXT;
+        ").map_err(|e| e.to_string())?;
+        set_schema_version(conn, 8);
+    }
+
     Ok(())
 }
 
 // ── Sessions ──────────────────────────────────────────────────────────────────
+
+pub fn set_web_session_id(conn: &Connection, file_hash: &str, web_session_id: &str) -> Result<(), String> {
+    conn.execute(
+        "UPDATE sessions SET web_session_id = ?1 WHERE file_hash = ?2",
+        params![web_session_id, file_hash],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
 
 pub fn hash_exists(conn: &Connection, hash: &str) -> bool {
     conn.query_row(
@@ -564,7 +580,7 @@ pub fn get_sessions(conn: &Connection) -> Result<Vec<SessionSummary>, String> {
         "SELECT id, track_name, car_name, session_type, session_date,
                 total_laps, valid_laps, best_lap_ms, consistency_score,
                 is_new_pb, dnf, synced_to_server,
-                final_position, server_name, is_online
+                final_position, server_name, is_online, web_session_id
          FROM sessions ORDER BY session_date DESC LIMIT 200"
     ).map_err(|e| e.to_string())?;
 
@@ -584,6 +600,7 @@ pub fn get_sessions(conn: &Connection) -> Result<Vec<SessionSummary>, String> {
         final_position:    row.get(12)?,
         server_name:       row.get(13)?,
         is_online:         row.get::<_, i32>(14)? != 0,
+        web_session_id:    row.get(15)?,
     })).map_err(|e| e.to_string())?;
 
     rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
@@ -595,7 +612,7 @@ pub fn get_session_detail(conn: &Connection, id: &str) -> Result<Option<SessionD
                 best_lap_ms, consistency_score, is_new_pb, dnf, synced_to_server,
                 final_position, server_name,
                 car_class, grid_position, duration_sec, is_online, avg_lap_ms, ideal_lap_ms,
-                weather, temp_ambient, temp_track, humidity, track_length_m
+                weather, temp_ambient, temp_track, humidity, track_length_m, web_session_id
          FROM sessions WHERE id=?1",
         params![id],
         |row| Ok((
@@ -615,6 +632,7 @@ pub fn get_session_detail(conn: &Connection, id: &str) -> Result<Option<SessionD
                 final_position:    row.get(12)?,
                 server_name:       row.get(13)?,
                 is_online:         row.get::<_, i32>(17)? != 0,
+                web_session_id:    row.get(25)?,
             },
             row.get::<_, Option<String>>(14)?,   // car_class
             row.get::<_, Option<i32>>(15)?,      // grid_position

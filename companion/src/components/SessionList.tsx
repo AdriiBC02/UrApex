@@ -18,6 +18,7 @@ export interface SessionSummary {
   finalPosition:    number | null
   serverName:       string | null
   isOnline:         boolean
+  webSessionId:     string | null
 }
 
 // ── Config ────────────────────────────────────────────────────────────────────

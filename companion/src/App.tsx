@@ -604,7 +604,7 @@ export default function App() {
                   ) : compareDetail && sessionDetail ? (
                     <CompareView sessionA={sessionDetail} sessionB={compareDetail} onBack={() => setCompareDetail(null)} />
                   ) : sessionDetail ? (
-                    <SessionDetailView session={sessionDetail} allSessions={sessions} onBack={() => { setSelectedId(null); setSessionDetail(null); setCompareDetail(null) }} onCompare={handleCompare} onCompareVsPb={pbSessionId ? handleCompareVsPb : undefined} />
+                    <SessionDetailView session={sessionDetail} allSessions={sessions} onBack={() => { setSelectedId(null); setSessionDetail(null); setCompareDetail(null) }} onCompare={handleCompare} onCompareVsPb={pbSessionId ? handleCompareVsPb : undefined} apiUrl={settings.apiUrl} />
                   ) : (
                     <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 12 }}>
                       Failed to load session

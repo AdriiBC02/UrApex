@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react"
 import { invoke } from "@tauri-apps/api/core"
+import { open as openUrl } from "@tauri-apps/plugin-shell"
 import { formatLapTime } from "../lib/time"
 import type { SessionSummary } from "./SessionList"
 import {
-  ArrowLeft, GitCompare, Timer, TrendingUp, BarChart3,
+  ArrowLeft, GitCompare, Share2, Timer, TrendingUp, BarChart3,
   List, Users, FileText, Thermometer, Wind, Droplets,
   MapPin, Plus, Trash2, ExternalLink, Server, Zap, type LucideIcon,
 } from "lucide-react"
@@ -107,9 +108,10 @@ interface Props {
   onBack:           () => void
   onCompare:        (secondId: string) => void
   onCompareVsPb?:   () => void
+  apiUrl:           string
 }
 
-export function SessionDetailView({ session: s, allSessions, onBack, onCompare, onCompareVsPb }: Props) {
+export function SessionDetailView({ session: s, allSessions, onBack, onCompare, onCompareVsPb, apiUrl }: Props) {
   const [participants, setParticipants]           = useState<Participant[]>([])
   const [expandedDriver, setExpandedDriver]       = useState<string | null>(null)
   const [driverLaps, setDriverLaps]               = useState<Record<string, ParticipantLap[]>>({})
@@ -186,6 +188,16 @@ export function SessionDetailView({ session: s, allSessions, onBack, onCompare, 
           <ArrowLeft size={12} strokeWidth={2.5} /> Back
         </button>
         <div style={{ flex: 1 }} />
+        {s.webSessionId && apiUrl && (
+          <button
+            onClick={() => openUrl(`${apiUrl.replace(/\/$/, "")}/api/certificates/session/${s.webSessionId}`)}
+            className="btn btn-ghost"
+            style={{ padding: "4px 10px", gap: 5, fontSize: 11 }}
+            title="Download session certificate"
+          >
+            <Share2 size={12} strokeWidth={2} /> Share
+          </button>
+        )}
         <button
           onClick={() => setShowComparePicker((v) => !v)}
           className={`btn btn-ghost ${showComparePicker ? "active" : ""}`}

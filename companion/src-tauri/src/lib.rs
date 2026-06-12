@@ -806,10 +806,15 @@ pub async fn process_file(
                     let au2 = api_url.to_string();
                     let ak2 = api_key.to_string();
                     let conn2 = Arc::clone(conn);
+                    let hash2 = hash.clone();
                     tauri::async_runtime::spawn(async move {
                         if let Some(web_session_id) =
                             uploader::poll_import_session_id(&iid, &au2, &ak2).await
                         {
+                            // Persist the web session ID for the Share certificate button
+                            if let Ok(c) = conn2.lock() {
+                                let _ = db::set_web_session_id(&c, &hash2, &web_session_id);
+                            }
                             // Look for a recently completed unlinked recording (within 15 min)
                             let recording_id = conn2.lock().ok().and_then(|c| {
                                 telemetry_recorder::get_latest_completed_unlinked(&c, 900).ok().flatten()
