@@ -155,15 +155,17 @@ export function buildCertificateJSX(d: CertificateData, format: CertFormat = "po
   )
 
   // ── Hero ──────────────────────────────────────────────────────────────────────
-  // Use CSS backgroundImage (not <img>) — avoids objectFit/absolute-size bugs in satori
+  // Absolutely-positioned <img> with explicit pixel dims + objectFit cover.
+  // backgroundSize:"cover" is NOT supported in satori 0.26 — image would tile.
   const hero = h("div", {
     style: {
-      display: "flex", position: "relative", height: s.hero, flexShrink: 0,
-      ...(d.trackBgB64
-        ? { backgroundImage: `url(${d.trackBgB64})`, backgroundSize: "cover", backgroundPosition: "center center" }
-        : { backgroundColor: "#0d0d10" }),
+      display: "flex", position: "relative", width: W, height: s.hero, flexShrink: 0,
+      backgroundColor: "#0d0d10", overflow: "hidden",
     },
   },
+    d.trackBgB64
+      ? h("img", { src: d.trackBgB64, style: { position: "absolute", top: 0, left: 0, width: W, height: s.hero, objectFit: "cover" } })
+      : null,
     h("div", { style: abs({ bottom: 0, left: 0, width: W, height: 220,
       background: `linear-gradient(to bottom, transparent, ${DARK})` }) }),
     h("div", { style: abs({ top: 0, left: 0, width: W, height: 80,
