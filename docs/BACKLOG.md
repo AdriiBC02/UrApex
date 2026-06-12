@@ -203,6 +203,6 @@
 | U-001 | Heatmap calendar (GitHub-style) | Internal idea |
 | U-002 | Driver DNA radar chart | Internal idea |
 | U-003 | Streak tracking | Internal idea |
-| U-004 | Progress certificates (shareable image) | Internal idea |
+| U-004 | Progress certificates (shareable image) | Internal idea | ✅ | Certificate preview page + social sharing; Portrait/Mobile formats; 2× resolution |
 | U-005 | Voice notes via Whisper API | Internal idea |
 | U-006 | "Weak spot detector" without telemetry | Internal idea |

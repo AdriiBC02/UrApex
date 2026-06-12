@@ -12,6 +12,26 @@
 
 ---
 
+## [Unreleased — 0.45.0] · U-004 Session Certificates
+
+> Session certificate card: generate, preview, share.
+
+### Added
+- **Certificate preview page** — `/certificate/[id]` standalone dark page with format tabs (Portrait 4:5, Mobile 9:16); accessible to anyone with the link (CUID2 acts as token)
+- **Social sharing** — Web Share API shares PNG file directly on iOS/Android; Twitter/WhatsApp share URL with pre-written message; copy-link button
+- **2× resolution output** — certificates render at 2× width via `@resvg/resvg-js fitTo` for crisp retina display
+- **OG / Twitter meta tags** — certificate PNG is the OpenGraph image; works for public and private sessions alike
+- **Goal scope badges** — GoalCard now shows circuit and car badges when a goal is scoped to a specific track or car
+
+### Fixed
+- `TrendChart` "Functions cannot be passed directly to Client Components" — removed `formatter` arrow function prop from 4 Server Components; changed TrendChart default to `toFixed(0)`
+- Certificate hero background width fill — switched from `<img>` to CSS `backgroundImage` on container; reliable in satori
+- Hydration error on certificate page — `pageUrl`/`hasShare` initialized server-safe, updated in `useEffect`
+- satori "u is not iterable" — converted 14 WebP track backgrounds to JPEG (satori 0.26 does not support WebP)
+- OG metadata now generated for all sessions regardless of `isPublic` flag
+
+---
+
 ## [Unreleased — 0.44.0] · Companion v0.6.6
 
 > AI/MP badge + session filters.
