@@ -155,16 +155,17 @@ export function buildCertificateJSX(d: CertificateData, format: CertFormat = "po
   )
 
   // ── Hero ──────────────────────────────────────────────────────────────────────
-  // Absolutely-positioned <img> with explicit pixel dims + objectFit cover.
-  // backgroundSize:"cover" is NOT supported in satori 0.26 — image would tile.
+  // inset (top/left/bottom/right: 0) is the satori-safe stretch-to-fill pattern.
+  // Explicit width/height on position:absolute doesn't always fill correctly in satori.
+  // backgroundSize:"cover" also not supported (tiles instead).
   const hero = h("div", {
     style: {
       display: "flex", position: "relative", width: W, height: s.hero, flexShrink: 0,
-      backgroundColor: "#0d0d10", overflow: "hidden",
+      backgroundColor: "#0d0d10",
     },
   },
     d.trackBgB64
-      ? h("img", { src: d.trackBgB64, style: { position: "absolute", top: 0, left: 0, width: W, height: s.hero, objectFit: "cover" } })
+      ? h("img", { src: d.trackBgB64, style: { position: "absolute", top: 0, left: 0, bottom: 0, right: 0, objectFit: "cover" } })
       : null,
     h("div", { style: abs({ bottom: 0, left: 0, width: W, height: 220,
       background: `linear-gradient(to bottom, transparent, ${DARK})` }) }),
